@@ -21,12 +21,16 @@ export default function DashboardClient({
   metrics, 
   recentOrders, 
   salesData,
-  topProducts
+  topProducts,
+  lowStock,
+  socialInquiries
 }: {
   metrics: any[];
   recentOrders: any[];
   salesData: any[];
   topProducts: any[];
+  lowStock: any[];
+  socialInquiries: any[];
 }) {
   return (
     <motion.div 
@@ -102,12 +106,15 @@ export default function DashboardClient({
 
             {/* Low Stock */}
             <div className={styles.card}>
-              <h3 className={styles.cardTitle}>Low Stock</h3>
+              <h3 className={styles.cardTitle}>Low Stock Alerts</h3>
               <ul className={styles.statList}>
-                <li><span>Lavender Pipe Cleaners</span> <strong>120 pcs</strong></li>
-                <li><span>Green Floral Tape</span> <strong>3 rolls</strong></li>
-                <li><span>Kraft Paper</span> <strong>8 sheets</strong></li>
-                <li><span>Thank You Cards</span> <strong>15 pcs</strong></li>
+                {lowStock.map((item: any, i: number) => (
+                  <li key={i}>
+                    <span>{item.name}</span> 
+                    <strong style={{ color: '#880E4F' }}>{item.quantity} left</strong>
+                  </li>
+                ))}
+                {lowStock.length === 0 && <li style={{ color: '#7A7571' }}>All stock levels healthy.</li>}
               </ul>
             </div>
           </motion.div>
@@ -116,26 +123,19 @@ export default function DashboardClient({
         {/* Right Column: Social */}
         <motion.div className={styles.rightCol} variants={itemVariants}>
           <div className={styles.card}>
-            <h3 className={styles.cardTitle}>Social Inquiries</h3>
+            <h3 className={styles.cardTitle}>Recent Admin Alerts</h3>
             <table className={styles.table}>
-              <thead><tr><th>Source</th><th>Customer</th><th>Status</th></tr></thead>
+              <thead><tr><th>Event</th><th>Time</th></tr></thead>
               <tbody>
-                {[
-                  { icon: <MessageCircle size={16} color="#E1306C" />, user: '@imane.fr', status: 'New' },
-                  { icon: <MessageCircle size={16} color="#E1306C" />, user: '@hiba.flower', status: 'Contacted' },
-                  { icon: <Smartphone size={16} color="#25D366" />, user: '+212 600...', status: 'New' },
-                  { icon: <Smartphone size={16} color="#25D366" />, user: '+212 612...', status: 'Contacted' },
-                ].map((s, i) => (
+                {socialInquiries.map((s: any, i: number) => (
                   <tr key={i}>
-                    <td><div style={{ display: 'flex', alignItems: 'center' }}>{s.icon}</div></td>
-                    <td>{s.user}</td>
-                    <td>
-                      <span className={styles.badge} style={{ backgroundColor: s.status === 'New' ? '#E8F5E9' : '#F5F5F5', color: s.status === 'New' ? '#1B5E20' : '#616161' }}>
-                        {s.status}
-                      </span>
-                    </td>
+                    <td>{s.message}</td>
+                    <td><span style={{ fontSize: '0.8rem', color: '#7A7571' }}>{new Date(s.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span></td>
                   </tr>
                 ))}
+                {socialInquiries.length === 0 && (
+                  <tr><td colSpan={2} style={{ textAlign: 'center', color: '#7A7571' }}>No recent alerts.</td></tr>
+                )}
               </tbody>
             </table>
           </div>

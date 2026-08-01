@@ -57,23 +57,62 @@ export default async function AdminDashboardPage() {
     fg: statusColors[o.status]?.fg || '#006064'
   }));
 
-  // Dummy sales data for the chart since generating a 7-day trailing graph requires more complex group-by
-  const salesData = [
-    { name: 'Day 1', sales: 1500 },
-    { name: 'Day 2', sales: 2300 },
-    { name: 'Day 3', sales: 2000 },
-    { name: 'Day 4', sales: 3400 },
-    { name: 'Day 5', sales: 2800 },
-    { name: 'Day 6', sales: 4200 },
-    { name: 'Today', sales: revenueToday },
-  ];
+  // Calculate Trailing 7 days sales data
+  const salesData = [];
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+  sevenDaysAgo.setHours(0, 0, 0, 0);
 
-  const topProducts = [
-    { name: 'Classic Lavender', sold: 12 },
-    { name: 'Mini Bouquet', sold: 8 },
-    { name: 'Signature Pink', sold: 6 },
-    { name: 'Single Bloom', sold: 5 },
-  ];
+  const recentSales = await prisma.order.findMany({
+    where: { createdAt: { gte: sevenDaysAgo } },
+    select: { createdAt: true, total: true }
+  });
+
+  // Group by day
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dayStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    
+    // Find all orders that fall on this day
+    const daySales = recentSales.filter(o => 
+      new Date(o.createdAt).toDateString() === d.toDateString()
+    ).reduce((sum, o) => sum + o.total, 0);
+
+    salesData.push({ name: dayStr, sales: daySales });
+  }
+
+  // Get low stock materials
+  const lowStock = await prisma.material.findMany({
+    where: { quantity: { lt: 20 } },
+    take: 5,
+    orderBy: { quantity: 'asc' }
+  });
+
+  // Get recent admin alerts
+  const socialInquiries = await prisma.adminInboxEvent.findMany({
+    take: 5,
+    orderBy: { createdAt: 'desc' }
+  });
+
+  // Calculate top products by aggregating OrderItem
+  const orderItems = await prisma.orderItem.groupBy({
+    by: ['productName'],
+    _sum: {
+      quantity: true
+    },
+    orderBy: {
+      _sum: {
+        quantity: 'desc'
+      }
+    },
+    take: 5
+  });
+
+  const topProducts = orderItems.map(item => ({
+    name: item.productName,
+    sold: item._sum.quantity || 0
+  }));
 
   return (
     <DashboardClient 
@@ -81,6 +120,8 @@ export default async function AdminDashboardPage() {
       recentOrders={recentOrders}
       salesData={salesData}
       topProducts={topProducts}
+      lowStock={lowStock}
+      socialInquiries={socialInquiries}
     />
   );
 }
