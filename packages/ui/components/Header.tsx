@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { Search, ShoppingCart, X, Menu, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCartStore } from '../store/useCartStore';
@@ -31,13 +32,13 @@ export const Header: React.FC<HeaderProps> = ({ authSlot }) => {
   return (
     <>
       <header className={styles.header}>
-        <a href="/" className={styles.logo}>
+        <Link href="/" className={styles.logo}>
           <img src="/logoSB.png" alt="Stemory Blooms" />
-        </a>
+        </Link>
 
         <nav className={styles.nav}>
           {navLinks.map(link => (
-            <a key={link.href} href={link.href}>{link.label}</a>
+            <Link key={link.href} href={link.href}>{link.label}</Link>
           ))}
         </nav>
 
@@ -47,9 +48,9 @@ export const Header: React.FC<HeaderProps> = ({ authSlot }) => {
           </button>
 
           {authSlot || (
-            <a href="/sign-in" className={styles.iconBtn} aria-label="Account">
+            <Link href="/sign-in" className={styles.iconBtn} aria-label="Account">
               <User size={18} strokeWidth={1.5} />
-            </a>
+            </Link>
           )}
 
           <button className={styles.iconBtn} aria-label="Cart" onClick={() => toggleCart(true)} style={{ position: 'relative' }}>
@@ -68,18 +69,18 @@ export const Header: React.FC<HeaderProps> = ({ authSlot }) => {
       {/* Mobile Navigation */}
       <div className={`${styles.mobileNav} ${isMobileNavOpen ? styles.open : ''}`}>
         <div className={styles.mobileNavHeader}>
-          <a href="/" className={styles.logo}>
+          <Link href="/" className={styles.logo}>
             <img src="/logoSB.png" alt="Stemory Blooms" />
-          </a>
+          </Link>
           <button className={styles.iconBtn} onClick={() => setIsMobileNavOpen(false)}>
             <X size={24} />
           </button>
         </div>
         <div className={styles.mobileNavLinks}>
           {navLinks.map(link => (
-            <a key={link.href} href={link.href} onClick={() => setIsMobileNavOpen(false)}>
+            <Link key={link.href} href={link.href} onClick={() => setIsMobileNavOpen(false)}>
               {link.label}
-            </a>
+            </Link>
           ))}
         </div>
       </div>

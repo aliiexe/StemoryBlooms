@@ -1,9 +1,9 @@
 import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
-import { PrismaClient } from '@stemory/database';
+import { prisma } from '@stemory/database';
 import AdminLayoutUI from './AdminLayoutUI';
 
-const prisma = new PrismaClient();
+
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const { userId } = await auth();

@@ -2,19 +2,12 @@ export const dynamic = 'force-dynamic';
 
 import styles from './page.module.css';
 import { ProductCard } from '@stemory/ui';
-import { PrismaClient } from '@stemory/database';
+import { prisma } from '@stemory/database';
 
-const prisma = new PrismaClient();
 
-const FALLBACK_PRODUCTS = [
-  { id: '1', name: 'Classic Lavender Bunch', price: 150 },
-  { id: '2', name: 'Signature Pink Tulip', price: 200 },
-  { id: '3', name: 'Sunshine Daisy Mix', price: 180 },
-  { id: '4', name: 'Mini Rose Bouquet', price: 120 },
-];
 
 export default async function ShopPage() {
-  let products = FALLBACK_PRODUCTS;
+  let products: any[] = [];
 
   try {
     const dbProducts = await prisma.product.findMany();
@@ -41,6 +34,18 @@ export default async function ShopPage() {
           <ProductCard key={product.id} title={product.name} price={product.price} />
         ))}
       </div>
+
+      {products.length === 0 && (
+        <div style={{ padding: '6rem 2rem', textAlign: 'center', maxWidth: '600px', margin: '0 auto' }}>
+          <h2 style={{ fontFamily: 'var(--font-editorial)', fontSize: '2rem', color: '#3A3531', marginBottom: '1rem' }}>
+            Our Catalog is Currently Empty
+          </h2>
+          <p style={{ color: '#7A7571', fontSize: '1.1rem', lineHeight: 1.6, marginBottom: '2rem' }}>
+            We've sold out of our latest collection! Our master florists are busy hand-crafting 
+            new everlasting arrangements. Join our waitlist to be notified when they drop.
+          </p>
+        </div>
+      )}
     </main>
   );
 }

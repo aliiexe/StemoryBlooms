@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@stemory/database';
+import { prisma } from '@stemory/database';
 import { Webhook } from 'svix';
 import { headers } from 'next/headers';
 
-const prisma = new PrismaClient();
+
 
 export async function POST(req: Request) {
   const secret = process.env.CLERK_WEBHOOK_SECRET;

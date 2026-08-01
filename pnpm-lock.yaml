@@ -19,7 +19,7 @@ importers:
     dependencies:
       '@clerk/nextjs':
         specifier: ^7.6.4
-        version: 7.6.4(next@16.2.12(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 7.6.4(next@16.2.12(@babel/core@7.29.7)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@hookform/resolvers':
         specifier: ^5.6.0
         version: 5.6.0(@sinclair/typebox@0.34.52)(@standard-schema/spec@1.1.0)(ajv-formats@2.1.1(ajv@8.20.0))(ajv@8.20.0)(react-hook-form@7.84.0(react@19.2.4))(zod@3.25.76)
@@ -115,7 +115,7 @@ importers:
     dependencies:
       '@clerk/nextjs':
         specifier: ^7.6.4
-        version: 7.6.4(next@16.2.12(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 7.6.4(next@16.2.12(@babel/core@7.29.7)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
     devDependencies:
       typescript:
         specifier: ^5.5.3
@@ -125,13 +125,16 @@ importers:
     dependencies:
       '@clerk/nextjs':
         specifier: ^7.6.4
-        version: 7.6.4(next@16.2.12(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 7.6.4(next@16.2.12(@babel/core@7.29.7)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       framer-motion:
         specifier: ^12.43.0
         version: 12.43.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       lucide-react:
         specifier: ^0.474.0
         version: 0.474.0(react@19.2.4)
+      next:
+        specifier: 16.2.12
+        version: 16.2.12(@babel/core@7.29.7)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       react:
         specifier: ^19.0.0
         version: 19.2.4
@@ -2588,7 +2591,7 @@ snapshots:
       - react
       - react-dom
 
-  '@clerk/nextjs@7.6.4(next@16.2.12(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+  '@clerk/nextjs@7.6.4(next@16.2.12(@babel/core@7.29.7)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
       '@clerk/backend': 3.15.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@clerk/react': 6.12.10(react-dom@19.2.4(react@19.2.4))(react@19.2.4)

@@ -1,9 +1,9 @@
 import { Header, Footer } from "@stemory/ui";
 import { ClerkAuthSlot } from "./ClerkAuthSlot";
 import { auth } from '@clerk/nextjs/server';
-import { PrismaClient } from '@stemory/database';
+import { prisma } from '@stemory/database';
 
-const prisma = new PrismaClient();
+
 
 export default async function StorefrontLayout({
   children,

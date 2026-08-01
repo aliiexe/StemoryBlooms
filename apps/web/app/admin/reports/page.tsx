@@ -1,8 +1,8 @@
 import React from 'react';
-import { PrismaClient } from '@stemory/database';
+import { prisma } from '@stemory/database';
 import styles from '../dashboard.module.css';
 
-const prisma = new PrismaClient();
+
 
 export default async function AdminReportsPage() {
   const events = await prisma.analyticsEvent.findMany({

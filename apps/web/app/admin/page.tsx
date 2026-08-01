@@ -1,7 +1,7 @@
-import { PrismaClient } from '@stemory/database';
+import { prisma } from '@stemory/database';
 import DashboardClient from './DashboardClient';
 
-const prisma = new PrismaClient();
+
 
 export default async function AdminDashboardPage() {
   const today = new Date();

@@ -8,26 +8,9 @@ import styles from './BuilderFlow.module.css';
 
 const STEPS = ['Flowers', 'Wrapping', 'Add-ons', 'Review'];
 
-const ITEMS_DATA = {
-  Flowers: [
-    { id: 'f1', name: 'Lavender Stem', price: 15 },
-    { id: 'f2', name: 'Pink Tulip', price: 20 },
-    { id: 'f3', name: 'White Rose', price: 25 },
-    { id: 'f4', name: 'Sunflower', price: 30 },
-  ],
-  Wrapping: [
-    { id: 'w1', name: 'Classic Kraft', price: 10 },
-    { id: 'w2', name: 'Silk Ribbon', price: 15 },
-    { id: 'w3', name: 'Premium Mesh', price: 20 },
-  ],
-  'Add-ons': [
-    { id: 'a1', name: 'Gift Card', price: 5 },
-    { id: 'a2', name: 'Fairy Lights', price: 15 },
-    { id: 'a3', name: 'Crystal Pins', price: 10 },
-  ],
-};
 
-export default function BuilderFlow() {
+
+export default function BuilderFlow({ initialData }: { initialData: any }) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [cart, setCart] = useState<Record<string, number>>({});
   
@@ -49,7 +32,7 @@ export default function BuilderFlow() {
 
   const getSubtotal = () => {
     let total = 0;
-    Object.values(ITEMS_DATA).flat().forEach(item => {
+    Object.values(initialData).flat().forEach((item: any) => {
       total += (cart[item.id] || 0) * item.price;
     });
     return total;
@@ -80,7 +63,7 @@ export default function BuilderFlow() {
     }
   };
 
-  const renderItems = (items: typeof ITEMS_DATA.Flowers) => (
+  const renderItems = (items: any[]) => (
     <div className={styles.itemList}>
       {items.map(item => {
         const qty = cart[item.id] || 0;
@@ -107,7 +90,7 @@ export default function BuilderFlow() {
   );
 
   const renderReview = () => {
-    const allItems = Object.values(ITEMS_DATA).flat();
+    const allItems = Object.values(initialData).flat() as any[];
     const cartItems = allItems.filter(item => (cart[item.id] || 0) > 0);
 
     if (cartItems.length === 0) {
@@ -152,9 +135,9 @@ export default function BuilderFlow() {
             exit={{ opacity: 0, x: -10 }}
             transition={{ duration: 0.2 }}
           >
-            {currentStep === 'Flowers' && renderItems(ITEMS_DATA.Flowers)}
-            {currentStep === 'Wrapping' && renderItems(ITEMS_DATA.Wrapping)}
-            {currentStep === 'Add-ons' && renderItems(ITEMS_DATA['Add-ons'])}
+            {currentStep === 'Flowers' && renderItems(initialData.Flowers || [])}
+            {currentStep === 'Wrapping' && renderItems(initialData.Wrapping || [])}
+            {currentStep === 'Add-ons' && renderItems(initialData['Add-ons'] || [])}
             {currentStep === 'Review' && renderReview()}
           </motion.div>
         </AnimatePresence>

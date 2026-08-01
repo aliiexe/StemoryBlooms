@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@stemory/database';
+import { prisma } from '@stemory/database';
 import { CheckoutPayloadSchema } from '@stemory/contracts';
 
-const prisma = new PrismaClient();
+
 
 export async function POST(request: Request) {
   const idempotencyKey = request.headers.get('idempotency-key');
