@@ -35,7 +35,7 @@ export default function CheckoutPage() {
     setIsSubmitting(true);
     setError(null);
     try {
-      const res = await fetch('http://127.0.0.1:3001/api/v1/orders', {
+      const res = await fetch('/api/v1/orders', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

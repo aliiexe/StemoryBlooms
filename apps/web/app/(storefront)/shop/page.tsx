@@ -2,6 +2,9 @@ export const dynamic = 'force-dynamic';
 
 import styles from './page.module.css';
 import { ProductCard } from '@stemory/ui';
+import { PrismaClient } from '@stemory/database';
+
+const prisma = new PrismaClient();
 
 const FALLBACK_PRODUCTS = [
   { id: '1', name: 'Classic Lavender Bunch', price: 150 },
@@ -14,16 +17,13 @@ export default async function ShopPage() {
   let products = FALLBACK_PRODUCTS;
 
   try {
-    const res = await fetch('http://127.0.0.1:3001/api/v1/products', { cache: 'no-store' });
-    if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) {
-        products = data.map((p: any) => ({
-          id: p.id,
-          name: p.name,
-          price: p.basePrice ? p.basePrice / 100 : p.price || 0,
-        }));
-      }
+    const dbProducts = await prisma.product.findMany();
+    if (dbProducts && dbProducts.length > 0) {
+      products = dbProducts.map(p => ({
+        id: p.id,
+        name: p.name,
+        price: p.basePrice
+      }));
     }
   } catch (error) {
     console.error('Failed to fetch products:', error);

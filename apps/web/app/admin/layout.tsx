@@ -1,33 +1,24 @@
 import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
+import { PrismaClient } from '@stemory/database';
 import AdminLayoutUI from './AdminLayoutUI';
 
+const prisma = new PrismaClient();
+
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { getToken } = await auth();
-  const token = await getToken();
+  const { userId } = await auth();
   
-  if (!token) {
+  if (!userId) {
     redirect('/');
   }
 
-  // Fetch the role from the backend
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3001';
   try {
-    const res = await fetch(`${apiUrl}/api/v1/auth/me`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      },
-      cache: 'no-store'
+    const user = await prisma.user.findUnique({
+      where: { clerkId: userId },
+      include: { role: true }
     });
 
-    if (!res.ok) {
-      const errorText = await res.text();
-      console.error(`Admin Auth Failed: ${res.status} - ${errorText}`);
-      redirect('/');
-    }
-
-    const user = await res.json();
-    if (user.role?.name !== 'ADMIN') {
+    if (user?.role?.name !== 'ADMIN') {
       redirect('/');
     }
   } catch (err) {
