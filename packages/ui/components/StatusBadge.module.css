@@ -1,0 +1,19 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 500;
+  font-family: var(--font-sans);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.new { background-color: #E3F2FD; color: #1976D2; }
+.confirmed { background-color: #E8F5E9; color: #388E3C; }
+.in_production { background-color: #FFF3E0; color: #F57C00; }
+.ready_for_delivery { background-color: var(--color-sage); color: var(--color-moss-green); }
+.delivered { background-color: var(--color-moss-green); color: white; }
+.cancelled { background-color: #FFEBEE; color: #D32F2F; }
+.default { background-color: var(--color-ivory); color: var(--color-muted-charcoal); border: 1px solid var(--border-subtle); }

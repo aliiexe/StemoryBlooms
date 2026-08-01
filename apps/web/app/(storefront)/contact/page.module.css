@@ -1,0 +1,159 @@
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--space-12) var(--space-4);
+}
+
+.splitLayout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+@media (min-width: 768px) {
+  .splitLayout {
+    flex-direction: row;
+  }
+}
+
+.infoSection {
+  flex: 1;
+}
+
+.title {
+  font-family: var(--font-editorial, serif);
+  font-size: 2.5rem;
+  color: var(--brand-primary);
+  margin: 0 0 var(--space-4) 0;
+}
+
+.description {
+  color: var(--text-primary);
+  font-size: 1.1rem;
+  line-height: 1.6;
+  margin: 0 0 var(--space-8) 0;
+}
+
+.contactMethods {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.method {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.iconWrapper {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background-color: var(--brand-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  flex-shrink: 0;
+}
+
+.methodDetails {
+  display: flex;
+  flex-direction: column;
+}
+
+.methodLabel {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  margin-bottom: var(--space-1);
+}
+
+.methodValue {
+  color: var(--text-primary);
+  opacity: 0.8;
+}
+
+.formSection {
+  flex: 1;
+}
+
+.formCard {
+  background-color: #ffffff;
+  padding: var(--space-8);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+@media (min-width: 640px) {
+  .row {
+    flex-direction: row;
+  }
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  flex: 1;
+}
+
+.label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.input, .textarea {
+  width: 100%;
+  padding: var(--space-3);
+  border: 1px solid #e5e7eb;
+  border-radius: var(--radius-sm);
+  background-color: #f9fafb;
+  font-family: var(--font-sans, sans-serif);
+  font-size: 1rem;
+  transition: border-color var(--transition-fast) ease, box-shadow var(--transition-fast) ease;
+  box-sizing: border-box;
+}
+
+.input:focus, .textarea:focus {
+  outline: none;
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 2px rgba(var(--brand-primary-rgb, 0, 0, 0), 0.1);
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.submitBtn {
+  background-color: var(--brand-primary);
+  color: white;
+  border: none;
+  padding: var(--space-4);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color var(--transition-fast) ease, transform var(--transition-fast) ease;
+  margin-top: var(--space-2);
+}
+
+.submitBtn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}

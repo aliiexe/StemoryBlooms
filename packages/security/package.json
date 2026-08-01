@@ -1,0 +1,12 @@
+{
+  "name": "@stemory/security",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./index.ts",
+  "dependencies": {
+    "@clerk/nextjs": "^7.6.4"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.3"
+  }
+}

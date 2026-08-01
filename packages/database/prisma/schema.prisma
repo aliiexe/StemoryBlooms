@@ -1,0 +1,394 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// Identity and Access
+// ==========================================
+
+model User {
+  id        String   @id @default(uuid())
+  clerkId   String   @unique
+  email     String   @unique
+  firstName String?
+  lastName  String?
+  roleId    String?
+  role      Role?    @relation(fields: [roleId], references: [id])
+  auditLogs AuditLog[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Role {
+  id          String       @id @default(uuid())
+  name        String       @unique
+  permissions Permission[]
+  users       User[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Permission {
+  id        String   @id @default(uuid())
+  action    String   @unique // e.g., 'orders:read', 'inventory:write'
+  roles     Role[]
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  actorId   String?
+  actor     User?    @relation(fields: [actorId], references: [id])
+  action    String
+  target    String
+  requestId String?
+  summary   String?
+  createdAt DateTime @default(now())
+}
+
+// ==========================================
+// Customers
+// ==========================================
+
+model Customer {
+  id           String    @id @default(uuid())
+  firstName    String
+  lastName     String
+  email        String?   @unique
+  phone        String    @unique
+  socialHandle String?
+  addresses    Address[]
+  orders       Order[]
+  carts        Cart[]
+  internalNote String?
+  riskFlag     Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Address {
+  id           String   @id @default(uuid())
+  customerId   String
+  customer     Customer @relation(fields: [customerId], references: [id])
+  city         String
+  zone         String?
+  addressLine1 String
+  addressLine2 String?
+  instructions String?
+  isDefault    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// ==========================================
+// Catalog & Custom Builder
+// ==========================================
+
+model Product {
+  id                 String           @id @default(uuid())
+  name               String
+  description        String?
+  basePrice          Int
+  isAvailable        Boolean          @default(true)
+  status             String           @default("PUBLISHED") // PUBLISHED, HIDDEN, ARCHIVED
+  processingEstimate String?
+  isCustomBuilder    Boolean          @default(false)
+  categories         Category[]
+  variants           ProductVariant[]
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+}
+
+model ProductVariant {
+  id        String   @id @default(uuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  name      String
+  price     Int
+  sku       String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Category {
+  id       String    @id @default(uuid())
+  name     String    @unique
+  products Product[]
+}
+
+model BuilderComponent {
+  id           String   @id @default(uuid())
+  type         String   // FLOWER, COLOR, WRAPPING, ARRANGEMENT, EXTRA
+  name         String
+  unitPrice    Int
+  minQuantity  Int      @default(0)
+  maxQuantity  Int?
+  isAvailable  Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// ==========================================
+// Orders & Commerce
+// ==========================================
+
+model Cart {
+  id         String     @id @default(uuid())
+  customerId String?
+  customer   Customer?  @relation(fields: [customerId], references: [id])
+  sessionKey String?    @unique
+  items      CartItem[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+}
+
+model CartItem {
+  id            String  @id @default(uuid())
+  cartId        String
+  cart          Cart    @relation(fields: [cartId], references: [id])
+  productId     String?
+  quantity      Int
+  configuration Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Order {
+  id              String         @id @default(uuid())
+  orderNumber     String         @unique
+  idempotencyKey  String?        @unique
+  customerId      String
+  customer        Customer       @relation(fields: [customerId], references: [id])
+  status          String         @default("NEW")
+  source          String         @default("WEBSITE")
+  subtotal        Int
+  deliveryFee     Int
+  discount        Int            @default(0)
+  total           Int
+  paymentStatus   String         @default("PENDING_COD")
+  deliveryAddress Json           // Immutable snapshot
+  notes           String?
+  items           OrderItem[]
+  statusHistory   OrderStatusHistory[]
+  adjustments     OrderAdjustment[]
+  paymentHistory  PaymentStatusHistory[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+}
+
+model OrderItem {
+  id              String   @id @default(uuid())
+  orderId         String
+  order           Order    @relation(fields: [orderId], references: [id])
+  productId       String?
+  productName     String
+  quantity        Int
+  unitPrice       Int
+  totalPrice      Int
+  configuration   Json?    // Snapshot of custom builder options
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model OrderAdjustment {
+  id          String   @id @default(uuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id])
+  amount      Int
+  reason      String
+  actorId     String?
+  createdAt   DateTime @default(now())
+}
+
+model OrderStatusHistory {
+  id        String   @id @default(uuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id])
+  status    String
+  actorId   String?  // User ID or System
+  note      String?
+  createdAt DateTime @default(now())
+}
+
+model PaymentStatusHistory {
+  id        String   @id @default(uuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id])
+  status    String
+  actorId   String?
+  createdAt DateTime @default(now())
+}
+
+// ==========================================
+// Assisted Orders
+// ==========================================
+
+model DraftOrder {
+  id         String   @id @default(uuid())
+  payload    Json
+  actorId    String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model SocialOrderMetadata {
+  id        String   @id @default(uuid())
+  orderId   String   @unique
+  handle    String
+  platform  String
+  reference String?
+  createdAt DateTime @default(now())
+}
+
+// ==========================================
+// Inventory & Delivery
+// ==========================================
+
+model Material {
+  id              String           @id @default(uuid())
+  name            String
+  quantity        Int              @default(0)
+  lowStockThreshold Int?
+  cost            Int?
+  supplierId      String?
+  supplier        Supplier?        @relation(fields: [supplierId], references: [id])
+  movements       StockMovement[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+model Supplier {
+  id        String     @id @default(uuid())
+  name      String
+  contact   String?
+  materials Material[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model StockMovement {
+  id         String   @id @default(uuid())
+  materialId String
+  material   Material @relation(fields: [materialId], references: [id])
+  quantity   Int      // Positive for restock, negative for consumption
+  reason     String
+  actorId    String?
+  createdAt  DateTime @default(now())
+}
+
+model DeliveryZone {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  fee         Int
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model DeliveryCompany {
+  id        String   @id @default(uuid())
+  name      String
+  contact   String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model DeliveryHandoff {
+  id          String   @id @default(uuid())
+  orderId     String   @unique
+  companyId   String
+  reference   String?
+  actorId     String
+  createdAt   DateTime @default(now())
+}
+
+// ==========================================
+// Content & Marketing
+// ==========================================
+
+model ContentBlock {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  content   Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PromoCode {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  type      String   // PERCENTAGE, FIXED
+  value     Int
+  isActive  Boolean  @default(true)
+  usageLimit Int?
+  usageCount Int     @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ==========================================
+// Notifications & Analytics
+// ==========================================
+
+model NotificationOutbox {
+  id          String   @id @default(uuid())
+  type        String   // EMAIL, SMS, INTERNAL_ALERT
+  recipient   String
+  payload     Json
+  status      String   @default("PENDING") // PENDING, SENT, FAILED
+  attempts    Int      @default(0)
+  lastAttempt DateTime?
+  error       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AdminInboxEvent {
+  id        String   @id @default(uuid())
+  type      String   // NEW_ORDER, LOW_STOCK
+  message   String
+  read      Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+}
+
+model AnalyticsEvent {
+  id        String   @id @default(uuid())
+  event     String
+  userId    String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+}
+
+// ==========================================
+// Launch & Waitlist
+// ==========================================
+
+model SiteSettings {
+  id        String   @id @default(uuid())
+  mode      String   @default("WAITLIST") // DRAFT, WAITLIST, LIVE, MAINTENANCE
+  config    Json?
+  updatedAt DateTime @updatedAt
+}
+
+model WaitlistEntry {
+  id          String   @id @default(uuid())
+  email       String   @unique
+  source      String?
+  isVerified  Boolean  @default(false)
+  unsubscribed Boolean @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model LaunchCampaign {
+  id        String   @id @default(uuid())
+  status    String   @default("SCHEDULED")
+  scheduledFor DateTime?
+  sentCount Int      @default(0)
+  createdAt DateTime @default(now())
+}

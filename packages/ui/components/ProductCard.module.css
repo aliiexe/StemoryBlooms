@@ -1,0 +1,78 @@
+.card {
+  background-color: var(--bg-secondary);
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-hover);
+}
+
+.imageWrap {
+  background-color: var(--bg-tertiary);
+  overflow: hidden;
+  aspect-ratio: 4/5;
+}
+
+.imageWrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--transition-slow);
+}
+
+.card:hover .imageWrap img {
+  transform: scale(1.05);
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+}
+
+.title {
+  font-family: var(--font-editorial);
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin: 0;
+  line-height: 1.3;
+}
+
+.bottomRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: var(--space-1);
+}
+
+.price {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+}
+
+.viewBtn {
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  padding: var(--space-1) var(--space-4);
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+.viewBtn:hover {
+  border-color: var(--brand-primary);
+  background-color: var(--brand-primary);
+  color: var(--text-inverse);
+}

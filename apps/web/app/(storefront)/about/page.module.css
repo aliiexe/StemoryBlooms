@@ -1,0 +1,83 @@
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--space-12) var(--space-4);
+}
+
+.splitLayout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  align-items: center;
+}
+
+@media (min-width: 768px) {
+  .splitLayout {
+    flex-direction: row;
+    gap: var(--space-12);
+  }
+}
+
+.imageWrapper {
+  flex: 1;
+  width: 100%;
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+  aspect-ratio: 4 / 5;
+}
+
+.image {
+  object-fit: cover;
+}
+
+.content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.title {
+  font-family: var(--font-editorial, serif);
+  font-size: 2.5rem;
+  color: var(--brand-primary);
+  margin: 0;
+}
+
+.description {
+  color: var(--text-primary);
+  line-height: 1.6;
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.stats {
+  display: flex;
+  gap: var(--space-8);
+  margin-top: var(--space-4);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--bg-primary);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.statValue {
+  font-family: var(--font-editorial, serif);
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--brand-primary);
+}
+
+.statLabel {
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-primary);
+  opacity: 0.8;
+}
