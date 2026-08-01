@@ -19,7 +19,7 @@ export default async function ShopPage() {
   try {
     const dbProducts = await prisma.product.findMany();
     if (dbProducts && dbProducts.length > 0) {
-      products = dbProducts.map(p => ({
+      products = dbProducts.map((p: any) => ({
         id: p.id,
         name: p.name,
         price: p.basePrice
