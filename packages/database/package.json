@@ -7,7 +7,8 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
-    "make-admin": "tsx make-admin.ts"
+    "make-admin": "tsx make-admin.ts",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@prisma/client": "^5.15.0"
