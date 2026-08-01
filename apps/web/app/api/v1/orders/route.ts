@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     const deliveryFee = 50; // Fixed delivery fee for now
     const total = subtotal + deliveryFee;
 
-    const order = await prisma.$transaction(async (tx) => {
+    const order = await prisma.$transaction(async (tx: any) => {
       // Find or create customer
       // Since email isn't in CheckoutPayloadSchema currently, we match by phone
       const dbCustomer = await tx.customer.upsert({
