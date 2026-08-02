@@ -1,0 +1,233 @@
+.container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  background-color: var(--brand-primary);
+}
+
+.background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.blob {
+  position: absolute;
+  filter: blur(80px);
+  border-radius: 50%;
+  animation: float 20s infinite ease-in-out alternate;
+  opacity: 0.6;
+}
+
+.blob1 {
+  top: -10%;
+  left: -10%;
+  width: 50vw;
+  height: 50vw;
+  background-color: #8C9C76;
+  animation-delay: 0s;
+}
+
+.blob2 {
+  bottom: -20%;
+  right: -10%;
+  width: 60vw;
+  height: 60vw;
+  background-color: #E6DFD3;
+  animation-delay: -5s;
+}
+
+.blob3 {
+  top: 40%;
+  left: 60%;
+  width: 40vw;
+  height: 40vw;
+  background-color: #D6CFE6;
+  animation-delay: -10s;
+}
+
+@keyframes float {
+  0% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(5%, 10%) scale(1.1); }
+  66% { transform: translate(-5%, 5%) scale(0.95); }
+  100% { transform: translate(2%, -5%) scale(1.05); }
+}
+
+.glassCard {
+  position: relative;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  padding: 4rem 3.5rem;
+  border-radius: 32px;
+  max-width: 540px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(255,255,255,0.2) inset;
+  animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+  transform: translateY(30px);
+}
+
+@keyframes slideUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.logo {
+  margin: 0 auto 2.5rem;
+  animation: fadeIn 1s ease 0.5s forwards;
+  opacity: 0;
+}
+
+.title {
+  font-family: var(--font-editorial);
+  font-size: 3rem;
+  color: var(--brand-primary);
+  margin-bottom: 1.25rem;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  animation: fadeIn 1s ease 0.7s forwards;
+  opacity: 0;
+}
+
+.subtitle {
+  color: #5A5551;
+  font-size: 1.15rem;
+  margin-bottom: 3rem;
+  line-height: 1.6;
+  font-weight: 400;
+  animation: fadeIn 1s ease 0.9s forwards;
+  opacity: 0;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  animation: fadeIn 1s ease 1.1s forwards;
+  opacity: 0;
+}
+
+.inputWrapper {
+  position: relative;
+  width: 100%;
+}
+
+.input {
+  width: 100%;
+  padding: 1.25rem 1.5rem;
+  border-radius: 16px;
+  border: 1px solid rgba(214, 207, 230, 0.8);
+  background: rgba(255, 255, 255, 0.7);
+  font-size: 1.05rem;
+  outline: none;
+  transition: all 0.3s ease;
+  font-family: var(--font-sans);
+  color: #3A3531;
+}
+
+.input:focus {
+  border-color: var(--brand-primary);
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(111, 126, 89, 0.1);
+}
+
+.input::placeholder {
+  color: #9A9591;
+}
+
+.button {
+  padding: 1.25rem;
+  background-color: var(--brand-primary);
+  color: var(--surface-primary);
+  border: none;
+  border-radius: 16px;
+  font-size: 1.1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: var(--font-sans);
+  box-shadow: 0 10px 20px rgba(111, 126, 89, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 15px 25px rgba(111, 126, 89, 0.3);
+  background-color: #5A6A45;
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.successMessage {
+  background: linear-gradient(135deg, #E8F5E9, #C8E6C9);
+  padding: 2rem;
+  border-radius: 20px;
+  color: #1B5E20;
+  animation: scaleIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  border: 1px solid rgba(27, 94, 32, 0.1);
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.footer {
+  margin-top: 3.5rem;
+  border-top: 1px solid rgba(0,0,0,0.06);
+  padding-top: 2rem;
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  animation: fadeIn 1s ease 1.3s forwards;
+  opacity: 0;
+}
+
+.link {
+  color: #7A7571;
+  text-decoration: none;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: color 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.link:hover {
+  color: var(--brand-primary);
+}
+
+@keyframes fadeIn {
+  to { opacity: 1; }
+}
+
+@media (max-width: 600px) {
+  .glassCard {
+    padding: 3rem 2rem;
+  }
+  .title {
+    font-size: 2.5rem;
+  }
+}

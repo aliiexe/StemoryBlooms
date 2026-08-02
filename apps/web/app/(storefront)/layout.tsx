@@ -53,6 +53,11 @@ export default async function StorefrontLayout({
     <ClerkProvider>
       {/* Sticky top chrome: announcement bar + nav stick together as one unit */}
       <div style={{ position: 'sticky', top: 0, zIndex: 40, width: '100%' }}>
+        {isAdmin && (isWaitlist || isMaintenance) && (
+          <div style={{ backgroundColor: '#FFEBEE', color: '#C62828', padding: '0.5rem', textAlign: 'center', fontSize: '0.85rem', fontWeight: 600 }}>
+            ADMIN MODE: The public site is currently in {isWaitlist ? 'WAITLIST' : 'MAINTENANCE'} mode.
+          </div>
+        )}
         <Suspense fallback={null}>
           <AnnouncementBar />
         </Suspense>

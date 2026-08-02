@@ -2,27 +2,34 @@
 
 import React from 'react';
 import Image from 'next/image';
-import styles from './page.module.css';
+import styles from './landing.module.css';
 
 export default function MaintenancePage() {
   return (
-    <main className={styles.main} style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--brand-primary)' }}>
-      <div style={{ backgroundColor: 'var(--surface-primary)', padding: '4rem 3rem', borderRadius: '24px', maxWidth: '500px', width: '90%', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' }}>
-        <div style={{ marginBottom: '2rem' }}>
-          <Image src="/logoSB.png" alt="Stemory Blooms" width={180} height={40} style={{ margin: '0 auto' }} />
+    <main className={styles.container}>
+      <div className={styles.background}>
+        <div className={`${styles.blob} ${styles.blob1}`} />
+        <div className={`${styles.blob} ${styles.blob2}`} />
+        <div className={`${styles.blob} ${styles.blob3}`} />
+      </div>
+
+      <div className={styles.glassCard}>
+        <div className={styles.logo}>
+          <Image src="/logoSB.png" alt="Stemory Blooms" width={220} height={48} priority style={{ objectFit: 'contain' }} />
         </div>
         
-        <h1 style={{ fontFamily: 'var(--font-editorial)', fontSize: '2.5rem', color: 'var(--brand-primary)', marginBottom: '1rem', lineHeight: 1.2 }}>
+        <h1 className={styles.title}>
           We'll be right back.
         </h1>
         
-        <p style={{ color: '#7A7571', fontSize: '1.1rem', marginBottom: '2.5rem', lineHeight: 1.6 }}>
-          We're currently making some updates to our store to serve you better. Please check back soon!
+        <p className={styles.subtitle}>
+          We're currently making some beautiful updates to our store to serve you better. 
+          Please check back shortly. Thank you for your patience!
         </p>
 
-        <div style={{ marginTop: '3rem', borderTop: '1px solid #EAE6DF', paddingTop: '1.5rem' }}>
-          <a href="https://instagram.com/stemory.blooms" target="_blank" rel="noreferrer" style={{ color: 'var(--brand-primary)', textDecoration: 'none', fontSize: '0.9rem', marginRight: '1rem' }}>Instagram</a>
-          <a href="https://tiktok.com/@stemoryblooms" target="_blank" rel="noreferrer" style={{ color: 'var(--brand-primary)', textDecoration: 'none', fontSize: '0.9rem' }}>TikTok</a>
+        <div className={styles.footer}>
+          <a href="https://instagram.com/stemory.blooms" target="_blank" rel="noreferrer" className={styles.link}>Instagram</a>
+          <a href="https://tiktok.com/@stemoryblooms" target="_blank" rel="noreferrer" className={styles.link}>TikTok</a>
         </div>
       </div>
     </main>
