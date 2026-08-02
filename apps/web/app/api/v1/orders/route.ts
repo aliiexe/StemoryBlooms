@@ -17,14 +17,31 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Validation failed', errors: parsed.error.errors }, { status: 400 });
     }
 
-    const { cartItems, customerName, phoneNumber, city, address, deliveryInstructions } = parsed.data;
+    const { cartItems, customerName, phoneNumber, city, address, deliveryInstructions, promoCode } = parsed.data;
 
     let subtotal = 0;
     for (const item of cartItems) {
       subtotal += item.price * item.quantity;
     }
     const deliveryFee = 50; // Fixed delivery fee for now
-    const total = subtotal + deliveryFee;
+    let discountAmount = 0;
+    let appliedPromoId: string | null = null;
+
+    if (promoCode) {
+      const dbPromo = await prisma.promoCode.findUnique({ where: { code: promoCode.toUpperCase().trim() } });
+      if (dbPromo && dbPromo.isActive && (!dbPromo.usageLimit || dbPromo.usageCount < dbPromo.usageLimit)) {
+        appliedPromoId = dbPromo.id;
+        if (dbPromo.type === 'PERCENTAGE') {
+          discountAmount = Math.round(subtotal * (dbPromo.value / 100));
+        } else if (dbPromo.type === 'FIXED') {
+          discountAmount = dbPromo.value;
+        }
+      } else {
+        return NextResponse.json({ message: 'Invalid or expired promo code' }, { status: 400 });
+      }
+    }
+
+    const total = Math.max(0, subtotal - discountAmount) + deliveryFee;
 
     const order = await prisma.$transaction(async (tx: any) => {
       // Find or create customer
@@ -49,6 +66,7 @@ export async function POST(request: Request) {
           customerId: dbCustomer.id,
           subtotal,
           deliveryFee,
+          discount: discountAmount,
           total,
           status: 'NEW',
           notes: deliveryInstructions,
@@ -67,6 +85,13 @@ export async function POST(request: Request) {
         }
       });
     });
+
+    if (appliedPromoId) {
+      await prisma.promoCode.update({
+        where: { id: appliedPromoId },
+        data: { usageCount: { increment: 1 } }
+      });
+    }
 
     return NextResponse.json(order);
   } catch (error: any) {

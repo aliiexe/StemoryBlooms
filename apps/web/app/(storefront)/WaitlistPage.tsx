@@ -3,16 +3,29 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import styles from './page.module.css';
+import { joinWaitlist } from './actions';
 
 export default function WaitlistPage() {
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [isPending, setIsPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
-    // Mocking the waitlist submission since this is a UI prototype
-    setSubmitted(true);
+    
+    setIsPending(true);
+    setError(null);
+    
+    const res = await joinWaitlist(email);
+    
+    if (res.error) {
+      setError(res.error);
+    } else {
+      setSubmitted(true);
+    }
+    setIsPending(false);
   };
 
   return (
@@ -38,16 +51,26 @@ export default function WaitlistPage() {
           </div>
         ) : (
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {error && (
+              <div style={{ backgroundColor: '#FFEBEE', color: '#C62828', padding: '0.75rem', borderRadius: '8px', fontSize: '0.9rem', textAlign: 'left' }}>
+                {error}
+              </div>
+            )}
             <input 
               type="email" 
               placeholder="Enter your email address" 
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              disabled={isPending}
               style={{ padding: '1rem', borderRadius: '8px', border: '1px solid #D6CFE6', fontSize: '1rem', outline: 'none' }}
             />
-            <button type="submit" style={{ padding: '1rem', backgroundColor: 'var(--brand-primary)', color: 'var(--surface-primary)', border: 'none', borderRadius: '8px', fontSize: '1.1rem', fontWeight: 500, cursor: 'pointer' }}>
-              Join the Waitlist
+            <button 
+              type="submit" 
+              disabled={isPending}
+              style={{ padding: '1rem', backgroundColor: 'var(--brand-primary)', color: 'var(--surface-primary)', border: 'none', borderRadius: '8px', fontSize: '1.1rem', fontWeight: 500, cursor: isPending ? 'not-allowed' : 'pointer', opacity: isPending ? 0.7 : 1 }}
+            >
+              {isPending ? 'Joining...' : 'Join the Waitlist'}
             </button>
           </form>
         )}

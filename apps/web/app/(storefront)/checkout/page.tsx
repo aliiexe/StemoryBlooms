@@ -199,6 +199,17 @@ export default function CheckoutPage() {
               <span>Delivery Fee</span>
               <span>{deliveryFee} MAD</span>
             </div>
+            
+            <div className={styles.fieldGroup} style={{ marginTop: '1rem', marginBottom: '1rem' }}>
+              <label htmlFor="promoCode">Promo Code (Optional)</label>
+              <input 
+                id="promoCode"
+                {...register("promoCode")}
+                placeholder="e.g. SUMMER20"
+                style={{ textTransform: 'uppercase' }}
+              />
+            </div>
+
             <div className={`${styles.summaryLine} ${styles.totalLine}`}>
               <span>Total</span>
               <span>{total} MAD</span>

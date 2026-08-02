@@ -5,6 +5,7 @@ import { prisma } from '@stemory/database';
 import { Suspense } from 'react';
 import { ClerkAuthSlot } from './ClerkAuthSlot';
 import WaitlistPage from './WaitlistPage';
+import MaintenancePage from './MaintenancePage';
 import AnnouncementBar from './components/AnnouncementBar';
 
 export default async function StorefrontLayout({
@@ -18,6 +19,7 @@ export default async function StorefrontLayout({
   ]);
 
   const isWaitlist = settings?.mode === 'WAITLIST';
+  const isMaintenance = settings?.mode === 'MAINTENANCE';
 
   let isAdmin = false;
   if (userId) {
@@ -30,10 +32,19 @@ export default async function StorefrontLayout({
     } catch {}
   }
 
-  if (isWaitlist) {
+  // Admins can bypass waitlist/maintenance
+  if (isWaitlist && !isAdmin) {
     return (
       <ClerkProvider>
         <WaitlistPage />
+      </ClerkProvider>
+    );
+  }
+
+  if (isMaintenance && !isAdmin) {
+    return (
+      <ClerkProvider>
+        <MaintenancePage />
       </ClerkProvider>
     );
   }

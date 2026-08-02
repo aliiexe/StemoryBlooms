@@ -1,8 +1,8 @@
 import React from 'react';
 import { prisma } from '@stemory/database';
 import styles from '../dashboard.module.css';
-
-
+import PromoForm from './PromoForm';
+import { PromoActions } from './PromoActions';
 
 export default async function AdminContentPage() {
   const promos = await prisma.promoCode.findMany({
@@ -15,6 +15,8 @@ export default async function AdminContentPage() {
         <h1 className={styles.shopTitle} style={{ fontSize: '1.75rem' }}>Content & Promos</h1>
       </header>
 
+      <PromoForm />
+
       <div className={styles.card}>
         <h3 className={styles.cardTitle}>Promo Codes</h3>
         <table className={styles.table}>
@@ -25,6 +27,7 @@ export default async function AdminContentPage() {
               <th>Value</th>
               <th>Usage</th>
               <th>Status</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -39,11 +42,14 @@ export default async function AdminContentPage() {
                     {p.isActive ? 'Active' : 'Disabled'}
                   </span>
                 </td>
+                <td>
+                  <PromoActions id={p.id} isActive={p.isActive} />
+                </td>
               </tr>
             ))}
             {promos.length === 0 && (
               <tr>
-                <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: '#7A7571' }}>No promo codes found.</td>
+                <td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: '#7A7571' }}>No promo codes found.</td>
               </tr>
             )}
           </tbody>
