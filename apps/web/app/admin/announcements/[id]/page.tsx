@@ -4,15 +4,16 @@ import styles from '../../dashboard.module.css';
 import { updateAnnouncement } from '../actions';
 import AnnouncementEditorForm from '../AnnouncementEditorForm';
 
-export default async function EditAnnouncementPage({ params }: { params: { id: string } }) {
+export default async function EditAnnouncementPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const [ann, templates] = await Promise.all([
-    prisma.announcement.findUnique({ where: { id: params.id } }),
+    prisma.announcement.findUnique({ where: { id } }),
     prisma.announcementTemplate.findMany({ where: { active: true }, orderBy: { name: 'asc' } }),
   ]);
 
   if (!ann) notFound();
 
-  const actionWithId = updateAnnouncement.bind(null, params.id);
+  const actionWithId = updateAnnouncement.bind(null, id);
 
   return (
     <div className={styles.dashboard}>
