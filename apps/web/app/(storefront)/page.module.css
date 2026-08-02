@@ -30,7 +30,7 @@
   flex-direction: column;
   justify-content: center;
   z-index: 2;
-  color: var(--surface-primary);
+  color: #FDFBF7;
 }
 
 @media (min-width: 992px) {
@@ -46,7 +46,7 @@
   letter-spacing: 0.15em;
   text-transform: uppercase;
   margin-bottom: 1.5rem;
-  color: #D6CFE6;
+  color: #EAE6DF;
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -58,7 +58,7 @@
   display: block;
   width: 40px;
   height: 1px;
-  background-color: #D6CFE6;
+  background-color: #EAE6DF;
 }
 
 .mainHeading {
@@ -69,6 +69,7 @@
   font-weight: 400;
   letter-spacing: -0.02em;
   text-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  color: #FFFFFF;
 }
 
 @media (min-width: 992px) {
@@ -82,7 +83,7 @@
   font-size: 1.1rem;
   line-height: 1.7;
   margin-bottom: 2.5rem;
-  color: rgba(253, 251, 247, 0.85);
+  color: #FDFBF7;
   max-width: 480px;
   font-weight: 300;
 }
@@ -119,7 +120,7 @@
 }
 
 .primaryButton {
-  background-color: var(--surface-primary);
+  background-color: #FDFBF7;
   color: var(--brand-primary);
   box-shadow: 0 10px 20px rgba(0,0,0,0.1);
 }
@@ -127,14 +128,14 @@
 .primaryButton:hover {
   transform: translateY(-2px);
   box-shadow: 0 15px 25px rgba(0,0,0,0.15);
-  background-color: #fff;
+  background-color: #FFFFFF;
 }
 
 .secondaryButton {
   background-color: rgba(255,255,255,0.1);
-  color: var(--surface-primary);
+  color: #FFFFFF;
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255,255,255,0.3);
+  border: 1px solid rgba(255,255,255,0.4);
 }
 
 .secondaryButton:hover {
