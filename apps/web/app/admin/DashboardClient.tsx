@@ -141,20 +141,13 @@ export default function DashboardClient({
           </div>
 
           <div className={styles.card}>
-            <h3 className={styles.cardTitle}>Add Manual Order</h3>
-            <form className={styles.form}>
-              <select className={styles.input}>
-                <option value="ig">Instagram DM</option>
-                <option value="tt">TikTok</option>
-                <option value="wa">WhatsApp</option>
-                <option value="in">In Person</option>
-              </select>
-              <input className={styles.input} type="text" placeholder="Customer Name" />
-              <input className={styles.input} type="text" placeholder="Phone / Handle" />
-              <textarea className={styles.input} rows={3} placeholder="Order Details..." />
-              <input className={styles.input} type="number" placeholder="Total (MAD)" />
-              <button type="button" className={styles.submitBtn}>Save Order</button>
-            </form>
+            <h3 className={styles.cardTitle}>Assisted Orders</h3>
+            <p style={{ color: '#7A7571', fontSize: '0.9rem', marginBottom: '1rem', lineHeight: 1.5 }}>
+              Received an order via Instagram or TikTok? Enter it manually to keep stock and reporting synchronized.
+            </p>
+            <a href="/admin/orders/new" className={styles.submitBtn} style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}>
+              Create Assisted Order
+            </a>
           </div>
         </motion.div>
       </div>

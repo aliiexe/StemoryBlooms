@@ -1,33 +1,32 @@
 import { Header, Footer } from "@stemory/ui";
-import { ClerkAuthSlot } from "./ClerkAuthSlot";
-import { auth } from '@clerk/nextjs/server';
+import { ClerkProvider } from '@clerk/nextjs';
 import { prisma } from '@stemory/database';
-
-
+import { ClerkAuthSlot } from './ClerkAuthSlot';
+import WaitlistPage from './WaitlistPage';
 
 export default async function StorefrontLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { userId } = await auth();
-  let isAdmin = false;
+  const settings = await prisma.siteSettings.findFirst();
+  const isWaitlist = settings?.mode === 'WAITLIST';
 
-  if (userId) {
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-      include: { role: true }
-    });
-    isAdmin = user?.role?.name === 'ADMIN';
+  if (isWaitlist) {
+    return (
+      <ClerkProvider>
+        <WaitlistPage />
+      </ClerkProvider>
+    );
   }
 
   return (
-    <>
-      <Header authSlot={<ClerkAuthSlot isAdmin={isAdmin} />} />
+    <ClerkProvider>
+      <Header authSlot={<ClerkAuthSlot />} />
       <main style={{ minHeight: '100vh' }}>
         {children}
       </main>
       <Footer />
-    </>
+    </ClerkProvider>
   );
 }
