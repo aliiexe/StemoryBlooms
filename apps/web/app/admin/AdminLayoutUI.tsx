@@ -20,6 +20,7 @@ const sidebarLinks = [
   { href: '/admin/inventory', label: 'Inventory', icon: ClipboardList },
   { href: '/admin/deliveries', label: 'Deliveries', icon: Truck },
   { href: '/admin/content', label: 'Content', icon: ImageIcon },
+  { href: '/admin/announcements', label: 'Announcements', icon: Bell },
   { href: '/admin/reports', label: 'Reports', icon: BarChart2 },
   { href: '/admin/settings', label: 'Settings', icon: Settings },
 ];

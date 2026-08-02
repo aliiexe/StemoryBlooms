@@ -392,3 +392,85 @@ model LaunchCampaign {
   sentCount Int      @default(0)
   createdAt DateTime @default(now())
 }
+
+// ==========================================
+// Announcement Bar
+// ==========================================
+
+model AnnouncementBarSettings {
+  id                  String   @id @default(uuid())
+  enabled             Boolean  @default(false)
+  mode                String   @default("AUTO") // AUTO, STATIC, CAROUSEL
+  autoPlay            Boolean  @default(true)
+  loop                Boolean  @default(true)
+  intervalSeconds     Int      @default(5)
+  transitionType      String   @default("FADE") // FADE, SLIDE_H, SLIDE_V, DISSOLVE, NONE
+  transitionDurationMs Int     @default(400)
+  pauseOnHover        Boolean  @default(true)
+  showArrows          Boolean  @default(true)
+  showIndicators      Boolean  @default(true)
+  allowDismissal      Boolean  @default(false)
+  defaultTheme        String   @default("DEFAULT")
+  updatedAt           DateTime @updatedAt
+}
+
+model AnnouncementTemplate {
+  id              String         @id @default(uuid())
+  name            String
+  slug            String         @unique
+  description     String?
+  eventType       String         // SEASONAL, PROMO, CUSTOM
+  previewColor    String         @default("#F6F4EC")
+  defaultConfig   Json
+  active          Boolean        @default(true)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  announcements   Announcement[]
+}
+
+model Announcement {
+  id                       String                @id @default(uuid())
+  internalTitle            String
+  message                  String
+  highlightedText          String?
+  ctaLabel                 String?
+  linkUrl                  String?
+  wholeBarClickable        Boolean               @default(false)
+  openInNewTab             Boolean               @default(false)
+  icon                     String?
+  decorativeAsset          String?
+  templateId               String?
+  template                 AnnouncementTemplate? @relation(fields: [templateId], references: [id])
+  status                   String                @default("DRAFT") // DRAFT, SCHEDULED, ACTIVE, PAUSED, EXPIRED, ARCHIVED
+  order                    Int                   @default(0)
+  startAt                  DateTime?
+  endAt                    DateTime?
+  noEndDate                Boolean               @default(true)
+  isDismissible            Boolean               @default(false)
+  dismissalDuration        String                @default("SESSION") // SESSION, 24H, CAMPAIGN
+  dismissalVersion         String                @default(uuid())
+  backgroundColor          String                @default("#F6F4EC")
+  textColor                String                @default("#4A4A4A")
+  accentColor              String                @default("#D6CFE6")
+  linkColor                String                @default("#6F7E59")
+  borderColor              String?
+  textAlignment            String                @default("CENTER")
+  desktopFontSize          String                @default("0.875rem")
+  mobileFontSize           String                @default("0.8rem")
+  barHeight                String                @default("40px")
+  animationType            String                @default("FADE")
+  showDesktop              Boolean               @default(true)
+  showTablet               Boolean               @default(true)
+  showMobile               Boolean               @default(true)
+  targetMode               String                @default("ALL") // ALL, HOMEPAGE, SHOP, CHECKOUT, CUSTOM
+  includedPaths            String[]
+  excludedPaths            String[]
+  countdownEnabled         Boolean               @default(false)
+  countdownTarget          DateTime?
+  countdownEndBehavior     String                @default("HIDE") // HIDE, KEEP, REPLACE
+  countdownReplacementText String?
+  createdAt                DateTime              @default(now())
+  updatedAt                DateTime              @updatedAt
+  archivedAt               DateTime?
+}
+
