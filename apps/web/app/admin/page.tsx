@@ -58,7 +58,7 @@ export default async function AdminDashboardPage() {
   }));
 
   // Calculate Trailing 7 days sales data
-  const salesData = [];
+  const salesData: { name: string; sales: number }[] = [];
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
   sevenDaysAgo.setHours(0, 0, 0, 0);

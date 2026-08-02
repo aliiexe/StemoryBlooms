@@ -40,10 +40,13 @@ export default async function StorefrontLayout({
 
   return (
     <ClerkProvider>
-      <Suspense fallback={null}>
-        <AnnouncementBar />
-      </Suspense>
-      <Header authSlot={<ClerkAuthSlot isAdmin={isAdmin} />} />
+      {/* Sticky top chrome: announcement bar + nav stick together as one unit */}
+      <div style={{ position: 'sticky', top: 0, zIndex: 40, width: '100%' }}>
+        <Suspense fallback={null}>
+          <AnnouncementBar />
+        </Suspense>
+        <Header authSlot={<ClerkAuthSlot isAdmin={isAdmin} />} />
+      </div>
       <main style={{ minHeight: '100vh' }}>
         {children}
       </main>

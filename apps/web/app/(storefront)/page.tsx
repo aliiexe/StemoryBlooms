@@ -10,7 +10,8 @@ export default async function HomePage() {
     orderBy: { createdAt: 'desc' }
   });
 
-  const featuredProducts = dbProducts.map(p => ({
+  type DbProduct = (typeof dbProducts)[number];
+  const featuredProducts = dbProducts.map((p: DbProduct) => ({
     id: p.id,
     title: p.name,
     price: p.basePrice,

@@ -3,8 +3,9 @@ import Link from 'next/link';
 import styles from '../dashboard.module.css';
 import {
   publishAnnouncement, pauseAnnouncement,
-  archiveAnnouncement, deleteAnnouncement, duplicateAnnouncement
+  archiveAnnouncement, duplicateAnnouncement
 } from './actions';
+import DeleteButton from './DeleteButton';
 
 const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   DRAFT:     { bg: '#F5F5F5', color: '#616161' },
@@ -71,7 +72,7 @@ export default async function AnnouncementsPage() {
               </tr>
             </thead>
             <tbody>
-              {announcements.map((ann) => {
+              {(announcements as Array<(typeof announcements)[number]>).map((ann) => {
                 const sc = STATUS_COLORS[ann.status] ?? STATUS_COLORS.DRAFT;
                 return (
                   <tr key={ann.id}>
@@ -118,9 +119,7 @@ export default async function AnnouncementsPage() {
                             <button type="submit" style={actionStyle()}>Archive</button>
                           </form>
                         )}
-                        <form action={deleteAnnouncement.bind(null, ann.id)} style={{ display: 'inline' }}>
-                          <button type="submit" style={actionStyle('#FCE4EC', '#880E4F')} onClick={(e) => { if (!confirm('Delete this announcement?')) e.preventDefault(); }}>Delete</button>
-                        </form>
+                        <DeleteButton id={ann.id} />
                       </div>
                     </td>
                   </tr>

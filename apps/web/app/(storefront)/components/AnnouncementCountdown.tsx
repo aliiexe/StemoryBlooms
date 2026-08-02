@@ -42,7 +42,7 @@ export default function AnnouncementCountdown({ target, textColor, endBehavior, 
 
   if (!timeLeft) return null;
 
-  const parts = [];
+  const parts: string[] = [];
   if (timeLeft.d > 0) parts.push(`${timeLeft.d}d`);
   parts.push(`${pad(timeLeft.h)}h ${pad(timeLeft.m)}m ${pad(timeLeft.s)}s`);
 
