@@ -11,11 +11,14 @@ interface ProductCardProps {
   imageUrl?: string;
 }
 
+import Link from 'next/link';
+
 export function ProductCard({ title, price, id, imageUrl }: ProductCardProps) {
   const addItem = useCartStore((state) => state.addItem);
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation(); // prevent navigation if clicking "Add"
     addItem({
       id: id || `prod-${Math.random().toString(36).substr(2, 9)}`,
       name: title,
@@ -25,7 +28,7 @@ export function ProductCard({ title, price, id, imageUrl }: ProductCardProps) {
     });
   };
 
-  return (
+  const cardContent = (
     <div className={styles.card}>
       <div className={styles.imageWrap}>
         <img src={imageUrl || "/hero-bouquet.png"} alt={title} />
@@ -39,4 +42,10 @@ export function ProductCard({ title, price, id, imageUrl }: ProductCardProps) {
       </div>
     </div>
   );
+
+  if (id) {
+    return <Link href={`/shop/${id}`} style={{ textDecoration: 'none', color: 'inherit' }}>{cardContent}</Link>;
+  }
+
+  return cardContent;
 }

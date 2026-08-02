@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@stemory/database';
 import { CheckoutPayloadSchema } from '@stemory/contracts';
+import { Resend } from 'resend';
+import { OrderConfirmationTemplate } from '../../../../components/emails/OrderConfirmation';
+
+const resend = new Resend(process.env.RESEND_API_KEY || 're_mock_key');
 
 
 
@@ -91,6 +95,28 @@ export async function POST(request: Request) {
         where: { id: appliedPromoId },
         data: { usageCount: { increment: 1 } }
       });
+    }
+
+    // Attempt to send email
+    if (process.env.RESEND_API_KEY) {
+      try {
+        // Assuming we have customer email in the future, for now fallback to test email if none
+        const customerEmail = "test@stemoryblooms.com"; 
+        await resend.emails.send({
+          from: 'Stemory Blooms <orders@stemoryblooms.com>',
+          to: [customerEmail],
+          subject: `Order Confirmation #${order.orderNumber}`,
+          react: OrderConfirmationTemplate({ 
+            customerName: customerName, 
+            orderNumber: order.orderNumber, 
+            total: total 
+          }) as React.ReactElement,
+        });
+      } catch (emailErr) {
+        console.error('Failed to send order confirmation email:', emailErr);
+      }
+    } else {
+      console.log(`[Email Mock] Order Confirmation #${order.orderNumber} sent to customer.`);
     }
 
     return NextResponse.json(order);

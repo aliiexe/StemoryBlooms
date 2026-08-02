@@ -1,75 +1,78 @@
-import styles from './page.module.css';
+import React from 'react';
+import { prisma } from '@stemory/database';
+import Link from 'next/link';
 
-const REVIEWS = [
-  {
-    id: 1,
-    name: 'Salma M.',
-    date: '2 weeks ago',
-    text: 'Absolutely stunning! The quality is amazing and it looks incredibly realistic.',
-  },
-  {
-    id: 2,
-    name: 'Youssef K.',
-    date: '1 month ago',
-    text: 'Bought this as an anniversary gift. She loved it — keeps it forever.',
-  },
-  {
-    id: 3,
-    name: 'Imane T.',
-    date: '2 months ago',
-    text: 'The custom bouquet builder was so fun. Final result exceeded expectations.',
-  },
-  {
-    id: 4,
-    name: 'Othmane R.',
-    date: '3 months ago',
-    text: 'Beautiful craftsmanship. Lots of love in these.',
-  },
-  {
-    id: 5,
-    name: 'Zineb H.',
-    date: '4 months ago',
-    text: 'Ordered the lavender bunch — soft, beautiful touch to my room.',
-  },
-  {
-    id: 6,
-    name: 'Ayoub B.',
-    date: '5 months ago',
-    text: 'Great customer service and fast delivery. Premium packaging.',
-  }
-];
+export const dynamic = 'force-dynamic';
 
-function StarIcon() {
+export default async function ReviewsPage() {
+  const reviews = await prisma.review.findMany({
+    where: { status: 'APPROVED' },
+    orderBy: { createdAt: 'desc' },
+    include: { product: true }
+  });
+
+  // Calculate average rating
+  const avgRating = reviews.length > 0 
+    ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1)
+    : 0;
+
   return (
-    <svg className={styles.star} viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-    </svg>
-  );
-}
-
-export default function ReviewsPage() {
-  return (
-    <main className={styles.container}>
-      <div className={styles.header}>
-        <h1 className={styles.title}>Customer Love</h1>
-        <p className={styles.subtitle}>Hear what our wonderful customers have to say about their everlasting blooms.</p>
-      </div>
-
-      <div className={styles.grid}>
-        {REVIEWS.map((review) => (
-          <div key={review.id} className={styles.card}>
-            <div className={styles.stars}>
-              {[...Array(5)].map((_, i) => (
-                <StarIcon key={i} />
-              ))}
+    <main style={{ backgroundColor: 'var(--surface-primary)', minHeight: '100vh', padding: '6rem 2rem' }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        
+        <header style={{ textAlign: 'center', marginBottom: '5rem' }}>
+          <h1 style={{ fontFamily: 'var(--font-editorial)', fontSize: '3.5rem', color: 'var(--brand-primary)', marginBottom: '1rem' }}>
+            Customer Love
+          </h1>
+          <p style={{ color: '#5A5551', fontSize: '1.2rem', maxWidth: '600px', margin: '0 auto', lineHeight: 1.6 }}>
+            Hear what our customers are saying about their everlasting blooms.
+          </p>
+          
+          {reviews.length > 0 && (
+            <div style={{ marginTop: '2rem', display: 'inline-flex', alignItems: 'center', gap: '1rem', backgroundColor: '#FDFBF7', padding: '1rem 2rem', borderRadius: '50px', border: '1px solid #EAE6DF' }}>
+              <div style={{ display: 'flex', gap: '0.25rem', color: '#F59E0B', fontSize: '1.5rem' }}>
+                ★★★★★
+              </div>
+              <span style={{ fontSize: '1.25rem', fontWeight: 600, color: '#3A3531' }}>{avgRating} / 5.0</span>
+              <span style={{ color: '#7A7571' }}>({reviews.length} reviews)</span>
             </div>
-            <p className={styles.quote}>"{review.text}"</p>
-            <div className={styles.footer}>
-              <span className={styles.name}>{review.name}</span>
-              <span className={styles.date}>{review.date}</span>
-            </div>
+          )}
+        </header>
+
+        {reviews.length > 0 ? (
+          <div style={{ columnCount: 3, columnGap: '2rem' }}>
+            {reviews.map((r) => (
+              <div key={r.id} style={{ breakInside: 'avoid', marginBottom: '2rem', backgroundColor: '#FDFBF7', padding: '2rem', borderRadius: '16px', border: '1px solid #EAE6DF' }}>
+                <div style={{ display: 'flex', gap: '0.25rem', color: '#F59E0B', marginBottom: '1rem', fontSize: '1.2rem' }}>
+                  {'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}
+                </div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 600, color: '#3A3531', marginBottom: '1rem' }}>
+                  "{r.title || r.content.substring(0, 30) + '...'}"
+                </h3>
+                <p style={{ color: '#5A5551', fontSize: '1rem', lineHeight: 1.6, marginBottom: '1.5rem' }}>
+                  {r.content}
+                </p>
+                <div style={{ borderTop: '1px solid #EAE6DF', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <strong style={{ display: 'block', color: '#3A3531', marginBottom: '0.25rem' }}>{r.authorName}</strong>
+                    <span style={{ color: '#9A9591', fontSize: '0.85rem' }}>{new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' }).format(new Date(r.createdAt))}</span>
+                  </div>
+                  <Link href={`/shop/${r.productId}`} style={{ color: 'var(--brand-primary)', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 500, borderBottom: '1px solid currentColor' }}>
+                    View Product
+                  </Link>
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
+        ) : (
+          <div style={{ textAlign: 'center', padding: '4rem', backgroundColor: '#FDFBF7', borderRadius: '16px', border: '1px solid #EAE6DF' }}>
+            <p style={{ color: '#7A7571', fontSize: '1.1rem' }}>We don't have any reviews to show yet.</p>
+            <Link href="/shop" style={{ display: 'inline-block', marginTop: '1.5rem', color: 'var(--brand-primary)', textDecoration: 'none', fontWeight: 500, borderBottom: '1px solid currentColor' }}>
+              Shop our collections
+            </Link>
+          </div>
+        )}
+
       </div>
     </main>
   );

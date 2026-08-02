@@ -68,6 +68,7 @@ model Customer {
   carts        Cart[]
   internalNote String?
   riskFlag     Boolean   @default(false)
+  reviews      Review[]
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 }
@@ -103,6 +104,22 @@ model Product {
   variants           ProductVariant[]
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
+  reviews            Review[]
+}
+
+model Review {
+  id          String   @id @default(uuid())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id])
+  customerId  String?
+  customer    Customer? @relation(fields: [customerId], references: [id])
+  authorName  String
+  rating      Int      // 1 to 5
+  title       String?
+  content     String
+  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model ProductVariant {

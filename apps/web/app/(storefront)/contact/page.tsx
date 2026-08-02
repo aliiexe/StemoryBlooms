@@ -1,82 +1,91 @@
-"use client";
-
-import { Mail, Smartphone, MapPin } from 'lucide-react';
-import styles from './page.module.css';
+import React from 'react';
 
 export default function ContactPage() {
   return (
-    <main className={styles.container}>
-      <div className={styles.splitLayout}>
-        <div className={styles.infoSection}>
-          <h1 className={styles.title}>Let's Talk Blooms.</h1>
-          <p className={styles.description}>
-            Have a question about our custom bouquets, wholesale orders, or shipping? 
-            Reach out to us and we'll get back to you as soon as possible.
-          </p>
-          
-          <div className={styles.contactMethods}>
-            <div className={styles.method}>
-              <div className={styles.iconWrapper}>
-                <Mail size={24} />
-              </div>
-              <div className={styles.methodDetails}>
-                <span className={styles.methodLabel}>Email</span>
-                <span className={styles.methodValue}>hello@stemoryblooms.com</span>
-              </div>
-            </div>
-            
-            <div className={styles.method}>
-              <div className={styles.iconWrapper}>
-                <Smartphone size={24} />
-              </div>
-              <div className={styles.methodDetails}>
-                <span className={styles.methodLabel}>WhatsApp</span>
-                <span className={styles.methodValue}>+212 600 000 000</span>
-              </div>
-            </div>
-            
-            <div className={styles.method}>
-              <div className={styles.iconWrapper}>
-                <MapPin size={24} />
-              </div>
-              <div className={styles.methodDetails}>
-                <span className={styles.methodLabel}>Studio</span>
-                <span className={styles.methodValue}>Casablanca, Morocco</span>
-              </div>
-            </div>
-          </div>
-        </div>
+    <main style={{ backgroundColor: 'var(--surface-primary)', minHeight: '100vh', padding: '6rem 2rem' }}>
+      <div style={{ maxWidth: '800px', margin: '0 auto', backgroundColor: '#FFFFFF', padding: '4rem', borderRadius: '24px', border: '1px solid #EAE6DF', boxShadow: '0 10px 30px rgba(0,0,0,0.02)' }}>
         
-        <div className={styles.formSection}>
-          <div className={styles.formCard}>
-            <form className={styles.form} onSubmit={(e) => e.preventDefault()}>
-              <div className={styles.row}>
-                <div className={styles.field}>
-                  <label htmlFor="firstName" className={styles.label}>First Name</label>
-                  <input type="text" id="firstName" name="firstName" className={styles.input} required />
-                </div>
-                <div className={styles.field}>
-                  <label htmlFor="lastName" className={styles.label}>Last Name</label>
-                  <input type="text" id="lastName" name="lastName" className={styles.input} required />
-                </div>
-              </div>
-              
-              <div className={styles.field}>
-                <label htmlFor="email" className={styles.label}>Email Address</label>
-                <input type="email" id="email" name="email" className={styles.input} required />
-              </div>
-              
-              <div className={styles.field}>
-                <label htmlFor="message" className={styles.label}>Message</label>
-                <textarea id="message" name="message" className={styles.textarea} required></textarea>
-              </div>
-              
-              <button type="submit" className={styles.submitBtn}>
-                Send Message
-              </button>
-            </form>
+        <header style={{ textAlign: 'center', marginBottom: '3rem' }}>
+          <h1 style={{ fontFamily: 'var(--font-editorial)', fontSize: '3rem', color: 'var(--brand-primary)', marginBottom: '1rem' }}>
+            Get in Touch
+          </h1>
+          <p style={{ color: '#5A5551', fontSize: '1.1rem', lineHeight: 1.6 }}>
+            Have a question about an order, a custom arrangement, or a collaboration? We'd love to hear from you.
+          </p>
+        </header>
+
+        <form style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#3A3531', fontWeight: 500 }}>First Name</label>
+              <input type="text" required style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '1px solid #D6CFE6', backgroundColor: '#FDFBF7' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#3A3531', fontWeight: 500 }}>Last Name</label>
+              <input type="text" required style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '1px solid #D6CFE6', backgroundColor: '#FDFBF7' }} />
+            </div>
+          </div>
+
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#3A3531', fontWeight: 500 }}>Email Address</label>
+            <input type="email" required style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '1px solid #D6CFE6', backgroundColor: '#FDFBF7' }} />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#3A3531', fontWeight: 500 }}>Subject</label>
+            <select required style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '1px solid #D6CFE6', backgroundColor: '#FDFBF7' }}>
+              <option value="">Select a subject...</option>
+              <option value="order">Question about an order</option>
+              <option value="custom">Custom bouquet inquiry</option>
+              <option value="press">Press / Collaboration</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#3A3531', fontWeight: 500 }}>Message</label>
+            <textarea required rows={6} style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '1px solid #D6CFE6', backgroundColor: '#FDFBF7', resize: 'vertical' }}></textarea>
+          </div>
+
+          <button 
+            type="button" 
+            style={{ 
+              marginTop: '1rem',
+              padding: '1.25rem', 
+              backgroundColor: 'var(--brand-primary)', 
+              color: '#FDFBF7', 
+              border: 'none', 
+              borderRadius: '50px', 
+              fontSize: '1rem', 
+              fontWeight: 500, 
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+            onClick={(e) => {
+              e.preventDefault();
+              alert("Thank you for reaching out! A mock email was successfully sent. We will get back to you soon.");
+            }}
+          >
+            Send Message
+          </button>
+
+        </form>
+
+        <div style={{ marginTop: '4rem', paddingTop: '2rem', borderTop: '1px solid #EAE6DF', textAlign: 'center', display: 'flex', justifyContent: 'center', gap: '3rem' }}>
+          <div>
+            <h4 style={{ color: '#3A3531', marginBottom: '0.5rem' }}>Email</h4>
+            <a href="mailto:hello@stemoryblooms.com" style={{ color: 'var(--brand-primary)', textDecoration: 'none' }}>hello@stemoryblooms.com</a>
+          </div>
+          <div>
+            <h4 style={{ color: '#3A3531', marginBottom: '0.5rem' }}>Social</h4>
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <a href="#" style={{ color: 'var(--brand-primary)', textDecoration: 'none' }}>Instagram</a>
+              <a href="#" style={{ color: 'var(--brand-primary)', textDecoration: 'none' }}>TikTok</a>
+            </div>
           </div>
         </div>
+
       </div>
     </main>
   );
