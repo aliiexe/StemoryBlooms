@@ -9,8 +9,21 @@ export async function saveProduct(formData: FormData) {
   const name = formData.get('name') as string;
   const description = formData.get('description') as string;
   const basePrice = parseInt(formData.get('basePrice') as string, 10);
+  
+  const salePriceStr = formData.get('salePrice') as string;
+  const salePrice = salePriceStr ? parseInt(salePriceStr, 10) : null;
+  
+  const imagesStr = formData.get('images') as string;
+  let images: string[] = [];
+  try {
+    if (imagesStr) images = JSON.parse(imagesStr);
+  } catch (e) {
+    console.error("Failed to parse images json", e);
+  }
+
   const status = formData.get('status') as string;
   const isAvailable = formData.get('isAvailable') === 'on';
+  const isFeatured = formData.get('isFeatured') === 'on';
 
   if (!name || isNaN(basePrice)) {
     return { error: 'Name and valid base price are required' };
@@ -20,18 +33,19 @@ export async function saveProduct(formData: FormData) {
     if (id) {
       await prisma.product.update({
         where: { id },
-        data: { name, description, basePrice, status, isAvailable }
+        data: { name, description, basePrice, salePrice, images, status, isAvailable, isFeatured }
       });
     } else {
       await prisma.product.create({
-        data: { name, description, basePrice, status, isAvailable }
+        data: { name, description, basePrice, salePrice, images, status, isAvailable, isFeatured }
       });
     }
     
     revalidatePath('/admin/products');
     revalidatePath('/shop');
   } catch (err) {
-    return { error: 'Failed to save product' };
+    console.error("Failed to save product:", err);
+    return { error: 'Failed to save product. Make sure the database schema is updated.' };
   }
 
   redirect('/admin/products');

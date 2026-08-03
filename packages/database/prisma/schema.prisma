@@ -96,6 +96,9 @@ model Product {
   name               String
   description        String?
   basePrice          Int
+  salePrice          Int?
+  images             String[]
+  isFeatured         Boolean          @default(false)
   isAvailable        Boolean          @default(true)
   status             String           @default("PUBLISHED") // PUBLISHED, HIDDEN, ARCHIVED
   processingEstimate String?
