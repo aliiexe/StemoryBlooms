@@ -40,24 +40,24 @@ export default async function ReviewsPage() {
         </header>
 
         {reviews.length > 0 ? (
-          <div style={{ columnCount: 3, columnGap: '2rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', alignItems: 'start' }}>
             {reviews.map((r) => (
-              <div key={r.id} style={{ breakInside: 'avoid', marginBottom: '2rem', backgroundColor: '#FDFBF7', padding: '2rem', borderRadius: '16px', border: '1px solid #EAE6DF' }}>
+              <div key={r.id} style={{ breakInside: 'avoid', marginBottom: '0', backgroundColor: '#FDFBF7', padding: '2rem', borderRadius: '16px', border: '1px solid #EAE6DF', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
                 <div style={{ display: 'flex', gap: '0.25rem', color: '#F59E0B', marginBottom: '1rem', fontSize: '1.2rem' }}>
                   {'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}
                 </div>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 600, color: '#3A3531', marginBottom: '1rem' }}>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 600, color: '#3A3531', marginBottom: '1rem', lineHeight: 1.4 }}>
                   "{r.title || r.content.substring(0, 30) + '...'}"
                 </h3>
-                <p style={{ color: '#5A5551', fontSize: '1rem', lineHeight: 1.6, marginBottom: '1.5rem' }}>
+                <p style={{ color: '#5A5551', fontSize: '1.05rem', lineHeight: 1.6, marginBottom: '1.5rem' }}>
                   {r.content}
                 </p>
-                <div style={{ borderTop: '1px solid #EAE6DF', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div style={{ borderTop: '1px solid #EAE6DF', paddingTop: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
-                    <strong style={{ display: 'block', color: '#3A3531', marginBottom: '0.25rem' }}>{r.authorName}</strong>
+                    <strong style={{ display: 'block', color: '#3A3531', fontSize: '0.95rem', marginBottom: '0.25rem' }}>{r.authorName}</strong>
                     <span style={{ color: '#9A9591', fontSize: '0.85rem' }}>{new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' }).format(new Date(r.createdAt))}</span>
                   </div>
-                  <Link href={`/shop/${r.productId}`} style={{ color: 'var(--brand-primary)', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 500, borderBottom: '1px solid currentColor' }}>
+                  <Link href={`/shop/${r.productId}`} style={{ color: 'var(--brand-primary)', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 500, padding: '0.5rem 1rem', backgroundColor: '#EAE6DF', borderRadius: '50px', transition: 'background-color 0.2s' }}>
                     View Product
                   </Link>
                 </div>

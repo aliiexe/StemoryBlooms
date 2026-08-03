@@ -1,6 +1,12 @@
-import React from 'react';
+'use client';
+
+import React, { useState } from 'react';
+import { submitContactMessage } from './actions';
 
 export default function ContactPage() {
+  const [status, setStatus] = useState<{ success?: boolean; error?: string } | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   return (
     <main style={{ backgroundColor: 'var(--surface-primary)', minHeight: '100vh', padding: '6rem 2rem' }}>
       <div style={{ maxWidth: '800px', margin: '0 auto', backgroundColor: '#FFFFFF', padding: '4rem', borderRadius: '24px', border: '1px solid #EAE6DF', boxShadow: '0 10px 30px rgba(0,0,0,0.02)' }}>
@@ -14,63 +20,82 @@ export default function ContactPage() {
           </p>
         </header>
 
-        <form style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#3A3531', fontWeight: 500 }}>First Name</label>
-              <input type="text" required style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '1px solid #D6CFE6', backgroundColor: '#FDFBF7' }} />
-            </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#3A3531', fontWeight: 500 }}>Last Name</label>
-              <input type="text" required style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '1px solid #D6CFE6', backgroundColor: '#FDFBF7' }} />
-            </div>
+        {status?.success ? (
+          <div style={{ backgroundColor: '#E8F5E9', color: '#1B5E20', padding: '2rem', borderRadius: '12px', textAlign: 'center', fontSize: '1.1rem' }}>
+            Thank you for reaching out! Your message has been received and we will get back to you soon.
           </div>
-
-          <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#3A3531', fontWeight: 500 }}>Email Address</label>
-            <input type="email" required style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '1px solid #D6CFE6', backgroundColor: '#FDFBF7' }} />
-          </div>
-
-          <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#3A3531', fontWeight: 500 }}>Subject</label>
-            <select required style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '1px solid #D6CFE6', backgroundColor: '#FDFBF7' }}>
-              <option value="">Select a subject...</option>
-              <option value="order">Question about an order</option>
-              <option value="custom">Custom bouquet inquiry</option>
-              <option value="press">Press / Collaboration</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
-
-          <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#3A3531', fontWeight: 500 }}>Message</label>
-            <textarea required rows={6} style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '1px solid #D6CFE6', backgroundColor: '#FDFBF7', resize: 'vertical' }}></textarea>
-          </div>
-
-          <button 
-            type="button" 
-            style={{ 
-              marginTop: '1rem',
-              padding: '1.25rem', 
-              backgroundColor: 'var(--brand-primary)', 
-              color: '#FDFBF7', 
-              border: 'none', 
-              borderRadius: '50px', 
-              fontSize: '1rem', 
-              fontWeight: 500, 
-              cursor: 'pointer',
-              transition: 'all 0.2s ease'
+        ) : (
+          <form 
+            action={async (formData) => {
+              setIsSubmitting(true);
+              const res = await submitContactMessage(formData);
+              if (res.error) setStatus({ error: res.error });
+              else setStatus({ success: true });
+              setIsSubmitting(false);
             }}
-            onClick={(e) => {
-              e.preventDefault();
-              alert("Thank you for reaching out! A mock email was successfully sent. We will get back to you soon.");
-            }}
+            style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}
           >
-            Send Message
-          </button>
+            
+            {status?.error && (
+              <div style={{ color: '#C62828', backgroundColor: '#FFEBEE', padding: '1rem', borderRadius: '8px' }}>
+                {status.error}
+              </div>
+            )}
 
-        </form>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#3A3531', fontWeight: 500 }}>First Name</label>
+                <input type="text" name="firstName" required style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '1px solid #D6CFE6', backgroundColor: '#FDFBF7' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#3A3531', fontWeight: 500 }}>Last Name</label>
+                <input type="text" name="lastName" required style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '1px solid #D6CFE6', backgroundColor: '#FDFBF7' }} />
+              </div>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#3A3531', fontWeight: 500 }}>Email Address</label>
+              <input type="email" name="email" required style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '1px solid #D6CFE6', backgroundColor: '#FDFBF7' }} />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#3A3531', fontWeight: 500 }}>Subject</label>
+              <select name="subject" required style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '1px solid #D6CFE6', backgroundColor: '#FDFBF7' }}>
+                <option value="">Select a subject...</option>
+                <option value="order">Question about an order</option>
+                <option value="custom">Custom bouquet inquiry</option>
+                <option value="press">Press / Collaboration</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#3A3531', fontWeight: 500 }}>Message</label>
+              <textarea name="message" required rows={6} style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '1px solid #D6CFE6', backgroundColor: '#FDFBF7', resize: 'vertical' }}></textarea>
+            </div>
+
+            <button 
+              type="submit" 
+              disabled={isSubmitting}
+              style={{ 
+                marginTop: '1rem',
+                padding: '1.25rem', 
+                backgroundColor: 'var(--brand-primary)', 
+                color: '#FDFBF7', 
+                border: 'none', 
+                borderRadius: '50px', 
+                fontSize: '1rem', 
+                fontWeight: 500, 
+                cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s ease',
+                opacity: isSubmitting ? 0.7 : 1
+              }}
+            >
+              {isSubmitting ? 'Sending...' : 'Send Message'}
+            </button>
+
+          </form>
+        )}
 
         <div style={{ marginTop: '4rem', paddingTop: '2rem', borderTop: '1px solid #EAE6DF', textAlign: 'center', display: 'flex', justifyContent: 'center', gap: '3rem' }}>
           <div>
