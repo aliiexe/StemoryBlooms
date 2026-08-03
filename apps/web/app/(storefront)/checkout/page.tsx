@@ -200,12 +200,22 @@ export default function CheckoutPage() {
               <span>{deliveryFee} MAD</span>
             </div>
             
-            <div className={styles.fieldGroup} style={{ marginTop: '1rem', marginBottom: '1rem' }}>
+            <div className={styles.fieldGroup} style={{ marginTop: '1rem' }}>
               <label htmlFor="promoCode">Promo Code (Optional)</label>
               <input 
                 id="promoCode"
                 {...register("promoCode")}
                 placeholder="e.g. SUMMER20"
+                style={{ textTransform: 'uppercase' }}
+              />
+            </div>
+            
+            <div className={styles.fieldGroup} style={{ marginTop: '1rem', marginBottom: '1rem' }}>
+              <label htmlFor="giftCardCode">Gift Card Code (Optional)</label>
+              <input 
+                id="giftCardCode"
+                {...register("giftCardCode")}
+                placeholder="e.g. GC-A1B2C3"
                 style={{ textTransform: 'uppercase' }}
               />
             </div>

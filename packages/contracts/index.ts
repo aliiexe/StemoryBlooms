@@ -39,6 +39,7 @@ export const CheckoutPayloadSchema = z.object({
   address: z.string().min(5, "Complete address is required"),
   deliveryInstructions: z.string().optional(),
   promoCode: z.string().optional(),
+  giftCardCode: z.string().optional(),
   cartItems: z.array(CartItemSchema).min(1, "Cart cannot be empty"),
   termsAccepted: z.literal(true, {
     errorMap: () => ({ message: "You must accept the terms" })

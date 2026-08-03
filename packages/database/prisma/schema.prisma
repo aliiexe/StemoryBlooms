@@ -102,10 +102,11 @@ model Product {
   isAvailable        Boolean          @default(true)
   status             String           @default("PUBLISHED") // PUBLISHED, HIDDEN, ARCHIVED
   processingEstimate String?
-  isCustomBuilder    Boolean          @default(false)
+  isCustomBuilder    Boolean           @default(false)
   categories         Category[]
   variants           ProductVariant[]
-  createdAt          DateTime         @default(now())
+  materials          ProductMaterial[]
+  createdAt          DateTime          @default(now())
   updatedAt          DateTime         @updatedAt
   reviews            Review[]
 }
@@ -279,6 +280,7 @@ model Material {
   supplierId      String?
   supplier        Supplier?        @relation(fields: [supplierId], references: [id])
   movements       StockMovement[]
+  products        ProductMaterial[]
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 }
@@ -506,4 +508,37 @@ model ContactMessage {
   status    String   @default("UNREAD") // UNREAD, READ, RESOLVED
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// ==========================================
+// Phase 25: Inventory (BOM), Finances & Gift Cards
+// ==========================================
+
+model ProductMaterial {
+  id         String   @id @default(uuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id])
+  materialId String
+  material   Material @relation(fields: [materialId], references: [id])
+  quantity   Int      // Quantity of material used per product
+}
+
+model Expense {
+  id          String   @id @default(uuid())
+  amount      Int
+  description String
+  category    String   // e.g., SUPPLIES, MARKETING, RENT, OTHER
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model GiftCard {
+  id             String   @id @default(uuid())
+  code           String   @unique
+  initialBalance Int
+  currentBalance Int
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }

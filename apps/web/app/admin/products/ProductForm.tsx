@@ -13,7 +13,7 @@ const STATUS_OPTIONS = [
   { label: 'Archived (Removed from store)', value: 'ARCHIVED' },
 ];
 
-export function ProductForm({ product }: { product?: any }) {
+export function ProductForm({ product, materials = [] }: { product?: any, materials?: any[] }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,6 +21,23 @@ export function ProductForm({ product }: { product?: any }) {
   const [isAvailable, setIsAvailable] = useState(product ? product.isAvailable : true);
   const [isFeatured, setIsFeatured] = useState(product ? product.isFeatured : false);
   const [isOnSale, setIsOnSale] = useState(!!product?.salePrice);
+
+  // Parse existing BOM
+  const [bom, setBom] = useState<{materialId: string, quantity: number}[]>(
+    product?.materials ? product.materials.map((m: any) => ({ materialId: m.materialId, quantity: m.quantity })) : []
+  );
+
+  const addMaterial = () => setBom([...bom, { materialId: '', quantity: 1 }]);
+  const removeMaterial = (idx: number) => {
+    const newBom = [...bom];
+    newBom.splice(idx, 1);
+    setBom(newBom);
+  };
+  const updateMaterial = (idx: number, field: string, value: any) => {
+    const newBom = [...bom];
+    newBom[idx] = { ...newBom[idx], [field]: value };
+    setBom(newBom);
+  };
 
   return (
     <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
@@ -35,6 +52,8 @@ export function ProductForm({ product }: { product?: any }) {
         {error && <div style={{ color: '#C62828', backgroundColor: '#FFEBEE', padding: '1rem', borderRadius: '12px', marginBottom: '2rem' }}>{error}</div>}
         
         {product?.id && <input type="hidden" name="id" value={product.id} />}
+        {/* Hidden input to submit the BOM array */}
+        <input type="hidden" name="productMaterials" value={JSON.stringify(bom.filter(b => b.materialId))} />
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem' }}>
           
@@ -109,6 +128,53 @@ export function ProductForm({ product }: { product?: any }) {
                   />
                 </div>
               </div>
+            </div>
+
+            {/* Recipe / BOM Card */}
+            <div className={styles.card}>
+              <h3 style={{ margin: '0 0 0.5rem 0', color: '#3A3531', fontSize: '1.25rem' }}>Recipe (Bill of Materials)</h3>
+              <p style={{ color: '#9A9591', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Define exactly which raw materials are consumed when this bouquet is sold.</p>
+              
+              {bom.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+                  {bom.map((item, idx) => (
+                    <div key={idx} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr auto', gap: '1rem', alignItems: 'center' }}>
+                      <select 
+                        value={item.materialId}
+                        onChange={(e) => updateMaterial(idx, 'materialId', e.target.value)}
+                        style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #D6CFE6', fontSize: '0.95rem', backgroundColor: '#FFFFFF' }}
+                      >
+                        <option value="">Select Material...</option>
+                        {materials.map(m => (
+                          <option key={m.id} value={m.id}>{m.name} ({m.quantity} in stock)</option>
+                        ))}
+                      </select>
+                      <input 
+                        type="number"
+                        min="1"
+                        value={item.quantity}
+                        onChange={(e) => updateMaterial(idx, 'quantity', parseInt(e.target.value) || 1)}
+                        style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #D6CFE6', fontSize: '0.95rem' }}
+                      />
+                      <button 
+                        type="button" 
+                        onClick={() => removeMaterial(idx)}
+                        style={{ padding: '0.5rem', backgroundColor: '#FFEBEE', color: '#C62828', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <button 
+                type="button"
+                onClick={addMaterial}
+                style={{ padding: '0.75rem 1.5rem', backgroundColor: '#FDFBF7', color: 'var(--brand-primary)', border: '1px dashed var(--brand-primary)', borderRadius: '50px', cursor: 'pointer', fontSize: '0.95rem', fontWeight: 500 }}
+              >
+                + Add Material
+              </button>
             </div>
           </div>
 

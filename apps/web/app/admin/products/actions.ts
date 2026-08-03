@@ -25,19 +25,46 @@ export async function saveProduct(formData: FormData) {
   const isAvailable = formData.get('isAvailable') === 'on';
   const isFeatured = formData.get('isFeatured') === 'on';
 
+  const productMaterialsStr = formData.get('productMaterials') as string;
+  let productMaterials: { materialId: string, quantity: number }[] = [];
+  try {
+    if (productMaterialsStr) productMaterials = JSON.parse(productMaterialsStr);
+  } catch (e) {
+    console.error("Failed to parse productMaterials", e);
+  }
+
   if (!name || isNaN(basePrice)) {
     return { error: 'Name and valid base price are required' };
   }
 
   try {
     if (id) {
+      // For updates, we clear existing materials and re-create them
+      await prisma.productMaterial.deleteMany({ where: { productId: id } });
+      
       await prisma.product.update({
         where: { id },
-        data: { name, description, basePrice, salePrice, images, status, isAvailable, isFeatured }
+        data: { 
+          name, description, basePrice, salePrice, images, status, isAvailable, isFeatured,
+          materials: {
+            create: productMaterials.map(pm => ({
+              materialId: pm.materialId,
+              quantity: pm.quantity
+            }))
+          }
+        }
       });
     } else {
       await prisma.product.create({
-        data: { name, description, basePrice, salePrice, images, status, isAvailable, isFeatured }
+        data: { 
+          name, description, basePrice, salePrice, images, status, isAvailable, isFeatured,
+          materials: {
+            create: productMaterials.map(pm => ({
+              materialId: pm.materialId,
+              quantity: pm.quantity
+            }))
+          }
+        }
       });
     }
     

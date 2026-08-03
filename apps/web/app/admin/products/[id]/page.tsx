@@ -6,8 +6,11 @@ import { ProductForm } from '../ProductForm';
 
 export default async function EditProductPage({ params }: { params: { id: string } }) {
   const product = await prisma.product.findUnique({
-    where: { id: params.id }
+    where: { id: params.id },
+    include: { materials: true }
   });
+
+  const materials = await prisma.material.findMany({ orderBy: { name: 'asc' } });
 
   if (!product) {
     notFound();
@@ -18,7 +21,7 @@ export default async function EditProductPage({ params }: { params: { id: string
       <header style={{ marginBottom: '2rem' }}>
         <h1 className={styles.shopTitle} style={{ fontSize: '1.75rem', margin: 0 }}>Edit Product</h1>
       </header>
-      <ProductForm product={product} />
+      <ProductForm product={product} materials={materials} />
     </div>
   );
 }
