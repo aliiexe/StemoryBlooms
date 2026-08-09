@@ -1,22 +1,23 @@
 .wrapper {
   display: flex;
   min-height: 100vh;
-  background-color: #F5F5F0;
+  background: linear-gradient(135deg, #f7f3ea 0%, #f2efe7 100%);
 }
 
 /* ---- Sidebar ---- */
 .sidebar {
-  width: 240px;
-  background-color: var(--brand-primary);
+  width: 260px;
+  background: linear-gradient(180deg, #4f7042 0%, #395236 100%);
   color: white;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .sidebarLogo {
   padding: var(--space-6);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   justify-content: center;
 }
@@ -32,32 +33,72 @@
   padding: var(--space-4) var(--space-3);
   display: flex;
   flex-direction: column;
+  gap: 8px;
+}
+
+.sidebarSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-radius: 14px;
+  padding: 6px;
+  transition: background-color var(--transition-fast);
+}
+
+.sidebarSectionActive {
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.sidebarSectionToggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 8px 10px;
+  cursor: pointer;
+  border-radius: 10px;
+}
+
+.sidebarSectionToggle:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.sectionLinks {
+  display: flex;
+  flex-direction: column;
   gap: 2px;
+  padding-left: 2px;
 }
 
 .navLink {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  border-radius: 12px;
   text-decoration: none;
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 0.85rem;
-  font-weight: 400;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.9rem;
+  font-weight: 500;
   transition: all var(--transition-fast);
 }
 
 .navLink:hover {
   color: white;
-  background-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .navLinkActive {
-  color: var(--brand-primary) !important;
-  background-color: white !important;
-  font-weight: 500;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  color: #395236 !important;
+  background: #fdfbf7 !important;
+  font-weight: 600;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
 }
 
 /* ---- Main Area ---- */
@@ -69,20 +110,30 @@
 }
 
 .topBar {
-  height: 64px;
-  background-color: white;
+  height: 72px;
+  background-color: rgba(255, 255, 255, 0.92);
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 var(--space-8);
   flex-shrink: 0;
+  backdrop-filter: blur(10px);
+}
+
+.topBarEyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 2px;
 }
 
 .pageTitle {
   margin: 0;
   font-size: 1.15rem;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-primary);
 }
 
@@ -116,17 +167,20 @@
 /* ---- Responsive ---- */
 @media (max-width: 900px) {
   .sidebar {
-    width: 64px;
+    width: 72px;
   }
   .sidebarLogo img {
     height: 24px;
+  }
+  .sidebarSectionToggle span {
+    display: none;
   }
   .navLink span {
     display: none;
   }
   .navLink {
     justify-content: center;
-    padding: var(--space-3);
+    padding: 10px;
   }
   .content {
     padding: var(--space-4);

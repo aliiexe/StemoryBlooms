@@ -1,5 +1,5 @@
 import { auth } from '@clerk/nextjs/server';
-import {  db, eq, user as userTable, role as roleTable , sql } from '@stemory/database';
+import { db, eq, user as userTable, role as roleTable } from '@stemory/database';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 
@@ -10,11 +10,7 @@ async function getUsers() {
   });
 }
 
-export default async function Page(props: { searchParams: { page?: string, limit?: string } }) {
-  const page = Number(props.searchParams.page) || 1;
-  const limit = Number(props.searchParams.limit) || 10;
-  const offset = (page - 1) * limit;
-
+export default async function AdminUsersPage() {
   const { userId } = await auth();
 
   if (!userId) {

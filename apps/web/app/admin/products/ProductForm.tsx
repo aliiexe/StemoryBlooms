@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { saveProduct } from './actions';
 import styles from '../dashboard.module.css';
 import { CustomSelect } from '../../../components/ui/CustomSelect';
@@ -13,9 +14,28 @@ const STATUS_OPTIONS = [
   { label: 'Archived (Removed from store)', value: 'ARCHIVED' },
 ];
 
-export function ProductForm({ product, materials = [] }: { product?: any, materials?: any[] }) {
+type ProductMaterialItem = {
+  materialId: string;
+  quantity: number;
+};
+
+type ProductFormValue = {
+  id?: string;
+  name?: string;
+  description?: string;
+  basePrice?: number;
+  salePrice?: number | null;
+  status?: string;
+  isAvailable?: boolean;
+  isFeatured?: boolean;
+  images?: string[];
+  materials?: ProductMaterialItem[];
+};
+
+export function ProductForm({ product, materials = [] }: { product?: ProductFormValue, materials?: Array<{ id: string; name: string; quantity: number }> }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingImageFiles, setPendingImageFiles] = useState<File[]>([]);
 
   const [status, setStatus] = useState(product?.status || 'PUBLISHED');
   const [isAvailable, setIsAvailable] = useState(product ? product.isAvailable : true);
@@ -24,7 +44,7 @@ export function ProductForm({ product, materials = [] }: { product?: any, materi
 
   // Parse existing BOM
   const [bom, setBom] = useState<{materialId: string, quantity: number}[]>(
-    product?.materials ? product.materials.map((m: any) => ({ materialId: m.materialId, quantity: m.quantity })) : []
+    product?.materials ? product.materials.map((m) => ({ materialId: m.materialId, quantity: m.quantity })) : []
   );
 
   const addMaterial = () => setBom([...bom, { materialId: '', quantity: 1 }]);
@@ -33,17 +53,21 @@ export function ProductForm({ product, materials = [] }: { product?: any, materi
     newBom.splice(idx, 1);
     setBom(newBom);
   };
-  const updateMaterial = (idx: number, field: string, value: any) => {
+  const updateMaterial = (idx: number, field: 'materialId' | 'quantity', value: string | number) => {
     const newBom = [...bom];
-    newBom[idx] = { ...newBom[idx], [field]: value };
+    newBom[idx] = {
+      ...newBom[idx],
+      [field]: value,
+    } as ProductMaterialItem;
     setBom(newBom);
   };
 
   return (
-    <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-      <form 
+    <div style={{ width: '100%', maxWidth: '1400px', margin: '0 auto' }}>
+      <form
         action={async (formData) => {
           setIsSubmitting(true);
+          pendingImageFiles.forEach((file) => formData.append('newImages', file));
           const res = await saveProduct(formData);
           if (res?.error) setError(res.error);
           setIsSubmitting(false);
@@ -83,6 +107,7 @@ export function ProductForm({ product, materials = [] }: { product?: any, materi
                     name="description" 
                     defaultValue={product?.description || ''} 
                     rows={5}
+                    required
                     placeholder="Describe the arrangement, materials used, and ideal occasions..."
                     style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #D6CFE6', resize: 'vertical', fontSize: '1rem', lineHeight: 1.6 }} 
                   />
@@ -93,7 +118,11 @@ export function ProductForm({ product, materials = [] }: { product?: any, materi
             {/* Media Card */}
             <div className={styles.card}>
               <h3 style={{ margin: '0 0 1.5rem 0', color: '#3A3531', fontSize: '1.25rem' }}>Media</h3>
-              <ImageUploader name="images" initialImages={product?.images || []} />
+              <ImageUploader
+                name="images"
+                initialImages={product?.images || []}
+                onFilesChange={setPendingImageFiles}
+              />
             </div>
 
             {/* Pricing Card */}
@@ -106,7 +135,7 @@ export function ProductForm({ product, materials = [] }: { product?: any, materi
                   <input 
                     type="number" 
                     name="basePrice" 
-                    defaultValue={product?.basePrice || ''} 
+                    defaultValue={product?.basePrice ?? ''} 
                     required 
                     placeholder="0.00"
                     style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #D6CFE6', fontSize: '1rem' }} 
@@ -121,7 +150,7 @@ export function ProductForm({ product, materials = [] }: { product?: any, materi
                   <input 
                     type="number" 
                     name="salePrice" 
-                    defaultValue={product?.salePrice || ''} 
+                    defaultValue={product?.salePrice ?? ''} 
                     disabled={!isOnSale}
                     placeholder={isOnSale ? "0.00" : "Enable sale to set price"}
                     style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #D6CFE6', fontSize: '1rem', backgroundColor: isOnSale ? '#FFFFFF' : '#F5F5F5', cursor: isOnSale ? 'text' : 'not-allowed' }} 
@@ -138,11 +167,11 @@ export function ProductForm({ product, materials = [] }: { product?: any, materi
               {bom.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
                   {bom.map((item, idx) => (
-                    <div key={idx} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr auto', gap: '1rem', alignItems: 'center' }}>
+                      <div key={idx} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(120px, 1fr) auto', gap: '1rem', alignItems: 'center', width: '100%' }}>
                       <select 
                         value={item.materialId}
                         onChange={(e) => updateMaterial(idx, 'materialId', e.target.value)}
-                        style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #D6CFE6', fontSize: '0.95rem', backgroundColor: '#FFFFFF' }}
+                          style={{ width: '100%', minWidth: 0, padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #D6CFE6', fontSize: '0.95rem', backgroundColor: '#FFFFFF' }}
                       >
                         <option value="">Select Material...</option>
                         {materials.map(m => (
@@ -154,7 +183,7 @@ export function ProductForm({ product, materials = [] }: { product?: any, materi
                         min="1"
                         value={item.quantity}
                         onChange={(e) => updateMaterial(idx, 'quantity', parseInt(e.target.value) || 1)}
-                        style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #D6CFE6', fontSize: '0.95rem' }}
+                        style={{ width: '100%', minWidth: 0, padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #D6CFE6', fontSize: '0.95rem' }}
                       />
                       <button 
                         type="button" 
@@ -218,9 +247,9 @@ export function ProductForm({ product, materials = [] }: { product?: any, materi
 
         {/* Floating Action Bar */}
         <div style={{ position: 'sticky', bottom: 0, left: 0, right: 0, marginTop: '3rem', padding: '1.5rem', backgroundColor: 'rgba(253, 251, 247, 0.95)', backdropFilter: 'blur(10px)', borderTop: '1px solid #EAE6DF', display: 'flex', justifyContent: 'flex-end', gap: '1rem', zIndex: 100 }}>
-          <a href="/admin/products" style={{ padding: '1rem 2rem', color: '#5A5551', textDecoration: 'none', fontWeight: 500, borderRadius: '50px', transition: 'background-color 0.2s' }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#F5F5F5'} onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+          <Link href="/admin/products" style={{ padding: '1rem 2rem', color: '#5A5551', textDecoration: 'none', fontWeight: 500, borderRadius: '50px', transition: 'background-color 0.2s' }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#F5F5F5'} onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
             Discard Changes
-          </a>
+          </Link>
           <button 
             type="submit" 
             disabled={isSubmitting}

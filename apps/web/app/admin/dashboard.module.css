@@ -6,6 +6,55 @@
   font-family: var(--font-sans);
 }
 
+.pageHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.pageTitle {
+  margin: 0;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.pageSubtitle {
+  margin: 0.35rem 0 0;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+.statsRow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.statCard {
+  background: linear-gradient(135deg, #ffffff 0%, #f9f6ef 100%);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  padding: var(--space-5);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.03);
+}
+
+.statCardLabel {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.statCardValue {
+  font-size: 1.45rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-top: 0.4rem;
+}
+
 /* Metrics */
 .metricsGrid {
   display: grid;
@@ -103,6 +152,25 @@
   color: var(--text-primary);
 }
 
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-5);
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.sectionHint {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
 /* Table */
 .table {
   width: 100%;
@@ -140,6 +208,120 @@
   font-weight: 600;
   letter-spacing: 0.2px;
   white-space: nowrap;
+}
+
+.orderList,
+.messageList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.orderCard,
+.messageCard {
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  padding: var(--space-5);
+  background: linear-gradient(135deg, #ffffff 0%, #fdfbf7 100%);
+}
+
+.orderCardTop,
+.messageCardTop {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+
+.orderTitle,
+.messageName {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.orderMeta,
+.messageMeta {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.orderSummaryRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+}
+
+.orderItemChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #f7f3ea;
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.messageSubject {
+  margin-top: var(--space-3);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.messagePreview {
+  margin: var(--space-3) 0 0;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.orderFooter,
+.messageFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.actionRow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.actionSelect {
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  padding: 0.5rem 0.8rem;
+  font-size: 0.85rem;
+  background: white;
+}
+
+.actionButton,
+.actionButtonSecondary {
+  border: none;
+  border-radius: 999px;
+  padding: 0.5rem 0.9rem;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.actionButton {
+  background: var(--brand-primary);
+  color: white;
+}
+
+.actionButtonSecondary {
+  background: #f7f3ea;
+  color: var(--text-primary);
 }
 
 /* Stats list */
@@ -228,6 +410,9 @@
   .mainGrid {
     grid-template-columns: 1fr;
   }
+  .statsRow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 768px) {
@@ -237,10 +422,17 @@
   .midGrid {
     grid-template-columns: 1fr;
   }
+  .pageHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 
 @media (max-width: 480px) {
   .metricsGrid {
+    grid-template-columns: 1fr;
+  }
+  .statsRow {
     grid-template-columns: 1fr;
   }
 }

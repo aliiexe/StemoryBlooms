@@ -1,11 +1,13 @@
 import React from 'react';
-import { db, product as productSchema, customer as customerSchema, order as orderSchema, orderItem as orderItemSchema, socialOrderMetadata as socialOrderMetadataSchema, eq } from '@stemory/database';
+import { db, eq, customer, order, orderItem, product, socialOrderMetadata } from '@stemory/database';
 import { redirect } from 'next/navigation';
 import styles from '../../dashboard.module.css';
+import crypto from 'crypto';
+import { parseIntegerInput } from '../../../../lib/form-values';
 
 export default async function NewAssistedOrderPage() {
   const products = await db.query.product.findMany({
-    where: (products, { eq }) => eq(products.isAvailable, true)
+    where: eq(product.isAvailable, true)
   });
 
   async function createAssistedOrder(formData: FormData) {
@@ -16,69 +18,68 @@ export default async function NewAssistedOrderPage() {
     const phoneNumber = formData.get('phoneNumber') as string;
     const productId = formData.get('productId') as string;
     const notes = formData.get('notes') as string;
-    const total = parseInt(formData.get('total') as string, 10);
+    const total = parseIntegerInput(formData.get('total') as string | null);
 
-    const product = await db.query.product.findFirst({ 
-      where: (p, { eq }) => eq(p.id, productId)
-    });
-    
-    if (!product) throw new Error("Product not found");
+    const productRecord = await db.query.product.findFirst({ where: eq(product.id, productId) });
+    if (!productRecord || total === null) throw new Error("Product not found or total is invalid");
+
+    const activeDeliveryCompany = await db.query.deliveryCompany.findFirst({ where: (table, { eq }) => eq(table.isActive, true) });
+    const deliveryFee = activeDeliveryCompany?.fee ?? 50;
 
     await db.transaction(async (tx) => {
-      let customer = await tx.query.customer.findFirst({
-        where: (c, { eq }) => eq(c.phone, phoneNumber)
-      });
+      const [existingCustomer] = await tx.select().from(customer).where(eq(customer.phone, phoneNumber));
       
-      if (customer) {
-        const [updated] = await tx.update(customerSchema)
-          .set({ firstName: customerName, updatedAt: new Date() })
-          .where(eq(customerSchema.id, customer.id))
-          .returning();
-        customer = updated;
+      let customerId: string;
+      if (existingCustomer) {
+        await tx.update(customer).set({ firstName: customerName, updatedAt: new Date() }).where(eq(customer.id, existingCustomer.id));
+        customerId = existingCustomer.id;
       } else {
-        const [inserted] = await tx.insert(customerSchema).values({
+        const [newCustomer] = await tx.insert(customer).values({ 
           id: crypto.randomUUID(),
-          updatedAt: new Date(),
-          phone: phoneNumber,
           firstName: customerName,
-          lastName: ''
-        }).returning();
-        customer = inserted;
+          lastName: '', 
+          phone: phoneNumber,
+          updatedAt: new Date()
+        }).returning({ id: customer.id });
+        customerId = newCustomer.id;
       }
 
       const orderNumber = `AST-${Date.now().toString().slice(-6)}`;
       
-      const [order] = await tx.insert(orderSchema).values({
+      const [createdOrder] = await tx.insert(order).values({
         id: crypto.randomUUID(),
-        updatedAt: new Date(),
         orderNumber,
-        customerId: customer.id,
+        customerId,
         status: 'CONFIRMED',
         source: source,
-        subtotal: total - 50,
-        deliveryFee: 50,
+        subtotal: total - deliveryFee,
+        deliveryFee,
+        discount: 0,
         total: total,
         notes: notes,
-        deliveryAddress: { city: 'Assisted Order - TBD', addressLine1: 'TBD' }
-      }).returning();
+        deliveryAddress: { city: 'Assisted Order - TBD', addressLine1: 'TBD' },
+        updatedAt: new Date()
+      }).returning({ id: order.id });
 
-      await tx.insert(orderItemSchema).values({
+      await tx.insert(orderItem).values({
         id: crypto.randomUUID(),
-        updatedAt: new Date(),
-        orderId: order.id,
-        productId: product.id,
-        productName: product.name,
+        orderId: createdOrder.id,
+        productId: productRecord.id,
+        productName: productRecord.name,
         quantity: 1,
-        unitPrice: product.basePrice,
-        totalPrice: product.basePrice,
+        unitPrice: productRecord.basePrice,
+        totalPrice: productRecord.basePrice,
+        updatedAt: new Date()
       });
 
-      await tx.insert(socialOrderMetadataSchema).values({
-        id: crypto.randomUUID(),
-        orderId: order.id,
-        handle: phoneNumber,
-        platform: source
-      });
+      if (['INSTAGRAM', 'TIKTOK'].includes(source)) {
+        await tx.insert(socialOrderMetadata).values({
+          id: crypto.randomUUID(),
+          orderId: createdOrder.id,
+          handle: customerName,
+          platform: source
+        });
+      }
     });
 
     redirect('/admin');

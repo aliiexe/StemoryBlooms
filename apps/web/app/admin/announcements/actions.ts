@@ -2,9 +2,10 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { db } from '@stemory/database';
-import { eq } from 'drizzle-orm';
-import { announcement, announcementBarSettings } from '@stemory/database/schema';
+import { db, eq, sql, announcement, announcementBarSettings } from '@stemory/database';
+import { asc, desc } from 'drizzle-orm';
+import crypto from 'crypto';
+import { parseIntegerInput } from '../../../lib/form-values';
 
 function validateUrl(url: string | null | undefined): string | null {
   if (!url) return null;
@@ -29,8 +30,6 @@ export async function createAnnouncement(formData: FormData) {
   const raw = Object.fromEntries(formData.entries());
   await db.insert(announcement).values({
       id: crypto.randomUUID(),
-      dismissalVersion: Date.now().toString(),
-      updatedAt: new Date(),
       internalTitle: sanitizeText(raw.internalTitle as string),
       message: sanitizeText(raw.message as string),
       highlightedText: raw.highlightedText ? sanitizeText(raw.highlightedText as string) : null,
@@ -41,7 +40,7 @@ export async function createAnnouncement(formData: FormData) {
       decorativeAsset: (raw.decorativeAsset as string) || null,
       templateId: (raw.templateId as string) || null,
       status: 'DRAFT',
-      order: parseInt(raw.order as string) || 0,
+      order: parseIntegerInput(raw.order as string | null) ?? 0,
       startAt: raw.startAt ? new Date(raw.startAt as string) : null,
       endAt: raw.endAt ? new Date(raw.endAt as string) : null,
       noEndDate: raw.noEndDate === 'on',
@@ -63,6 +62,8 @@ export async function createAnnouncement(formData: FormData) {
       countdownEnabled: raw.countdownEnabled === 'on',
       countdownTarget: raw.countdownTarget ? new Date(raw.countdownTarget as string) : null,
       countdownEndBehavior: (raw.countdownEndBehavior as string) || 'HIDE',
+      updatedAt: new Date(),
+      dismissalVersion: crypto.randomUUID()
   });
   revalidatePath('/admin/announcements');
   redirect('/admin/announcements');
@@ -70,8 +71,8 @@ export async function createAnnouncement(formData: FormData) {
 
 export async function updateAnnouncement(id: string, formData: FormData) {
   const raw = Object.fromEntries(formData.entries());
-  await db.update(announcement).set({
-      updatedAt: new Date(),
+  await db.update(announcement)
+    .set({
       internalTitle: sanitizeText(raw.internalTitle as string),
       message: sanitizeText(raw.message as string),
       highlightedText: raw.highlightedText ? sanitizeText(raw.highlightedText as string) : null,
@@ -102,26 +103,28 @@ export async function updateAnnouncement(id: string, formData: FormData) {
       countdownEnabled: raw.countdownEnabled === 'on',
       countdownTarget: raw.countdownTarget ? new Date(raw.countdownTarget as string) : null,
       countdownEndBehavior: (raw.countdownEndBehavior as string) || 'HIDE',
-  }).where(eq(announcement.id, id));
+      updatedAt: new Date()
+    })
+    .where(eq(announcement.id, id));
   revalidatePath('/admin/announcements');
   revalidatePath('/');
   redirect('/admin/announcements');
 }
 
 export async function publishAnnouncement(id: string) {
-  await db.update(announcement).set({ status: 'ACTIVE' }).where(eq(announcement.id, id));
+  await db.update(announcement).set({ status: 'ACTIVE', updatedAt: new Date() }).where(eq(announcement.id, id));
   revalidatePath('/admin/announcements');
   revalidatePath('/');
 }
 
 export async function pauseAnnouncement(id: string) {
-  await db.update(announcement).set({ status: 'PAUSED' }).where(eq(announcement.id, id));
+  await db.update(announcement).set({ status: 'PAUSED', updatedAt: new Date() }).where(eq(announcement.id, id));
   revalidatePath('/admin/announcements');
   revalidatePath('/');
 }
 
 export async function archiveAnnouncement(id: string) {
-  await db.update(announcement).set({ status: 'ARCHIVED', archivedAt: new Date() }).where(eq(announcement.id, id));
+  await db.update(announcement).set({ status: 'ARCHIVED', archivedAt: new Date(), updatedAt: new Date() }).where(eq(announcement.id, id));
   revalidatePath('/admin/announcements');
   revalidatePath('/');
 }
@@ -133,17 +136,26 @@ export async function deleteAnnouncement(id: string) {
 }
 
 export async function duplicateAnnouncement(id: string) {
-  const src = await db.query.announcement.findFirst({ where: (table, { eq }) => eq(table.id, id) });
+  const src = await db.query.announcement.findFirst({ where: eq(announcement.id, id) });
   if (!src) return;
   const { id: _id, createdAt: _c, updatedAt: _u, archivedAt: _a, dismissalVersion: _dv, ...rest } = src;
-  await db.insert(announcement).values({ ...rest, id: crypto.randomUUID(), dismissalVersion: Date.now().toString(), updatedAt: new Date(), internalTitle: `${rest.internalTitle} (Copy)`, status: 'DRAFT' });
+  await db.insert(announcement).values({
+    id: crypto.randomUUID(),
+    ...rest, 
+    internalTitle: `${rest.internalTitle} (Copy)`, 
+    status: 'DRAFT', 
+    updatedAt: new Date(),
+    dismissalVersion: crypto.randomUUID()
+  });
   revalidatePath('/admin/announcements');
 }
 
 export async function reorderAnnouncements(ids: string[]) {
-  await Promise.all(ids.map((id, index) =>
-    db.update(announcement).set({ order: index }).where(eq(announcement.id, id))
-  ));
+  await db.transaction(async (tx) => {
+    for (let i = 0; i < ids.length; i++) {
+      await tx.update(announcement).set({ order: i, updatedAt: new Date() }).where(eq(announcement.id, ids[i]));
+    }
+  });
   revalidatePath('/admin/announcements');
   revalidatePath('/');
 }
@@ -156,9 +168,9 @@ export async function updateBarSettings(formData: FormData) {
     mode: (raw.mode as string) || 'AUTO',
     autoPlay: raw.autoPlay !== 'off',
     loop: raw.loop !== 'off',
-    intervalSeconds: parseInt(raw.intervalSeconds as string) || 5,
+    intervalSeconds: parseIntegerInput(raw.intervalSeconds as string | null) ?? 5,
     transitionType: (raw.transitionType as string) || 'FADE',
-    transitionDurationMs: parseInt(raw.transitionDurationMs as string) || 400,
+    transitionDurationMs: parseIntegerInput(raw.transitionDurationMs as string | null) ?? 400,
     pauseOnHover: raw.pauseOnHover !== 'off',
     showArrows: raw.showArrows !== 'off',
     showIndicators: raw.showIndicators !== 'off',
@@ -168,7 +180,7 @@ export async function updateBarSettings(formData: FormData) {
   if (existing) {
     await db.update(announcementBarSettings).set({ ...data, updatedAt: new Date() }).where(eq(announcementBarSettings.id, existing.id));
   } else {
-    await db.insert(announcementBarSettings).values({ ...data, id: crypto.randomUUID(), updatedAt: new Date() });
+    await db.insert(announcementBarSettings).values({ id: crypto.randomUUID(), ...data, updatedAt: new Date() });
   }
   revalidatePath('/admin/announcements/settings');
   revalidatePath('/');

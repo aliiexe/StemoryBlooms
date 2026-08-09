@@ -1,24 +1,20 @@
 import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
-import { db } from '@stemory/database';
 import AdminLayoutUI from './AdminLayoutUI';
-
-
+import { getUserRoleName, syncClerkUserToDatabase } from '@/lib/user-sync';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const { userId } = await auth();
-  
+
   if (!userId) {
     redirect('/');
   }
 
   try {
-    const user = await db.query.user.findFirst({
-      where: (user, { eq }) => eq(user.clerkId, userId),
-      with: { role: true }
-    });
+    await syncClerkUserToDatabase(userId);
+    const roleName = await getUserRoleName(userId);
 
-    if (user?.role?.name !== 'ADMIN') {
+    if (roleName !== 'ADMIN') {
       redirect('/');
     }
   } catch (err) {

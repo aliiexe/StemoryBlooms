@@ -4,7 +4,15 @@ import React, { useState } from 'react';
 import { saveMaterial, deleteMaterial } from './actions';
 import styles from '../dashboard.module.css';
 
-export function MaterialForm({ material, onSaved }: { material?: any, onSaved?: () => void }) {
+type MaterialFormValue = {
+  id?: string;
+  name?: string;
+  quantity?: number;
+  cost?: number | null;
+  lowStockThreshold?: number | null;
+};
+
+export function MaterialForm({ material, onSaved }: { material?: MaterialFormValue, onSaved?: () => void }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,7 +58,9 @@ export function MaterialForm({ material, onSaved }: { material?: any, onSaved?: 
           <input 
             type="number" 
             name="cost" 
-            defaultValue={material?.cost || ''} 
+            step="0.01"
+            required
+            defaultValue={material?.cost ?? ''} 
             style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #D6CFE6' }} 
           />
         </div>

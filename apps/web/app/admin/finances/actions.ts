@@ -1,18 +1,19 @@
 'use server';
 
-import { db } from '@stemory/database';
-import { expense } from '@stemory/database/schema';
-import { eq } from 'drizzle-orm';
+import { db, eq, sql, expense } from '@stemory/database';
+import { asc, desc } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
+import crypto from 'crypto';
+import { parseOptionalDecimalInput } from '../../../lib/form-values';
 
 export async function saveExpense(formData: FormData) {
   const id = formData.get('id') as string;
   const description = formData.get('description') as string;
   const category = formData.get('category') as string;
-  const amount = parseInt(formData.get('amount') as string, 10);
+  const amount = parseOptionalDecimalInput(formData.get('amount') as string | null);
   const dateStr = formData.get('date') as string;
 
-  if (!description || isNaN(amount) || !category) {
+  if (!description || amount === null || !category) {
     return { error: 'Description, category, and valid amount are required' };
   }
 
@@ -20,9 +21,9 @@ export async function saveExpense(formData: FormData) {
 
   try {
     if (id) {
-      await db.update(expense).set({ description, category, amount, date, updatedAt: new Date() }).where(eq(expense.id, id));
+      await db.update(expense).set({ description, category, amount: Math.round(amount), date, updatedAt: new Date() }).where(eq(expense.id, id));
     } else {
-      await db.insert(expense).values({ id: crypto.randomUUID(), updatedAt: new Date(), description, category, amount, date });
+      await db.insert(expense).values({ id: crypto.randomUUID(), description, category, amount: Math.round(amount), date, updatedAt: new Date() });
     }
     
     revalidatePath('/admin/finances');
@@ -41,8 +42,4 @@ export async function deleteExpense(id: string) {
   } catch (err) {
     return { error: 'Failed to delete expense' };
   }
-}
-
-export async function backfillMaterialExpenses() {
-  return { backfilled: 0 };
 }
