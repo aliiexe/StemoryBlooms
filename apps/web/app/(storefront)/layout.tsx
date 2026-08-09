@@ -1,12 +1,13 @@
 import { Header, Footer } from "@stemory/ui";
 import { ClerkProvider } from '@clerk/nextjs';
 import { auth } from '@clerk/nextjs/server';
-import { prisma } from '@stemory/database';
+import { db, siteSettings } from '@stemory/database';
 import { Suspense } from 'react';
 import { ClerkAuthSlot } from './ClerkAuthSlot';
 import WaitlistPage from './WaitlistPage';
 import MaintenancePage from './MaintenancePage';
 import AnnouncementBar from './components/AnnouncementBar';
+import { getUserRoleName, syncClerkUserToDatabase } from '@/lib/user-sync';
 
 export default async function StorefrontLayout({
   children,
@@ -14,7 +15,7 @@ export default async function StorefrontLayout({
   children: React.ReactNode;
 }) {
   const [settings, { userId }] = await Promise.all([
-    prisma.siteSettings.findFirst(),
+    db.query.siteSettings.findFirst(),
     auth()
   ]);
 
@@ -24,11 +25,9 @@ export default async function StorefrontLayout({
   let isAdmin = false;
   if (userId) {
     try {
-      const user = await prisma.user.findUnique({
-        where: { clerkId: userId },
-        include: { role: true }
-      });
-      isAdmin = user?.role?.name === 'ADMIN';
+      await syncClerkUserToDatabase(userId);
+      const roleName = await getUserRoleName(userId);
+      isAdmin = roleName === 'ADMIN';
     } catch {}
   }
 

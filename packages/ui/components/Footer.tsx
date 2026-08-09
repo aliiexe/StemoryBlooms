@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 import styles from './Footer.module.css';
 
 export const Footer: React.FC = () => {
@@ -14,27 +15,27 @@ export const Footer: React.FC = () => {
           <div>
             <h4 className={styles.colTitle}>Shop</h4>
             <ul className={styles.colLinks}>
-              <li><a href="/shop">All Bouquets</a></li>
-              <li><a href="/custom-bouquet">Custom Bouquet</a></li>
-              <li><a href="/shop">Best Sellers</a></li>
+              <li><Link href="/shop">All Bouquets</Link></li>
+              <li><Link href="/custom-bouquet">Custom Bouquet</Link></li>
+              <li><Link href="/shop">Best Sellers</Link></li>
             </ul>
           </div>
 
           <div>
             <h4 className={styles.colTitle}>Company</h4>
             <ul className={styles.colLinks}>
-              <li><a href="/about">About Us</a></li>
-              <li><a href="/reviews">Reviews</a></li>
-              <li><a href="/contact">Contact</a></li>
+              <li><Link href="/about">About Us</Link></li>
+              <li><Link href="/reviews">Reviews</Link></li>
+              <li><Link href="/contact">Contact</Link></li>
             </ul>
           </div>
 
           <div>
             <h4 className={styles.colTitle}>Support</h4>
             <ul className={styles.colLinks}>
-              <li><a href="/contact">FAQ</a></li>
-              <li><a href="/contact">Shipping</a></li>
-              <li><a href="/contact">Returns</a></li>
+              <li><Link href="/faq">FAQ</Link></li>
+              <li><Link href="/shipping">Shipping</Link></li>
+              <li><Link href="/returns">Returns</Link></li>
             </ul>
           </div>
         </div>

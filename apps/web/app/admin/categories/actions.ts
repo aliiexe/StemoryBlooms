@@ -1,6 +1,8 @@
 'use server';
 
-import { prisma } from '@stemory/database';
+import { db } from '@stemory/database';
+import { eq } from 'drizzle-orm';
+import { category } from '@stemory/database/schema';
 import { revalidatePath } from 'next/cache';
 
 export async function saveCategory(formData: FormData) {
@@ -13,14 +15,9 @@ export async function saveCategory(formData: FormData) {
 
   try {
     if (id) {
-      await prisma.category.update({
-        where: { id },
-        data: { name }
-      });
+      await db.update(category).set({ name }).where(eq(category.id, id));
     } else {
-      await prisma.category.create({
-        data: { name }
-      });
+      await db.insert(category).values({ id: crypto.randomUUID(), name });
     }
     
     revalidatePath('/admin/categories');
@@ -32,7 +29,7 @@ export async function saveCategory(formData: FormData) {
 
 export async function deleteCategory(id: string) {
   try {
-    await prisma.category.delete({ where: { id } });
+    await db.delete(category).where(eq(category.id, id));
     revalidatePath('/admin/categories');
     return { success: true };
   } catch (err) {

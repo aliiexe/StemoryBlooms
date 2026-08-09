@@ -1,16 +1,18 @@
 import React from 'react';
-import { prisma } from '@stemory/database';
+import { db } from '@stemory/database';
 import { notFound } from 'next/navigation';
 import styles from '../../dashboard.module.css';
 import { ProductForm } from '../ProductForm';
 
 export default async function EditProductPage({ params }: { params: { id: string } }) {
-  const product = await prisma.product.findUnique({
-    where: { id: params.id },
-    include: { materials: true }
+  const productRaw = await db.query.product.findFirst({
+    where: (table, { eq }) => eq(table.id, params.id),
+    with: { productMaterials: true }
   });
 
-  const materials = await prisma.material.findMany({ orderBy: { name: 'asc' } });
+  const product = productRaw ? { ...productRaw, materials: productRaw.productMaterials } : undefined;
+
+  const materials = await db.query.material.findMany({ orderBy: (table, { asc }) => [asc(table.name)] });
 
   if (!product) {
     notFound();

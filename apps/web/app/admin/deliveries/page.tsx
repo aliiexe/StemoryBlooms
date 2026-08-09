@@ -1,12 +1,12 @@
 import React from 'react';
-import { prisma } from '@stemory/database';
+import { db } from '@stemory/database';
 import styles from '../dashboard.module.css';
 
 
 
 export default async function AdminDeliveriesPage() {
-  const zones = await prisma.deliveryZone.findMany({
-    orderBy: { name: 'asc' }
+  const zones = await db.query.deliveryZone.findMany({
+    orderBy: (table, { asc }) => [asc(table.name)]
   });
 
   return (

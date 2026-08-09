@@ -1,12 +1,12 @@
-import { prisma } from '@stemory/database';
+import { db, builderComponent, eq } from '@stemory/database';
 import styles from './page.module.css';
 import BuilderFlow from './BuilderFlow';
 
 
 
 export default async function CustomBouquetPage() {
-  const components = await prisma.builderComponent.findMany({
-    where: { isAvailable: true }
+  const components = await db.query.builderComponent.findMany({
+    where: eq(builderComponent.isAvailable, true)
   });
 
   // Group by type

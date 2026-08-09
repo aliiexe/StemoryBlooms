@@ -1,15 +1,14 @@
 'use server';
 
-import { prisma } from '@stemory/database';
+import { db } from '@stemory/database';
+import { review } from '@stemory/database/schema';
+import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 export async function approveReview(id: string) {
   try {
-    const review = await prisma.review.update({
-      where: { id },
-      data: { status: 'APPROVED' }
-    });
-    revalidatePath(`/shop/${review.productId}`);
+    const [rev] = await db.update(review).set({ status: 'APPROVED' }).where(eq(review.id, id)).returning();
+    revalidatePath(`/shop/${rev.productId}`);
     revalidatePath('/reviews');
     revalidatePath('/admin/reviews');
     return { success: true };
@@ -20,11 +19,8 @@ export async function approveReview(id: string) {
 
 export async function rejectReview(id: string) {
   try {
-    const review = await prisma.review.update({
-      where: { id },
-      data: { status: 'REJECTED' }
-    });
-    revalidatePath(`/shop/${review.productId}`);
+    const [rev] = await db.update(review).set({ status: 'REJECTED' }).where(eq(review.id, id)).returning();
+    revalidatePath(`/shop/${rev.productId}`);
     revalidatePath('/reviews');
     revalidatePath('/admin/reviews');
     return { success: true };
@@ -35,10 +31,8 @@ export async function rejectReview(id: string) {
 
 export async function deleteReview(id: string) {
   try {
-    const review = await prisma.review.delete({
-      where: { id }
-    });
-    revalidatePath(`/shop/${review.productId}`);
+    const [rev] = await db.delete(review).where(eq(review.id, id)).returning();
+    revalidatePath(`/shop/${rev.productId}`);
     revalidatePath('/reviews');
     revalidatePath('/admin/reviews');
     return { success: true };

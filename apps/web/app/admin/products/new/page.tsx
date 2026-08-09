@@ -2,10 +2,10 @@ import React from 'react';
 import styles from '../../dashboard.module.css';
 import { ProductForm } from '../ProductForm';
 
-import { prisma } from '@stemory/database';
+import { db } from '@stemory/database';
 
 export default async function NewProductPage() {
-  const materials = await prisma.material.findMany({ orderBy: { name: 'asc' } });
+  const materials = await db.query.material.findMany({ orderBy: (table, { asc }) => [asc(table.name)] });
 
   return (
     <div className={styles.dashboard}>

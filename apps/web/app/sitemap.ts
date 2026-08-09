@@ -1,14 +1,14 @@
 import { MetadataRoute } from 'next';
-import { prisma } from '@stemory/database';
+import { db, eq, sql, product } from '@stemory/database';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://stemoryblooms.com';
 
   // Get dynamic routes
-  const products = await prisma.product.findMany({
-    where: { status: 'PUBLISHED' },
-    select: { id: true, updatedAt: true }
-  });
+  const products = await db.select({
+    id: product.id,
+    updatedAt: product.updatedAt
+  }).from(product).where(eq(product.status, 'PUBLISHED'));
 
   const productEntries: MetadataRoute.Sitemap = products.map((product) => ({
     url: `${baseUrl}/shop/${product.id}`,

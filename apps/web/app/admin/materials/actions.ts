@@ -1,6 +1,8 @@
 'use server';
 
-import { prisma } from '@stemory/database';
+import { db } from '@stemory/database';
+import { material } from '@stemory/database/schema';
+import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 export async function saveMaterial(formData: FormData) {
@@ -16,13 +18,13 @@ export async function saveMaterial(formData: FormData) {
 
   try {
     if (id) {
-      await prisma.material.update({
-        where: { id },
-        data: { name, quantity, cost: isNaN(cost) ? null : cost, lowStockThreshold: isNaN(lowStockThreshold) ? null : lowStockThreshold }
-      });
+      await db.update(material).set({
+        name, quantity, cost: isNaN(cost) ? null : cost, lowStockThreshold: isNaN(lowStockThreshold) ? null : lowStockThreshold, updatedAt: new Date()
+      }).where(eq(material.id, id));
     } else {
-      await prisma.material.create({
-        data: { name, quantity, cost: isNaN(cost) ? null : cost, lowStockThreshold: isNaN(lowStockThreshold) ? null : lowStockThreshold }
+      await db.insert(material).values({
+        id: crypto.randomUUID(), updatedAt: new Date(),
+        name, quantity, cost: isNaN(cost) ? null : cost, lowStockThreshold: isNaN(lowStockThreshold) ? null : lowStockThreshold
       });
     }
     
@@ -36,10 +38,32 @@ export async function saveMaterial(formData: FormData) {
 
 export async function deleteMaterial(id: string) {
   try {
-    await prisma.material.delete({ where: { id } });
+    await db.delete(material).where(eq(material.id, id));
     revalidatePath('/admin/materials');
     return { success: true };
   } catch (err) {
     return { error: 'Failed to delete material' };
+  }
+}
+
+export async function updateMaterialInline(id: string, updates: Partial<any>) {
+  try {
+    await db.update(material).set({ ...updates, updatedAt: new Date() }).where(eq(material.id, id));
+    revalidatePath('/admin/inventory');
+    return { success: true };
+  } catch (err) {
+    return { error: 'Failed to update material' };
+  }
+}
+
+export async function restockMaterial(id: string, qty: number) {
+  try {
+    const existing = await db.query.material.findFirst({ where: eq(material.id, id) });
+    if (!existing) return { error: 'Not found' };
+    await db.update(material).set({ quantity: existing.quantity + qty, updatedAt: new Date() }).where(eq(material.id, id));
+    revalidatePath('/admin/inventory');
+    return { success: true };
+  } catch (err) {
+    return { error: 'Failed to restock' };
   }
 }

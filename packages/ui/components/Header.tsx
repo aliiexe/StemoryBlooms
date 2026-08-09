@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Search, ShoppingCart, X, Menu, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCartStore } from '../store/useCartStore';
@@ -13,6 +14,10 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ authSlot }) => {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState('');
+  const router = useRouter();
+  const searchInputRef = useRef<HTMLInputElement>(null);
   
   // Zustand Cart Store
   const { items, isCartOpen, toggleCart, removeItem, updateQuantity } = useCartStore();
@@ -29,6 +34,24 @@ export const Header: React.FC<HeaderProps> = ({ authSlot }) => {
     { href: '/contact', label: 'Contact' },
   ];
 
+  useEffect(() => {
+    if (!isSearchOpen) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      searchInputRef.current?.focus();
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [isSearchOpen]);
+
+  const runSearch = () => {
+    const query = searchValue.trim();
+    setIsSearchOpen(false);
+    router.push(query ? `/shop?search=${encodeURIComponent(query)}` : '/shop');
+  };
+
   return (
     <>
       <header className={styles.header}>
@@ -43,7 +66,7 @@ export const Header: React.FC<HeaderProps> = ({ authSlot }) => {
         </nav>
 
         <div className={styles.actions}>
-          <button className={styles.iconBtn} aria-label="Search">
+          <button className={styles.iconBtn} aria-label="Search" onClick={() => setIsSearchOpen(true)}>
             <Search size={18} strokeWidth={1.5} />
           </button>
 
@@ -65,6 +88,69 @@ export const Header: React.FC<HeaderProps> = ({ authSlot }) => {
           </button>
         </div>
       </header>
+
+      {/* Search Modal */}
+      <AnimatePresence>
+        {isSearchOpen && (
+          <motion.div
+            className={styles.searchOverlay}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsSearchOpen(false)}
+          >
+            <motion.div
+              className={styles.searchModal}
+              initial={{ opacity: 0, y: 18, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12, scale: 0.98 }}
+              transition={{ duration: 0.2 }}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className={styles.searchModalHeader}>
+                <div>
+                  <p className={styles.searchEyebrow}>Search the collection</p>
+                  <h2 className={styles.searchTitle}>Find bouquets, gifts, or custom pieces</h2>
+                </div>
+                <button className={styles.searchCloseBtn} onClick={() => setIsSearchOpen(false)} aria-label="Close search">
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className={styles.searchFieldWrap}>
+                <Search size={18} className={styles.searchFieldIcon} />
+                <input
+                  ref={searchInputRef}
+                  className={styles.searchInput}
+                  type="text"
+                  value={searchValue}
+                  onChange={(event) => setSearchValue(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      runSearch();
+                    }
+                  }}
+                  placeholder="Search for roses, custom bouquets, best sellers..."
+                  aria-label="Search products"
+                />
+              </div>
+
+              <div className={styles.searchActions}>
+                <button className={styles.searchPrimaryBtn} onClick={runSearch}>
+                  Search
+                </button>
+                <button className={styles.searchSecondaryBtn} onClick={() => { setSearchValue(''); setIsSearchOpen(false); router.push('/shop'); }}>
+                  Browse all
+                </button>
+              </div>
+
+              <p className={styles.searchHint}>
+                Tip: search by occasion, color, or bouquet type.
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Mobile Navigation */}
       <div className={`${styles.mobileNav} ${isMobileNavOpen ? styles.open : ''}`}>
@@ -153,7 +239,7 @@ export const Header: React.FC<HeaderProps> = ({ authSlot }) => {
                     <a 
                       href="/checkout"
                       className={styles.checkoutBtn}
-                      onClick={(e) => {
+                      onClick={() => {
                         // Let the native anchor navigation happen
                         // Just close the cart UI
                         toggleCart(false);

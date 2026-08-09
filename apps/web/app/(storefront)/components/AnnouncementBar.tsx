@@ -1,31 +1,27 @@
-import { prisma } from '@stemory/database';
+import { db, announcementBarSettings as settingsTable, announcement as announcementTable, eq, and, or, isNull, lte, gte, asc } from '@stemory/database';
 import { Suspense } from 'react';
 import AnnouncementCarousel from './AnnouncementCarousel';
 
 async function getActiveAnnouncements(pathname?: string) {
-  const settings = await prisma.announcementBarSettings.findFirst();
+  const settings = await db.query.announcementBarSettings.findFirst();
   if (!settings?.enabled) return { announcements: [], settings: null };
 
   const now = new Date();
-  const announcements = await prisma.announcement.findMany({
-    where: {
-      status: 'ACTIVE',
-      showDesktop: true,
-      OR: [
-        { startAt: null },
-        { startAt: { lte: now } }
-      ],
-      AND: [
-        {
-          OR: [
-            { noEndDate: true },
-            { endAt: null },
-            { endAt: { gte: now } }
-          ]
-        }
-      ]
-    },
-    orderBy: { order: 'asc' }
+  const announcements = await db.query.announcement.findMany({
+    where: and(
+      eq(announcementTable.status, 'ACTIVE'),
+      eq(announcementTable.showDesktop, true),
+      or(
+        isNull(announcementTable.startAt),
+        lte(announcementTable.startAt, now)
+      ),
+      or(
+        eq(announcementTable.noEndDate, true),
+        isNull(announcementTable.endAt),
+        gte(announcementTable.endAt, now)
+      )
+    ),
+    orderBy: [asc(announcementTable.order)]
   });
 
   return { announcements, settings };

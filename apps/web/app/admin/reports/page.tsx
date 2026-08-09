@@ -1,13 +1,13 @@
 import React from 'react';
-import { prisma } from '@stemory/database';
+import { db } from '@stemory/database';
 import styles from '../dashboard.module.css';
 
 
 
 export default async function AdminReportsPage() {
-  const events = await prisma.analyticsEvent.findMany({
-    orderBy: { createdAt: 'desc' },
-    take: 50
+  const events = await db.query.analyticsEvent.findMany({
+    orderBy: (table, { desc }) => [desc(table.createdAt)],
+    limit: 50
   });
 
   return (

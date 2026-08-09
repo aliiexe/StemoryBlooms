@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@stemory/database';
+import { db, product } from '@stemory/database';
 
 
 
 export async function GET() {
   try {
-    const products = await prisma.product.findMany();
+    const products = await db.select().from(product);
     return NextResponse.json(products);
   } catch (error) {
     console.error(error);

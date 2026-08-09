@@ -1,6 +1,8 @@
 'use server';
 
-import { prisma } from '@stemory/database';
+import { db } from '@stemory/database';
+import { promoCode, giftCard } from '@stemory/database/schema';
+import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 export async function savePromoCode(formData: FormData) {
@@ -18,13 +20,14 @@ export async function savePromoCode(formData: FormData) {
 
   try {
     if (id) {
-      await prisma.promoCode.update({
-        where: { id },
-        data: { code: code.toUpperCase(), type, value, usageLimit, isActive }
-      });
+      await db.update(promoCode).set({
+        updatedAt: new Date(),
+        code: code.toUpperCase(), type, value, usageLimit, isActive
+      }).where(eq(promoCode.id, id));
     } else {
-      await prisma.promoCode.create({
-        data: { code: code.toUpperCase(), type, value, usageLimit, isActive }
+      await db.insert(promoCode).values({
+        id: crypto.randomUUID(), updatedAt: new Date(),
+        code: code.toUpperCase(), type, value, usageLimit, isActive
       });
     }
     
@@ -38,7 +41,7 @@ export async function savePromoCode(formData: FormData) {
 
 export async function deletePromoCode(id: string) {
   try {
-    await prisma.promoCode.delete({ where: { id } });
+    await db.delete(promoCode).where(eq(promoCode.id, id));
     revalidatePath('/admin/promotions');
     return { success: true };
   } catch (err) {
@@ -60,13 +63,14 @@ export async function saveGiftCard(formData: FormData) {
 
   try {
     if (id) {
-      await prisma.giftCard.update({
-        where: { id },
-        data: { code: code.toUpperCase(), initialBalance, currentBalance, isActive }
-      });
+      await db.update(giftCard).set({
+        updatedAt: new Date(),
+        code: code.toUpperCase(), initialBalance, currentBalance, isActive
+      }).where(eq(giftCard.id, id));
     } else {
-      await prisma.giftCard.create({
-        data: { code: code.toUpperCase(), initialBalance, currentBalance, isActive }
+      await db.insert(giftCard).values({
+        id: crypto.randomUUID(), updatedAt: new Date(),
+        code: code.toUpperCase(), initialBalance, currentBalance, isActive
       });
     }
     
@@ -80,7 +84,7 @@ export async function saveGiftCard(formData: FormData) {
 
 export async function deleteGiftCard(id: string) {
   try {
-    await prisma.giftCard.delete({ where: { id } });
+    await db.delete(giftCard).where(eq(giftCard.id, id));
     revalidatePath('/admin/promotions');
     return { success: true };
   } catch (err) {

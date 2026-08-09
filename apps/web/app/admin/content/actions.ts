@@ -1,6 +1,8 @@
 'use server';
 
-import { prisma } from '@stemory/database';
+import { db } from '@stemory/database';
+import { promoCode } from '@stemory/database/schema';
+import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 export async function createPromoCode(formData: FormData) {
@@ -16,13 +18,13 @@ export async function createPromoCode(formData: FormData) {
   const usageLimit = usageLimitStr ? parseInt(usageLimitStr, 10) : null;
 
   try {
-    await prisma.promoCode.create({
-      data: {
+    await db.insert(promoCode).values({
+        id: crypto.randomUUID(),
+        updatedAt: new Date(),
         code: code.toUpperCase().trim(),
         type,
         value,
         usageLimit
-      }
     });
     revalidatePath('/admin/content');
     return { success: true };
@@ -36,10 +38,7 @@ export async function createPromoCode(formData: FormData) {
 
 export async function togglePromoCode(id: string, isActive: boolean) {
   try {
-    await prisma.promoCode.update({
-      where: { id },
-      data: { isActive }
-    });
+    await db.update(promoCode).set({ isActive, updatedAt: new Date() }).where(eq(promoCode.id, id));
     revalidatePath('/admin/content');
     return { success: true };
   } catch (error) {
@@ -49,9 +48,7 @@ export async function togglePromoCode(id: string, isActive: boolean) {
 
 export async function deletePromoCode(id: string) {
   try {
-    await prisma.promoCode.delete({
-      where: { id }
-    });
+    await db.delete(promoCode).where(eq(promoCode.id, id));
     revalidatePath('/admin/content');
     return { success: true };
   } catch (error) {

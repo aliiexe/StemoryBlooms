@@ -1,13 +1,13 @@
 import React from 'react';
 import Link from 'next/link';
-import { prisma } from '@stemory/database';
+import { db } from '@stemory/database';
 import styles from '../dashboard.module.css';
 
 
 
 export default async function AdminProductsPage() {
-  const products = await prisma.product.findMany({
-    orderBy: { createdAt: 'desc' },
+  const products = await db.query.product.findMany({
+    orderBy: (product, { desc }) => [desc(product.createdAt)],
   });
 
   return (

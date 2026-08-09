@@ -215,15 +215,92 @@
   color: #8C9C76;
 }
 
-/* Featured Collection */
+.bestSellers {
+  padding: 4rem 2rem 2rem;
+  background-color: var(--surface-primary);
+}
+
+@media (min-width: 768px) {
+  .bestSellers {
+    padding: 4rem 5rem 2rem;
+  }
+}
+
+.bestSellersHeader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 2.25rem;
+}
+
+.sectionIntro {
+  margin: 0;
+  color: #5F584F;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.bestSellerGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+}
+
+@media (min-width: 768px) {
+  .bestSellerGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .bestSellerGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
 .featured {
-  padding: 6rem 2rem;
+  padding: 2rem 2rem 6rem;
   background-color: var(--surface-primary);
 }
 
 @media (min-width: 768px) {
   .featured {
     padding: 8rem 5rem;
+  }
+}
+
+@media (max-width: 767px) {
+  .heroContent {
+    padding: 3.5rem 1.5rem 2rem;
+  }
+
+  .mainHeading {
+    font-size: 2.6rem;
+  }
+
+  .subtitle {
+    font-size: 1rem;
+  }
+
+  .featuresBar {
+    padding: 2rem 1.5rem;
+    gap: 1rem;
+  }
+
+  .bestSellers,
+  .featured {
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+  }
+
+  .featuredTitle {
+    font-size: 2.25rem;
+  }
+
+  .viewAllLink,
+  .sectionIntro {
+    font-size: 0.95rem;
   }
 }
 

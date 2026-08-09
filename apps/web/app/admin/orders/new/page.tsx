@@ -1,13 +1,11 @@
 import React from 'react';
-import { PrismaClient } from '@stemory/database';
+import { db, product as productSchema, customer as customerSchema, order as orderSchema, orderItem as orderItemSchema, socialOrderMetadata as socialOrderMetadataSchema, eq } from '@stemory/database';
 import { redirect } from 'next/navigation';
 import styles from '../../dashboard.module.css';
 
-const prisma = new PrismaClient();
-
 export default async function NewAssistedOrderPage() {
-  const products = await prisma.product.findMany({
-    where: { isAvailable: true }
+  const products = await db.query.product.findMany({
+    where: (products, { eq }) => eq(products.isAvailable, true)
   });
 
   async function createAssistedOrder(formData: FormData) {
@@ -20,47 +18,66 @@ export default async function NewAssistedOrderPage() {
     const notes = formData.get('notes') as string;
     const total = parseInt(formData.get('total') as string, 10);
 
-    const product = await prisma.product.findUnique({ where: { id: productId } });
+    const product = await db.query.product.findFirst({ 
+      where: (p, { eq }) => eq(p.id, productId)
+    });
+    
     if (!product) throw new Error("Product not found");
 
-    await prisma.$transaction(async (tx: any) => {
-      const customer = await tx.customer.upsert({
-        where: { phone: phoneNumber },
-        update: { firstName: customerName },
-        create: { firstName: customerName, lastName: '', phone: phoneNumber }
+    await db.transaction(async (tx) => {
+      let customer = await tx.query.customer.findFirst({
+        where: (c, { eq }) => eq(c.phone, phoneNumber)
       });
+      
+      if (customer) {
+        const [updated] = await tx.update(customerSchema)
+          .set({ firstName: customerName, updatedAt: new Date() })
+          .where(eq(customerSchema.id, customer.id))
+          .returning();
+        customer = updated;
+      } else {
+        const [inserted] = await tx.insert(customerSchema).values({
+          id: crypto.randomUUID(),
+          updatedAt: new Date(),
+          phone: phoneNumber,
+          firstName: customerName,
+          lastName: ''
+        }).returning();
+        customer = inserted;
+      }
 
       const orderNumber = `AST-${Date.now().toString().slice(-6)}`;
       
-      const order = await tx.order.create({
-        data: {
-          orderNumber,
-          customerId: customer.id,
-          status: 'CONFIRMED',
-          source: source,
-          subtotal: total - 50,
-          deliveryFee: 50,
-          total: total,
-          notes: notes,
-          deliveryAddress: { city: 'Assisted Order - TBD', addressLine1: 'TBD' },
-          items: {
-            create: [{
-              productId: product.id,
-              productName: product.name,
-              quantity: 1,
-              unitPrice: product.basePrice,
-              totalPrice: product.basePrice,
-            }]
-          }
-        }
+      const [order] = await tx.insert(orderSchema).values({
+        id: crypto.randomUUID(),
+        updatedAt: new Date(),
+        orderNumber,
+        customerId: customer.id,
+        status: 'CONFIRMED',
+        source: source,
+        subtotal: total - 50,
+        deliveryFee: 50,
+        total: total,
+        notes: notes,
+        deliveryAddress: { city: 'Assisted Order - TBD', addressLine1: 'TBD' }
+      }).returning();
+
+      await tx.insert(orderItemSchema).values({
+        id: crypto.randomUUID(),
+        updatedAt: new Date(),
+        orderId: order.id,
+        productId: product.id,
+        productName: product.name,
+        quantity: 1,
+        unitPrice: product.basePrice,
+        totalPrice: product.basePrice,
       });
 
-      await tx.socialOrderMetadata.create({
-        data: {
-          orderId: order.id,
-          handle: phoneNumber, // Can be overridden if needed
-          platform: source
-        }
+      await tx.insert(socialOrderMetadataSchema).values({
+        id: crypto.randomUUID(),
+        orderId: order.id,
+        handle: phoneNumber,
+        platform: source
       });
     });
 

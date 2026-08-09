@@ -135,6 +135,214 @@
   color: var(--brand-primary);
 }
 
+.searchOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(27, 20, 15, 0.48);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 6rem 1.25rem 2rem;
+}
+
+.searchModal {
+  width: min(640px, 100%);
+  border-radius: 28px;
+  border: 1px solid rgba(234, 230, 223, 0.9);
+  background: linear-gradient(180deg, rgba(253, 251, 247, 0.98) 0%, rgba(247, 242, 234, 0.98) 100%);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.22);
+  padding: 1.5rem;
+}
+
+.searchModalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.searchEyebrow {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.searchTitle {
+  margin: 0;
+  font-family: var(--font-editorial);
+  font-size: 2rem;
+  font-weight: 400;
+  line-height: 1.1;
+  color: var(--text-primary);
+}
+
+.searchCloseBtn {
+  border: none;
+  background: rgba(58, 53, 49, 0.08);
+  color: var(--text-primary);
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.searchFieldWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.searchFieldIcon {
+  position: absolute;
+  left: 1rem;
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  height: 56px;
+  border-radius: 18px;
+  border: 1px solid #ded4c4;
+  background: #fdfbf7;
+  color: var(--text-primary);
+  padding: 0 1rem 0 3rem;
+  font-size: 1rem;
+  outline: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.searchInput:focus {
+  border-color: rgba(79, 112, 66, 0.55);
+  box-shadow: 0 0 0 4px rgba(79, 112, 66, 0.1);
+}
+
+.searchActions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.searchPrimaryBtn,
+.searchSecondaryBtn {
+  border: none;
+  border-radius: 999px;
+  padding: 0.95rem 1.25rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.searchPrimaryBtn {
+  background: var(--brand-primary);
+  color: #fdfbf7;
+  flex: 1;
+}
+
+.searchSecondaryBtn {
+  background: rgba(58, 53, 49, 0.08);
+  color: var(--text-primary);
+}
+
+.searchHint {
+  margin: 1rem 0 0;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 900px) {
+  .header {
+    padding: var(--space-3) var(--space-4);
+    gap: var(--space-3);
+  }
+
+  .logo img {
+    height: 30px;
+  }
+
+  .nav {
+    display: none;
+  }
+
+  .actions {
+    gap: var(--space-3);
+    margin-left: auto;
+  }
+
+  .iconBtn {
+    padding: 0;
+  }
+
+  .hamburger {
+    display: flex;
+    align-items: center;
+  }
+
+  .mobileNav {
+    padding: var(--space-4);
+  }
+
+  .mobileNavLinks a {
+    font-size: 1.25rem;
+  }
+
+  .cartDrawer {
+    width: 100vw;
+  }
+
+  .searchOverlay {
+    padding-top: 4rem;
+  }
+
+  .searchTitle {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .header {
+    padding: var(--space-3) var(--space-3);
+  }
+
+  .actions {
+    gap: var(--space-2);
+  }
+
+  .cartDrawer {
+    width: 100vw;
+  }
+
+  .cartItems {
+    padding: var(--space-4);
+  }
+
+  .cartItem {
+    gap: var(--space-3);
+  }
+
+  .cartItemImage {
+    width: 64px;
+    height: 64px;
+  }
+
+  .searchModal {
+    padding: 1.1rem;
+    border-radius: 22px;
+  }
+
+  .searchActions {
+    flex-direction: column;
+  }
+}
+
 /* Cart drawer overlay */
 .overlay {
   position: fixed;

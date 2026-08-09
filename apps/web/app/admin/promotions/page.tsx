@@ -1,16 +1,16 @@
 import React from 'react';
-import { prisma } from '@stemory/database';
+import { db } from '@stemory/database';
 import styles from '../dashboard.module.css';
 import { PromoForm } from './PromoForm';
 import { GiftCardForm } from './GiftCardForm';
 
 export default async function AdminPromotionsPage() {
-  const promoCodes = await prisma.promoCode.findMany({
-    orderBy: { createdAt: 'desc' }
+  const promoCodes = await db.query.promoCode.findMany({
+    orderBy: (table, { desc }) => [desc(table.createdAt)]
   });
 
-  const giftCards = await prisma.giftCard.findMany({
-    orderBy: { createdAt: 'desc' }
+  const giftCards = await db.query.giftCard.findMany({
+    orderBy: (table, { desc }) => [desc(table.createdAt)]
   });
 
   return (

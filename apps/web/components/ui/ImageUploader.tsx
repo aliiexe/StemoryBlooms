@@ -1,47 +1,86 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { UploadCloud, X } from 'lucide-react';
-import Image from 'next/image';
 
 interface ImageUploaderProps {
   initialImages?: string[];
   onChange?: (images: string[]) => void;
+  onFilesChange?: (files: File[]) => void;
   name?: string;
 }
 
-export function ImageUploader({ initialImages = [], onChange, name }: ImageUploaderProps) {
-  const [images, setImages] = useState<string[]>(initialImages);
+interface DisplayImage {
+  id: string;
+  src: string;
+  isExisting: boolean;
+  file?: File;
+}
+
+export function ImageUploader({ initialImages = [], onChange, onFilesChange, name }: ImageUploaderProps) {
+  const [displayImages, setDisplayImages] = useState<DisplayImage[]>(() => initialImages.map((image) => ({
+    id: image,
+    src: image,
+    isExisting: true,
+  })));
+  const [persistedImages, setPersistedImages] = useState<string[]>(() => initialImages);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const addFiles = (files: File[]) => {
+    if (!files.length) return;
+
+    const nextPendingFiles = [...pendingFiles, ...files];
+    setPendingFiles(nextPendingFiles);
+    onFilesChange?.(nextPendingFiles);
+
+    const nextDisplayImages = files.map((file) => ({
+      id: `${file.name}-${file.lastModified}-${Math.random().toString(36).slice(2)}`,
+      src: URL.createObjectURL(file),
+      isExisting: false,
+      file,
+    }));
+
+    setDisplayImages((prev) => [...prev, ...nextDisplayImages]);
+  };
+
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Mock upload: we just use a generic placeholder instead of actually uploading to S3
-    // In a real app, we'd upload the File to Vercel Blob/S3 here and get a URL back.
-    if (e.target.files && e.target.files.length > 0) {
-      const newImages = [...images, '/hero-bouquet.png'];
-      setImages(newImages);
-      if (onChange) onChange(newImages);
-    }
+    const selectedFiles = Array.from(e.target.files || []);
+    addFiles(selectedFiles);
+    e.target.value = '';
   };
 
   const removeImage = (index: number) => {
-    const newImages = [...images];
-    newImages.splice(index, 1);
-    setImages(newImages);
-    if (onChange) onChange(newImages);
+    const item = displayImages[index];
+    if (!item) return;
+
+    setDisplayImages((prev) => prev.filter((_, idx) => idx !== index));
+
+    if (item.isExisting) {
+      const nextPersistedImages = persistedImages.filter((image) => image !== item.src);
+      setPersistedImages(nextPersistedImages);
+      onChange?.(nextPersistedImages);
+    } else if (item.file) {
+      const nextPendingFiles = pendingFiles.filter((file) => file !== item.file);
+      setPendingFiles(nextPendingFiles);
+      onFilesChange?.(nextPendingFiles);
+    }
   };
 
   return (
     <div style={{ width: '100%' }}>
-      {/* Hidden input to submit the array of strings as a JSON string for FormData */}
-      {name && <input type="hidden" name={name} value={JSON.stringify(images)} />}
-      
-      <div 
+      {name && <input type="hidden" name={name} value={JSON.stringify(persistedImages)} />}
+
+      <div
         onClick={() => fileInputRef.current?.click()}
         onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
         onDragLeave={() => setIsDragging(false)}
-        onDrop={(e) => { e.preventDefault(); setIsDragging(false); /* mock drop */ setImages([...images, '/hero-bouquet.png']); }}
+        onDrop={(e) => {
+          e.preventDefault();
+          setIsDragging(false);
+          addFiles(Array.from(e.dataTransfer.files || []));
+        }}
         style={{
           border: `2px dashed ${isDragging ? 'var(--brand-primary)' : '#D6CFE6'}`,
           borderRadius: '16px',
@@ -68,22 +107,22 @@ export function ImageUploader({ initialImages = [], onChange, name }: ImageUploa
             SVG, PNG, JPG or GIF (max. 5MB)
           </p>
         </div>
-        <input 
-          type="file" 
-          ref={fileInputRef} 
+        <input
+          type="file"
+          ref={fileInputRef}
           onChange={handleFile}
-          style={{ display: 'none' }} 
+          style={{ display: 'none' }}
           accept="image/*"
           multiple
         />
       </div>
 
-      {images.length > 0 && (
+      {displayImages.length > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: '1rem', marginTop: '1.5rem' }}>
-          {images.map((img, idx) => (
-            <div key={idx} style={{ position: 'relative', aspectRatio: '1/1', borderRadius: '12px', overflow: 'hidden', border: '1px solid #EAE6DF' }}>
-              <Image src={img} alt={`Upload ${idx}`} fill style={{ objectFit: 'cover' }} />
-              <button 
+          {displayImages.map((img, idx) => (
+            <div key={img.id} style={{ position: 'relative', aspectRatio: '1/1', borderRadius: '12px', overflow: 'hidden', border: '1px solid #EAE6DF' }}>
+              <img src={img.src} alt={`Upload ${idx}`} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+              <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); removeImage(idx); }}
                 style={{ position: 'absolute', top: '4px', right: '4px', width: '24px', height: '24px', borderRadius: '50%', backgroundColor: 'rgba(0,0,0,0.5)', color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}

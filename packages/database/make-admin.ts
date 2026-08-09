@@ -12,7 +12,7 @@ async function main() {
   console.log(`Looking for user with email: ${email}...`)
 
   // Ensure OWNER role exists
-  const ownerRole = await prisma.role.upsert({
+  const ownerRole = await db.insert(role).values({
     where: { name: 'OWNER' },
     update: {},
     create: { name: 'OWNER' },

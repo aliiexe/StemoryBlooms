@@ -1,9 +1,9 @@
-import { prisma } from '@stemory/database';
+import { db } from '@stemory/database';
 import styles from '../../dashboard.module.css';
 import { updateBarSettings } from '../actions';
 
 export default async function AnnouncementSettingsPage() {
-  const settings = await prisma.announcementBarSettings.findFirst();
+  const settings = await db.query.announcementBarSettings.findFirst();
 
   const TRANSITIONS = ['FADE', 'SLIDE_H', 'SLIDE_V', 'DISSOLVE', 'NONE'];
   const MODES = ['AUTO', 'STATIC', 'CAROUSEL'];

@@ -1,4 +1,4 @@
-import { prisma } from '@stemory/database';
+import { db, eq, sql, announcement, announcementBarSettings, asc, desc } from '@stemory/database';
 import Link from 'next/link';
 import styles from '../dashboard.module.css';
 import {
@@ -16,10 +16,14 @@ const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   ARCHIVED:  { bg: '#ECEFF1', color: '#37474F' },
 };
 
-export default async function AnnouncementsPage() {
+export default async function Page(props: { searchParams: { page?: string, limit?: string } }) {
+  const page = Number(props.searchParams.page) || 1;
+  const limit = Number(props.searchParams.limit) || 10;
+  const offset = (page - 1) * limit;
+
   const [announcements, settings] = await Promise.all([
-    prisma.announcement.findMany({ orderBy: [{ order: 'asc' }, { createdAt: 'desc' }] }),
-    prisma.announcementBarSettings.findFirst(),
+    db.query.announcement.findMany({ orderBy: [asc(announcement.order), desc(announcement.createdAt)] }),
+    db.query.announcementBarSettings.findFirst(),
   ]);
 
   return (

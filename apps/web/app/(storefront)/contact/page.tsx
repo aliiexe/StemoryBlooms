@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { submitContactMessage } from './actions';
 
 export default function ContactPage() {
   const [status, setStatus] = useState<{ success?: boolean; error?: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
   return (
     <main style={{ backgroundColor: 'var(--surface-primary)', minHeight: '100vh', padding: '6rem 2rem' }}>
@@ -16,7 +17,7 @@ export default function ContactPage() {
             Get in Touch
           </h1>
           <p style={{ color: '#5A5551', fontSize: '1.1rem', lineHeight: 1.6 }}>
-            Have a question about an order, a custom arrangement, or a collaboration? We'd love to hear from you.
+            Have a question about an order, a custom arrangement, or a collaboration? We&apos;d love to hear from you.
           </p>
         </header>
 
@@ -29,10 +30,15 @@ export default function ContactPage() {
             action={async (formData) => {
               setIsSubmitting(true);
               const res = await submitContactMessage(formData);
-              if (res.error) setStatus({ error: res.error });
-              else setStatus({ success: true });
+              if (res.error) {
+                setStatus({ error: res.error });
+              } else {
+                setStatus({ success: true });
+                formRef.current?.reset();
+              }
               setIsSubmitting(false);
             }}
+            ref={formRef}
             style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}
           >
             
@@ -100,7 +106,7 @@ export default function ContactPage() {
         <div style={{ marginTop: '4rem', paddingTop: '2rem', borderTop: '1px solid #EAE6DF', textAlign: 'center', display: 'flex', justifyContent: 'center', gap: '3rem' }}>
           <div>
             <h4 style={{ color: '#3A3531', marginBottom: '0.5rem' }}>Email</h4>
-            <a href="mailto:hello@stemoryblooms.com" style={{ color: 'var(--brand-primary)', textDecoration: 'none' }}>hello@stemoryblooms.com</a>
+            <a href="mailto:stemoryblooms@gmail.com" style={{ color: 'var(--brand-primary)', textDecoration: 'none' }}>stemoryblooms@gmail.com</a>
           </div>
           <div>
             <h4 style={{ color: '#3A3531', marginBottom: '0.5rem' }}>Social</h4>

@@ -1,7 +1,8 @@
 'use server';
 
-import { prisma } from '@stemory/database';
+import { db, review } from '@stemory/database';
 import { revalidatePath } from 'next/cache';
+import crypto from 'crypto';
 
 export async function submitReview(productId: string, formData: FormData) {
   const authorName = formData.get('authorName') as string;
@@ -14,15 +15,15 @@ export async function submitReview(productId: string, formData: FormData) {
   }
 
   try {
-    await prisma.review.create({
-      data: {
-        productId,
-        authorName,
-        rating,
-        title,
-        content,
-        status: 'PENDING'
-      }
+    await db.insert(review).values({
+      id: crypto.randomUUID(),
+      productId,
+      authorName,
+      rating,
+      title,
+      content,
+      status: 'PENDING',
+      updatedAt: new Date()
     });
 
     revalidatePath(`/shop/${productId}`);

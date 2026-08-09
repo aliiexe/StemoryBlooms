@@ -4,22 +4,21 @@
   "private": true,
   "main": "./index.ts",
   "scripts": {
-    "db:generate": "prisma generate",
-    "db:push": "prisma db push",
-    "db:seed": "prisma db seed",
-    "make-admin": "tsx make-admin.ts",
-    "postinstall": "prisma generate"
+    "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "make-admin": "tsx make-admin.ts"
   },
   "dependencies": {
-    "@prisma/client": "^5.15.0",
-    "@prisma/extension-accelerate": "^3.0.1"
+    "@neondatabase/serverless": "^0.10.4",
+    "@prisma/client": "5.22.0",
+    "drizzle-orm": "^0.45.2"
   },
   "devDependencies": {
-    "prisma": "^5.15.0",
-    "tsx": "^4.16.2",
-    "typescript": "^5.5.3"
-  },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
+    "dotenv": "^17.4.2",
+    "drizzle-kit": "^0.31.10",
+    "prisma": "5.22.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
   }
 }

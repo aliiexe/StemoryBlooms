@@ -1,12 +1,12 @@
 import React from 'react';
-import { prisma } from '@stemory/database';
+import { db } from '@stemory/database';
 import styles from '../dashboard.module.css';
 
 
 
 export default async function AdminCustomOrdersPage() {
-  const draftOrders = await prisma.draftOrder.findMany({
-    orderBy: { createdAt: 'desc' }
+  const draftOrders = await db.query.draftOrder.findMany({
+    orderBy: (table, { desc }) => [desc(table.createdAt)]
   });
 
   return (

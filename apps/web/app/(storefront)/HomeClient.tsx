@@ -22,7 +22,15 @@ const staggerContainer = {
   },
 };
 
-export default function HomeClient({ featuredProducts }: { featuredProducts: any[] }) {
+type FeaturedProduct = {
+  id: string;
+  title: string;
+  price: number;
+  salePrice?: number | null;
+  imageUrl: string;
+};
+
+export default function HomeClient({ collectionProducts = [], bestSellerProducts = [] }: { collectionProducts?: FeaturedProduct[]; bestSellerProducts?: FeaturedProduct[] }) {
   return (
     <main className={styles.main}>
       {/* HERO SECTION */}
@@ -79,6 +87,35 @@ export default function HomeClient({ featuredProducts }: { featuredProducts: any
         </div>
       </section>
 
+      {bestSellerProducts.length > 0 && (
+        <section className={styles.bestSellers}>
+          <div className={styles.bestSellersHeader}>
+            <h2 className={styles.featuredTitle}>Best Sellers</h2>
+            <p className={styles.sectionIntro}>The pieces people keep coming back for.</p>
+          </div>
+
+          <motion.div
+            className={styles.bestSellerGrid}
+            variants={staggerContainer}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-100px" }}
+          >
+            {bestSellerProducts.map((product) => (
+              <motion.div key={product.id} variants={fadeInUp}>
+                <ProductCard
+                  id={product.id}
+                  title={product.title}
+                  price={product.price}
+                  salePrice={product.salePrice}
+                  imageUrl={product.imageUrl || '/hero-bouquet.png'}
+                />
+              </motion.div>
+            ))}
+          </motion.div>
+        </section>
+      )}
+
       {/* FEATURED COLLECTION */}
       <section className={styles.featured}>
         <div className={styles.featuredHeader}>
@@ -86,7 +123,7 @@ export default function HomeClient({ featuredProducts }: { featuredProducts: any
           <Link href="/shop" className={styles.viewAllLink}>View All &rarr;</Link>
         </div>
         
-        {featuredProducts.length > 0 ? (
+        {collectionProducts.length > 0 ? (
           <motion.div 
             className={styles.productGrid}
             variants={staggerContainer}
@@ -94,12 +131,13 @@ export default function HomeClient({ featuredProducts }: { featuredProducts: any
             whileInView="visible"
             viewport={{ once: true, margin: "-100px" }}
           >
-            {featuredProducts.map((product) => (
+            {collectionProducts.map((product) => (
               <motion.div key={product.id} variants={fadeInUp}>
                 <ProductCard 
                   id={product.id}
                   title={product.title}
                   price={product.price}
+                  salePrice={product.salePrice}
                   imageUrl={product.imageUrl || '/hero-bouquet.png'}
                 />
               </motion.div>

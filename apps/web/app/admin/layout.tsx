@@ -1,6 +1,6 @@
 import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
-import { prisma } from '@stemory/database';
+import { db } from '@stemory/database';
 import AdminLayoutUI from './AdminLayoutUI';
 
 
@@ -13,9 +13,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-      include: { role: true }
+    const user = await db.query.user.findFirst({
+      where: (user, { eq }) => eq(user.clerkId, userId),
+      with: { role: true }
     });
 
     if (user?.role?.name !== 'ADMIN') {

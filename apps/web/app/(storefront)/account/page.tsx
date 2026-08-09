@@ -1,5 +1,5 @@
 import { currentUser } from '@clerk/nextjs/server';
-import { prisma } from '@stemory/database';
+import { db, customer as customerTable, order as orderTable, eq, desc } from '@stemory/database';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 
@@ -12,22 +12,22 @@ export default async function AccountPage() {
   const primaryEmail = user.emailAddresses[0]?.emailAddress;
 
   const customer = primaryEmail 
-    ? await prisma.customer.findUnique({
-        where: { email: primaryEmail },
-        include: { addresses: true }
+    ? await db.query.customer.findFirst({
+        where: eq(customerTable.email, primaryEmail),
+        with: { addresses: true }
       })
     : null;
 
   const orders = customer
-    ? await prisma.order.findMany({
-        where: { customerId: customer.id },
-        orderBy: { createdAt: 'desc' },
-        include: { items: true }
+    ? await db.query.order.findMany({
+        where: eq(orderTable.customerId, customer.id),
+        orderBy: [desc(orderTable.createdAt)],
+        with: { orderItems: true }
       })
     : [];
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'MAD' }).format(amount / 100);
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'MAD' }).format(amount);
   };
 
   const formatDate = (date: Date) => {
@@ -69,7 +69,7 @@ export default async function AccountPage() {
                   <div style={{ borderTop: '1px solid #F5F5F5', paddingTop: '1rem' }}>
                     <p style={{ fontSize: '0.9rem', color: '#4A4A4A', marginBottom: '0.5rem', fontWeight: 500 }}>Items</p>
                     <ul style={{ listStyle: 'none', padding: 0, margin: 0, fontSize: '0.9rem', color: '#7A7571' }}>
-                      {order.items.map(item => (
+                      {order.orderItems.map(item => (
                         <li key={item.id} style={{ marginBottom: '0.25rem' }}>
                           {item.quantity}x {item.productName}
                         </li>

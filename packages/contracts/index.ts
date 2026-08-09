@@ -34,10 +34,12 @@ export const CartItemSchema = z.object({
 
 export const CheckoutPayloadSchema = z.object({
   customerName: z.string().min(2, "Full name is required"),
-  phoneNumber: z.string().regex(/^(?:(?:(?:\+|00)212[\s]?(?:[\s]?\(0\)[\s]?)?)|0){1}(?:5[\s.-]?[2-3]|6[\s.-]?[13-9]{1}|7[\s.-]?[0-28-9]{1})[\s.-]?\d{2}[\s.-]?\d{2}[\s.-]?\d{2}$/, "Must be a valid Moroccan phone number"),
+  email: z.string().email("Must be a valid email"),
+  phoneNumber: z.string().regex(/^(?:\+212|0)\s*[5-7](?:\s*\d){8}$/, "Must be a valid Moroccan phone number"),
   city: z.string().min(1, "City is required"),
   address: z.string().min(5, "Complete address is required"),
   deliveryInstructions: z.string().optional(),
+  deliveryCompanyId: z.string().optional(),
   promoCode: z.string().optional(),
   giftCardCode: z.string().optional(),
   cartItems: z.array(CartItemSchema).min(1, "Cart cannot be empty"),

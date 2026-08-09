@@ -1,14 +1,22 @@
 import React from 'react';
-import { prisma } from '@stemory/database';
+import { db } from '@stemory/database';
+import { order, customer } from '@stemory/database/schema';
+import { eq, desc } from 'drizzle-orm';
 import styles from '../dashboard.module.css'; // Reusing dashboard styles for simplicity
 
 
 
 export default async function AdminOrdersPage() {
-  const orders = await prisma.order.findMany({
-    orderBy: { createdAt: 'desc' },
-    include: { customer: true, items: true }
-  });
+  const rows = await db
+    .select({ order, customer })
+    .from(order)
+    .leftJoin(customer, eq(order.customerId, customer.id))
+    .orderBy(desc(order.createdAt));
+
+  const orders = rows.map((r) => ({
+    ...r.order,
+    customer: r.customer!
+  }));
 
   return (
     <div className={styles.dashboard}>

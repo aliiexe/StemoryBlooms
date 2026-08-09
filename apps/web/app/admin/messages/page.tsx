@@ -1,11 +1,11 @@
 import React from 'react';
-import { prisma } from '@stemory/database';
+import { db } from '@stemory/database';
 import styles from '../dashboard.module.css';
 import { MessageActions } from './MessageActions';
 
 export default async function AdminMessagesPage() {
-  const messages = await prisma.contactMessage.findMany({
-    orderBy: { createdAt: 'desc' }
+  const messages = await db.query.contactMessage.findMany({
+    orderBy: (contactMessage, { desc }) => [desc(contactMessage.createdAt)]
   });
 
   return (

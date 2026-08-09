@@ -1,12 +1,12 @@
 import React from 'react';
-import { prisma } from '@stemory/database';
+import { db } from '@stemory/database';
 import styles from '../dashboard.module.css';
 import PromoForm from './PromoForm';
 import { PromoActions } from './PromoActions';
 
 export default async function AdminContentPage() {
-  const promos = await prisma.promoCode.findMany({
-    orderBy: { createdAt: 'desc' }
+  const promos = await db.query.promoCode.findMany({
+    orderBy: (table, { desc }) => [desc(table.createdAt)]
   });
 
   return (

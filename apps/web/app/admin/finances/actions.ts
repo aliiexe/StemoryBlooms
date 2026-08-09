@@ -1,6 +1,8 @@
 'use server';
 
-import { prisma } from '@stemory/database';
+import { db } from '@stemory/database';
+import { expense } from '@stemory/database/schema';
+import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 export async function saveExpense(formData: FormData) {
@@ -18,14 +20,9 @@ export async function saveExpense(formData: FormData) {
 
   try {
     if (id) {
-      await prisma.expense.update({
-        where: { id },
-        data: { description, category, amount, date }
-      });
+      await db.update(expense).set({ description, category, amount, date, updatedAt: new Date() }).where(eq(expense.id, id));
     } else {
-      await prisma.expense.create({
-        data: { description, category, amount, date }
-      });
+      await db.insert(expense).values({ id: crypto.randomUUID(), updatedAt: new Date(), description, category, amount, date });
     }
     
     revalidatePath('/admin/finances');
@@ -38,10 +35,14 @@ export async function saveExpense(formData: FormData) {
 
 export async function deleteExpense(id: string) {
   try {
-    await prisma.expense.delete({ where: { id } });
+    await db.delete(expense).where(eq(expense.id, id));
     revalidatePath('/admin/finances');
     return { success: true };
   } catch (err) {
     return { error: 'Failed to delete expense' };
   }
+}
+
+export async function backfillMaterialExpenses() {
+  return { backfilled: 0 };
 }

@@ -1,13 +1,22 @@
 import React from 'react';
-import { prisma } from '@stemory/database';
+import { db } from '@stemory/database';
+import { productMaterial } from '@stemory/database/schema';
 import styles from '../dashboard.module.css';
 import { MaterialForm } from './MaterialForm';
 
 export default async function AdminMaterialsPage() {
-  const materials = await prisma.material.findMany({
-    orderBy: { name: 'asc' },
-    include: { _count: { select: { products: true } } }
+  const materialsRaw = await db.query.material.findMany({
+    orderBy: (material, { asc }) => [asc(material.name)],
   });
+
+  const pmRaw = await db.select({ materialId: productMaterial.materialId }).from(productMaterial);
+
+  const materials = materialsRaw.map((m) => ({
+    ...m,
+    _count: {
+      products: pmRaw.filter((pm) => pm.materialId === m.id).length
+    }
+  }));
 
   return (
     <div className={styles.dashboard}>

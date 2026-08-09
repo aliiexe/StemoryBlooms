@@ -1,10 +1,10 @@
 import React from 'react';
-import { prisma } from '@stemory/database';
+import { db } from '@stemory/database';
 import styles from '../dashboard.module.css';
 
 export default async function AdminWaitlistPage() {
-  const waitlist = await prisma.waitlistEntry.findMany({
-    orderBy: { createdAt: 'desc' }
+  const waitlist = await db.query.waitlistEntry.findMany({
+    orderBy: (table, { desc }) => [desc(table.createdAt)]
   });
 
   return (

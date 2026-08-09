@@ -1,5 +1,5 @@
 import React from 'react';
-import { prisma } from '@stemory/database';
+import { db } from '@stemory/database';
 import styles from '../dashboard.module.css';
 import { setSiteMode } from './actions';
 
@@ -11,7 +11,7 @@ const MODE_CONFIG = {
 } as const;
 
 export default async function AdminSettingsPage() {
-  const settings = await prisma.siteSettings.findFirst();
+  const settings = await db.query.siteSettings.findFirst();
   const currentMode = (settings?.mode ?? 'WAITLIST') as keyof typeof MODE_CONFIG;
 
   return (

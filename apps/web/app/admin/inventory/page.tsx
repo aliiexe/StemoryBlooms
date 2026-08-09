@@ -1,12 +1,12 @@
 import React from 'react';
-import { prisma } from '@stemory/database';
+import { db } from '@stemory/database';
 import styles from '../dashboard.module.css';
 
 
 
 export default async function AdminInventoryPage() {
-  const materials = await prisma.material.findMany({
-    orderBy: { name: 'asc' }
+  const materials = await db.query.material.findMany({
+    orderBy: (material, { asc }) => [asc(material.name)]
   });
 
   return (

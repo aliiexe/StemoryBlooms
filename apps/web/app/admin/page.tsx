@@ -1,4 +1,6 @@
-import { prisma } from '@stemory/database';
+import { db } from '@stemory/database';
+import { order, material, adminInboxEvent, orderItem } from '@stemory/database/schema';
+import { count, sum, eq, gte, lt, desc } from 'drizzle-orm';
 import DashboardClient from './DashboardClient';
 
 
@@ -8,20 +10,23 @@ export default async function AdminDashboardPage() {
   today.setHours(0, 0, 0, 0);
 
   // Fetch actual data
-  const ordersTodayCount = await prisma.order.count({
-    where: { createdAt: { gte: today } }
-  });
+  const ordersTodayResult = await db.select({ count: count() }).from(order).where(gte(order.createdAt, today));
+  const ordersTodayCount = ordersTodayResult[0].count;
 
-  const [awaitingCount, productionCount, readyCount, completedCount] = await Promise.all([
-    prisma.order.count({ where: { status: 'NEW' } }),
-    prisma.order.count({ where: { status: 'IN_PRODUCTION' } }),
-    prisma.order.count({ where: { status: 'READY' } }),
-    prisma.order.count({ where: { status: 'COMPLETED' } })
+  const [awaitingResult, productionResult, readyResult, completedResult] = await Promise.all([
+    db.select({ count: count() }).from(order).where(eq(order.status, 'NEW')),
+    db.select({ count: count() }).from(order).where(eq(order.status, 'IN_PRODUCTION')),
+    db.select({ count: count() }).from(order).where(eq(order.status, 'READY')),
+    db.select({ count: count() }).from(order).where(eq(order.status, 'COMPLETED'))
   ]);
+  const awaitingCount = awaitingResult[0].count;
+  const productionCount = productionResult[0].count;
+  const readyCount = readyResult[0].count;
+  const completedCount = completedResult[0].count;
 
-  const ordersToday = await prisma.order.findMany({
-    where: { createdAt: { gte: today } },
-    select: { total: true }
+  const ordersToday = await db.query.order.findMany({
+    where: (table, { gte }) => gte(table.createdAt, today),
+    columns: { total: true }
   });
 
   const revenueToday = ordersToday.reduce((sum, order) => sum + order.total, 0);
@@ -35,10 +40,10 @@ export default async function AdminDashboardPage() {
     { label: 'Revenue', value: `${revenueToday} MAD`, sub: 'Live', positive: true },
   ];
 
-  const recentDbOrders = await prisma.order.findMany({
-    take: 5,
-    orderBy: { createdAt: 'desc' },
-    include: { customer: true }
+  const recentDbOrders = await db.query.order.findMany({
+    limit: 5,
+    orderBy: (table, { desc }) => [desc(table.createdAt)],
+    with: { customer: true }
   });
 
   const statusColors: any = {
@@ -63,9 +68,9 @@ export default async function AdminDashboardPage() {
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
   sevenDaysAgo.setHours(0, 0, 0, 0);
 
-  const recentSales = await prisma.order.findMany({
-    where: { createdAt: { gte: sevenDaysAgo } },
-    select: { createdAt: true, total: true }
+  const recentSales = await db.query.order.findMany({
+    where: (table, { gte }) => gte(table.createdAt, sevenDaysAgo),
+    columns: { createdAt: true, total: true }
   });
 
   // Group by day
@@ -83,35 +88,31 @@ export default async function AdminDashboardPage() {
   }
 
   // Get low stock materials
-  const lowStock = await prisma.material.findMany({
-    where: { quantity: { lt: 20 } },
-    take: 5,
-    orderBy: { quantity: 'asc' }
+  const lowStock = await db.query.material.findMany({
+    where: (table, { lt }) => lt(table.quantity, 20),
+    limit: 5,
+    orderBy: (table, { asc }) => [asc(table.quantity)]
   });
 
   // Get recent admin alerts
-  const socialInquiries = await prisma.adminInboxEvent.findMany({
-    take: 5,
-    orderBy: { createdAt: 'desc' }
+  const socialInquiries = await db.query.adminInboxEvent.findMany({
+    limit: 5,
+    orderBy: (table, { desc }) => [desc(table.createdAt)]
   });
 
   // Calculate top products by aggregating OrderItem
-  const orderItems = await prisma.orderItem.groupBy({
-    by: ['productName'],
-    _sum: {
-      quantity: true
-    },
-    orderBy: {
-      _sum: {
-        quantity: 'desc'
-      }
-    },
-    take: 5
-  });
+  const orderItemsResult = await db.select({
+    productName: orderItem.productName,
+    quantity: sum(orderItem.quantity)
+  })
+  .from(orderItem)
+  .groupBy(orderItem.productName)
+  .orderBy(desc(sum(orderItem.quantity)))
+  .limit(5);
 
-  const topProducts = orderItems.map(item => ({
+  const topProducts = orderItemsResult.map(item => ({
     name: item.productName,
-    sold: item._sum.quantity || 0
+    sold: Number(item.quantity) || 0
   }));
 
   return (

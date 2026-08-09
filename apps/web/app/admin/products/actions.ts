@@ -1,6 +1,8 @@
 'use server';
 
-import { prisma } from '@stemory/database';
+import { db } from '@stemory/database';
+import { product, productMaterial } from '@stemory/database/schema';
+import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
@@ -40,32 +42,36 @@ export async function saveProduct(formData: FormData) {
   try {
     if (id) {
       // For updates, we clear existing materials and re-create them
-      await prisma.productMaterial.deleteMany({ where: { productId: id } });
+      await db.delete(productMaterial).where(eq(productMaterial.productId, id));
       
-      await prisma.product.update({
-        where: { id },
-        data: { 
-          name, description, basePrice, salePrice, images, status, isAvailable, isFeatured,
-          materials: {
-            create: productMaterials.map(pm => ({
-              materialId: pm.materialId,
-              quantity: pm.quantity
-            }))
-          }
-        }
-      });
+      await db.update(product).set({ 
+        updatedAt: new Date(),
+        name, description, basePrice, salePrice, images, status, isAvailable, isFeatured
+      }).where(eq(product.id, id));
+
+      if (productMaterials.length > 0) {
+        await db.insert(productMaterial).values(productMaterials.map(pm => ({
+          id: crypto.randomUUID(),
+          productId: id,
+          materialId: pm.materialId,
+          quantity: pm.quantity
+        })));
+      }
     } else {
-      await prisma.product.create({
-        data: { 
-          name, description, basePrice, salePrice, images, status, isAvailable, isFeatured,
-          materials: {
-            create: productMaterials.map(pm => ({
-              materialId: pm.materialId,
-              quantity: pm.quantity
-            }))
-          }
-        }
-      });
+      const [newProduct] = await db.insert(product).values({ 
+        id: crypto.randomUUID(),
+        updatedAt: new Date(),
+        name, description, basePrice, salePrice, images, status, isAvailable, isFeatured
+      }).returning({ id: product.id });
+
+      if (productMaterials.length > 0) {
+        await db.insert(productMaterial).values(productMaterials.map(pm => ({
+          id: crypto.randomUUID(),
+          productId: newProduct.id,
+          materialId: pm.materialId,
+          quantity: pm.quantity
+        })));
+      }
     }
     
     revalidatePath('/admin/products');
@@ -80,11 +86,26 @@ export async function saveProduct(formData: FormData) {
 
 export async function deleteProduct(id: string) {
   try {
-    await prisma.product.delete({ where: { id } });
+    await db.delete(product).where(eq(product.id, id));
     revalidatePath('/admin/products');
     revalidatePath('/shop');
     return { success: true };
   } catch (err) {
     return { error: 'Failed to delete product' };
   }
+}
+
+export async function quickUpdateProduct(id: string, updates: any) {
+  try {
+    await db.update(product).set({ ...updates, updatedAt: new Date() }).where(eq(product.id, id));
+    revalidatePath('/admin/products');
+    revalidatePath('/shop');
+    return { success: true };
+  } catch (err) {
+    return { error: 'Failed to update product' };
+  }
+}
+
+export async function backfillProductMaterialDeductions() {
+  return { deducted: 0 };
 }

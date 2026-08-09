@@ -1,16 +1,14 @@
 import React from 'react';
-import { prisma } from '@stemory/database';
+import { db } from '@stemory/database';
 import styles from '../dashboard.module.css';
 
 
 
 export default async function AdminCustomersPage() {
-  const customers = await prisma.customer.findMany({
-    orderBy: { createdAt: 'desc' },
-    include: {
-      _count: {
-        select: { orders: true }
-      }
+  const customers = await db.query.customer.findMany({
+    orderBy: (table, { desc }) => [desc(table.createdAt)],
+    with: {
+      orders: true
     }
   });
 
@@ -37,7 +35,7 @@ export default async function AdminCustomersPage() {
                 <td>{c.firstName} {c.lastName}</td>
                 <td>{c.phone}</td>
                 <td>{c.email || '-'}</td>
-                <td>{c._count.orders}</td>
+                <td>{c.orders?.length || 0}</td>
                 <td>{new Date(c.createdAt).toLocaleDateString()}</td>
               </tr>
             ))}

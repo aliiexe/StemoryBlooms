@@ -1,4 +1,4 @@
-import { prisma } from '@stemory/database';
+import { db } from '@stemory/database';
 import { notFound } from 'next/navigation';
 import styles from '../../dashboard.module.css';
 import { updateAnnouncement } from '../actions';
@@ -7,8 +7,8 @@ import AnnouncementEditorForm from '../AnnouncementEditorForm';
 export default async function EditAnnouncementPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const [ann, templates] = await Promise.all([
-    prisma.announcement.findUnique({ where: { id } }),
-    prisma.announcementTemplate.findMany({ where: { active: true }, orderBy: { name: 'asc' } }),
+    db.query.announcement.findFirst({ where: (table, { eq }) => eq(table.id, id) }),
+    db.query.announcementTemplate.findMany({ where: (table, { eq }) => eq(table.active, true), orderBy: (table, { asc }) => [asc(table.name)] }),
   ]);
 
   if (!ann) notFound();

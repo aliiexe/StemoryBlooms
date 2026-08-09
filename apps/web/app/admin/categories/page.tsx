@@ -1,13 +1,18 @@
 import React from 'react';
-import { prisma } from '@stemory/database';
+import { db } from '@stemory/database';
 import styles from '../dashboard.module.css';
 import { CategoryForm } from './CategoryForm';
 
 export default async function AdminCategoriesPage() {
-  const categories = await prisma.category.findMany({
-    orderBy: { name: 'asc' },
-    include: { _count: { select: { products: true } } }
+  const categoriesRaw = await db.query.category.findMany({
+    orderBy: (table, { asc }) => [asc(table.name)],
+    with: { categoryToProducts: { columns: { a: true, b: true } } }
   });
+  
+  const categories = categoriesRaw.map(c => ({
+    ...c,
+    _count: { products: c.categoryToProducts.length }
+  }));
 
   return (
     <div className={styles.dashboard}>

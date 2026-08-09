@@ -1,14 +1,14 @@
 import React from 'react';
-import { prisma } from '@stemory/database';
+import { db, review as reviewTable, eq, desc } from '@stemory/database';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ReviewsPage() {
-  const reviews = await prisma.review.findMany({
-    where: { status: 'APPROVED' },
-    orderBy: { createdAt: 'desc' },
-    include: { product: true }
+  const reviews = await db.query.review.findMany({
+    where: eq(reviewTable.status, 'APPROVED'),
+    orderBy: [desc(reviewTable.createdAt)],
+    with: { product: true }
   });
 
   // Calculate average rating

@@ -1,12 +1,12 @@
 import React from 'react';
-import { prisma } from '@stemory/database';
+import { db } from '@stemory/database';
 import styles from '../dashboard.module.css';
 import { ReviewActions } from './ReviewActions';
 
 export default async function AdminReviewsPage() {
-  const reviews = await prisma.review.findMany({
-    orderBy: { createdAt: 'desc' },
-    include: { product: true }
+  const reviews = await db.query.review.findMany({
+    orderBy: (table, { desc }) => [desc(table.createdAt)],
+    with: { product: true }
   });
 
   return (

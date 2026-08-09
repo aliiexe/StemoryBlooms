@@ -1,20 +1,20 @@
 import React from 'react';
-import { prisma } from '@stemory/database';
+import { db } from '@stemory/database';
 import styles from '../dashboard.module.css';
 import { ExpenseForm } from './ExpenseForm';
 
 export default async function AdminFinancesPage() {
-  const expenses = await prisma.expense.findMany({
-    orderBy: { date: 'desc' }
+  const expenses = await db.query.expense.findMany({
+    orderBy: (expense, { desc }) => [desc(expense.date)]
   });
 
-  const orders = await prisma.order.findMany({
-    where: { paymentStatus: 'PAID' }
+  const orders = await db.query.order.findMany({
+    where: (order, { eq }) => eq(order.paymentStatus, 'PAID')
   });
 
   // Since we haven't implemented actual payment processing to mark orders as PAID,
   // we will just sum all orders for demonstration purposes in this phase.
-  const allOrders = await prisma.order.findMany();
+  const allOrders = await db.query.order.findMany();
 
   const totalRevenue = allOrders.reduce((acc, order) => acc + order.total, 0);
   const totalExpenses = expenses.reduce((acc, exp) => acc + exp.amount, 0);
