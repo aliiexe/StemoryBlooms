@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ProductCard } from "@stemory/ui";
+import { HeroSlideshow } from "../components/ui/HeroSlideshow";
 import styles from "./page.module.css";
 
 const fadeInUp = {
@@ -30,7 +31,17 @@ type FeaturedProduct = {
   imageUrl: string;
 };
 
-export default function HomeClient({ collectionProducts = [], bestSellerProducts = [] }: { collectionProducts?: FeaturedProduct[]; bestSellerProducts?: FeaturedProduct[] }) {
+export default function HomeClient({ 
+  collectionProducts = [], 
+  bestSellerProducts = [],
+  heroImages = [],
+  heroFadeSpeed = 5
+}: { 
+  collectionProducts?: FeaturedProduct[]; 
+  bestSellerProducts?: FeaturedProduct[];
+  heroImages?: string[];
+  heroFadeSpeed?: number;
+}) {
   return (
     <main className={styles.main}>
       {/* HERO SECTION */}
@@ -60,12 +71,10 @@ export default function HomeClient({ collectionProducts = [], bestSellerProducts
           transition={{ duration: 0.8, ease: "easeOut" }}
         >
           <div className={styles.imageContainer}>
-            <Image 
-              src="/hero-bouquet.png"
-              alt="Luxury Handcrafted Pipe Cleaner Bouquet"
-              fill
-              className={styles.heroImage}
-              priority
+            <HeroSlideshow 
+              images={heroImages} 
+              fadeSpeedSeconds={heroFadeSpeed} 
+              priority 
             />
           </div>
         </motion.div>

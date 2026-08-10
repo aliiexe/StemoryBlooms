@@ -2,18 +2,17 @@
 
 import React from 'react';
 import Image from 'next/image';
+import { HeroSlideshow } from '../components/ui/HeroSlideshow';
 import styles from './landing.module.css';
 
-export default function MaintenancePage() {
+export default function MaintenancePage({ heroImages = [], heroFadeSpeed = 5 }: { heroImages?: string[]; heroFadeSpeed?: number }) {
   return (
     <main className={styles.splitContainer}>
       <div className={styles.imageSide}>
-        <Image 
-          src="/hero-bouquet.png" 
-          alt="Beautiful stemory blooms bouquet" 
-          fill
-          priority
-          className={styles.heroImage}
+        <HeroSlideshow 
+          images={heroImages} 
+          fadeSpeedSeconds={heroFadeSpeed} 
+          priority 
         />
       </div>
 

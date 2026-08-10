@@ -2,6 +2,11 @@ import { db, product as productTable, orderItem, eq, desc, sql } from '@stemory/
 import HomeClient from './HomeClient';
 
 export default async function HomePage() {
+  const settings = await db.query.siteSettings.findFirst();
+  const config = settings?.config as Record<string, any> | null;
+  const heroImages = (config?.heroImages as string[]) || [];
+  const heroFadeSpeed = (config?.heroFadeSpeed as number) || 5;
+
   const dbProducts = await db.query.product.findMany({
     where: eq(productTable.status, 'PUBLISHED'),
     limit: 8,
@@ -50,5 +55,12 @@ export default async function HomePage() {
     imageUrl: p.images?.[0] || '/hero-bouquet.png'
   }));
 
-  return <HomeClient collectionProducts={collectionProducts} bestSellerProducts={bestSellerProducts} />;
+  return (
+    <HomeClient 
+      collectionProducts={collectionProducts} 
+      bestSellerProducts={bestSellerProducts} 
+      heroImages={heroImages}
+      heroFadeSpeed={heroFadeSpeed}
+    />
+  );
 }

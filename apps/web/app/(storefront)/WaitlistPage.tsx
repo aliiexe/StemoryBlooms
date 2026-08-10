@@ -2,10 +2,11 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
+import { HeroSlideshow } from '../components/ui/HeroSlideshow';
 import { joinWaitlist } from './actions';
 import styles from './landing.module.css';
 
-export default function WaitlistPage() {
+export default function WaitlistPage({ heroImages = [], heroFadeSpeed = 5 }: { heroImages?: string[]; heroFadeSpeed?: number }) {
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [isPending, setIsPending] = useState(false);
@@ -31,12 +32,10 @@ export default function WaitlistPage() {
   return (
     <main className={styles.splitContainer}>
       <div className={styles.imageSide}>
-        <Image 
-          src="/hero-bouquet.png" 
-          alt="Beautiful stemory blooms bouquet" 
-          fill
-          priority
-          className={styles.heroImage}
+        <HeroSlideshow 
+          images={heroImages} 
+          fadeSpeedSeconds={heroFadeSpeed} 
+          priority 
         />
       </div>
 

@@ -22,6 +22,10 @@ export default async function StorefrontLayout({
   const isWaitlist = settings?.mode === 'WAITLIST';
   const isMaintenance = settings?.mode === 'MAINTENANCE';
 
+  const config = settings?.config as Record<string, any> | null;
+  const heroImages = (config?.heroImages as string[]) || [];
+  const heroFadeSpeed = (config?.heroFadeSpeed as number) || 5;
+
   let isAdmin = false;
   if (userId) {
     try {
@@ -35,7 +39,7 @@ export default async function StorefrontLayout({
   if (isWaitlist && !isAdmin) {
     return (
       <ClerkProvider>
-        <WaitlistPage />
+        <WaitlistPage heroImages={heroImages} heroFadeSpeed={heroFadeSpeed} />
       </ClerkProvider>
     );
   }
@@ -43,7 +47,7 @@ export default async function StorefrontLayout({
   if (isMaintenance && !isAdmin) {
     return (
       <ClerkProvider>
-        <MaintenancePage />
+        <MaintenancePage heroImages={heroImages} heroFadeSpeed={heroFadeSpeed} />
       </ClerkProvider>
     );
   }
