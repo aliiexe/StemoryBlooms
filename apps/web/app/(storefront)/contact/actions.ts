@@ -42,7 +42,7 @@ export async function submitContactMessage(formData: FormData) {
     if (process.env.RESEND_API_KEY) {
       try {
         await resend.emails.send({
-          from: 'Stemory Blooms <orders@stemoryblooms.com>',
+          from: 'Stemory Blooms <onboarding@resend.dev>',
           to: ['stemoryblooms@gmail.com'],
           subject: `New contact message from ${firstName} ${lastName}`,
           replyTo: email,

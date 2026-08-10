@@ -46,9 +46,9 @@ export async function sendReceiptEmail(order: any) {
     return { ok: true, skipped: true };
   }
 
-  const recipient = process.env.ADMIN_EMAIL || 'orders@stemoryblooms.com';
+  const recipient = process.env.ADMIN_EMAIL || 'stemoryblooms@gmail.com';
   await resend.emails.send({
-    from: 'Stemory Blooms <orders@stemoryblooms.com>',
+    from: 'Stemory Blooms <onboarding@resend.dev>',
     to: [recipient],
     subject: `New order receipt ${order.orderNumber}`,
     html: buildReceiptHtml(order)
