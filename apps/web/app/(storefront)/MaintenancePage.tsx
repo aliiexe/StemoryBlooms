@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { HeroSlideshow } from '../components/ui/HeroSlideshow';
+import { HeroSlideshow } from '../../components/ui/HeroSlideshow';
 import styles from './landing.module.css';
 
 export default function MaintenancePage({ heroImages = [], heroFadeSpeed = 5 }: { heroImages?: string[]; heroFadeSpeed?: number }) {

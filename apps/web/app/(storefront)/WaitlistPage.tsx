@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { HeroSlideshow } from '../components/ui/HeroSlideshow';
+import { HeroSlideshow } from '../../components/ui/HeroSlideshow';
 import { joinWaitlist } from './actions';
 import styles from './landing.module.css';
 

@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ProductCard } from "@stemory/ui";
-import { HeroSlideshow } from "../components/ui/HeroSlideshow";
+import { HeroSlideshow } from "../../components/ui/HeroSlideshow";
 import styles from "./page.module.css";
 
 const fadeInUp = {
