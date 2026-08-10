@@ -58,7 +58,7 @@ export async function deleteDeliveryCompany(id: string) {
 }
 
 async function storeUploadedImages(uploadedFiles: File[]) {
-  const uploadDir = path.resolve(process.cwd(), 'apps/web/public/uploads');
+  const uploadDir = path.resolve(process.cwd(), 'public/uploads');
   await mkdir(uploadDir, { recursive: true });
 
   const imageUrls: string[] = [];

@@ -11,10 +11,20 @@ export default async function CustomBouquetPage() {
 
   // Group by type
   type Component = (typeof components)[number];
+  
+  const mapItem = (c: Component) => ({ 
+    id: c.id, 
+    name: c.name, 
+    price: c.unitPrice,
+    imageUrl: c.imageUrl 
+  });
+
   const itemsData = {
-    Flowers: components.filter((c: Component) => c.type === 'FLOWER').map((c: Component) => ({ id: c.id, name: c.name, price: c.unitPrice })),
-    Wrapping: components.filter((c: Component) => c.type === 'WRAPPING').map((c: Component) => ({ id: c.id, name: c.name, price: c.unitPrice })),
-    'Add-ons': components.filter((c: Component) => c.type === 'EXTRA').map((c: Component) => ({ id: c.id, name: c.name, price: c.unitPrice }))
+    'Flowers': components.filter((c: Component) => c.type === 'FLOWER').map(mapItem),
+    'Leaves': components.filter((c: Component) => c.type === 'LEAF').map(mapItem),
+    'Animals or Bugs': components.filter((c: Component) => c.type === 'ANIMAL_BUG').map(mapItem),
+    'Wrapping': components.filter((c: Component) => c.type === 'WRAPPING').map(mapItem),
+    'Cards': components.filter((c: Component) => c.type === 'CARD').map(mapItem)
   };
 
   return (

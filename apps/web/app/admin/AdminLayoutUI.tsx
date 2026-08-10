@@ -28,6 +28,7 @@ const sidebarSections = [
     links: [
       { href: '/admin/products', label: 'Products', icon: Package },
       { href: '/admin/categories', label: 'Categories', icon: Package },
+      { href: '/admin/builder', label: 'Custom Builder', icon: Package },
       { href: '/admin/inventory', label: 'Inventory & Materials', icon: ClipboardList },
     ],
   },

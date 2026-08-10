@@ -60,7 +60,7 @@ export default function HomeClient({
           </p>
           <div className={styles.heroActions}>
             <Link href="/shop" className={styles.primaryButton}>Shop Bouquets</Link>
-            <Link href="/custom" className={styles.secondaryButton}>Custom Order</Link>
+            <Link href="/custom-bouquet" className={styles.secondaryButton}>Custom Order</Link>
           </div>
         </motion.div>
         

@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useCartStore } from '@stemory/ui';
 import styles from './BuilderFlow.module.css';
 
-const STEPS = ['Flowers', 'Wrapping', 'Add-ons', 'Review'];
+const STEPS = ['Flowers', 'Leaves', 'Animals or Bugs', 'Wrapping', 'Cards', 'Review'];
 
 
 
@@ -71,11 +71,15 @@ export default function BuilderFlow({ initialData }: { initialData: any }) {
           <div key={item.id} className={styles.itemCard}>
             <div className={styles.itemInfo}>
               <div className={styles.itemImageWrapper}>
-                <Image src="/hero-bouquet.png" alt={item.name} width={60} height={60} className={styles.itemImage} />
+                {item.imageUrl ? (
+                  <Image src={item.imageUrl} alt={item.name} width={60} height={60} className={styles.itemImage} style={{ objectFit: 'cover' }} />
+                ) : (
+                  <Image src="/hero-bouquet.png" alt={item.name} width={60} height={60} className={styles.itemImage} style={{ objectFit: 'cover' }} />
+                )}
               </div>
               <div className={styles.itemDetails}>
                 <h3 className={styles.itemName}>{item.name}</h3>
-                <p className={styles.itemPrice}>{item.price} MAD</p>
+                <p className={styles.itemPrice}>{item.price === 0 ? 'Free' : `${item.price} MAD`}</p>
               </div>
             </div>
             <div className={styles.quantityPill}>
@@ -103,7 +107,7 @@ export default function BuilderFlow({ initialData }: { initialData: any }) {
         {cartItems.map(item => (
           <div key={item.id} className={styles.reviewItem}>
             <span>{cart[item.id]}x {item.name}</span>
-            <span>{(cart[item.id] * item.price)} MAD</span>
+            <span>{item.price === 0 ? 'Free' : `${(cart[item.id] * item.price)} MAD`}</span>
           </div>
         ))}
       </div>

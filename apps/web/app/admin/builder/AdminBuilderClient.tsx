@@ -17,7 +17,7 @@ interface BuilderComponent {
   isAvailable: boolean;
 }
 
-const COMPONENT_TYPES = ['FLOWER', 'WRAPPER', 'RIBBON', 'CARD', 'ACCENT'];
+const COMPONENT_TYPES = ['FLOWER', 'LEAF', 'ANIMAL_BUG', 'WRAPPING', 'CARD'];
 
 function ComponentForm({
   item,
@@ -72,7 +72,11 @@ function ComponentForm({
                   defaultValue={item?.type || 'FLOWER'}
                   style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #D6CFE6', fontSize: '1rem', backgroundColor: '#fff' }}
                 >
-                  {COMPONENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                  <option value="FLOWER">Flower</option>
+                  <option value="LEAF">Leaf</option>
+                  <option value="ANIMAL_BUG">Animal or Bug</option>
+                  <option value="WRAPPING">Wrapping</option>
+                  <option value="CARD">Card</option>
                 </select>
               </div>
 
