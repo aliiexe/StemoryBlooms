@@ -1,16 +1,18 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard, ShoppingBag, Users, Package,
   FileText, ClipboardList, Truck, Image as ImageIcon,
-  BarChart2, Settings, Bell, ChevronDown, Store
+  BarChart2, Settings, Bell, ChevronDown, Store,
+  Radio, Clock, Wrench, ChevronUp
 } from 'lucide-react';
 import { AdminUserSlot } from './AdminUserSlot';
 import { AdminNotifications } from './AdminNotifications';
+import { setSiteMode } from './settings/actions';
 import styles from './admin.module.css';
 
 const sidebarSections = [
@@ -61,7 +63,7 @@ function isLinkActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export default function AdminLayoutUI({ children }: { children: React.ReactNode }) {
+export default function AdminLayoutUI({ children, currentMode = 'LIVE' }: { children: React.ReactNode; currentMode?: 'LIVE' | 'WAITLIST' | 'MAINTENANCE' | 'DRAFT' }) {
   const pathname = usePathname();
   const router = useRouter();
   const [openSection, setOpenSection] = useState<string | null>(() => {
@@ -69,6 +71,25 @@ export default function AdminLayoutUI({ children }: { children: React.ReactNode 
     return active ? active.title : null;
   });
   const lastAdminPathKey = 'stemory-admin-last-path';
+  const [modeMenuOpen, setModeMenuOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const [optimisticMode, setOptimisticMode] = useState(currentMode);
+
+  const MODE_OPTIONS = [
+    { value: 'LIVE', label: 'Live', icon: Radio, color: '#1B5E20', bg: '#E8F5E9' },
+    { value: 'WAITLIST', label: 'Waitlist', icon: Clock, color: '#E65100', bg: '#FFF3E0' },
+    { value: 'MAINTENANCE', label: 'Maintenance', icon: Wrench, color: '#B71C1C', bg: '#FFEBEE' },
+  ] as const;
+
+  const activeMode = MODE_OPTIONS.find(m => m.value === optimisticMode) ?? MODE_OPTIONS[0];
+
+  const switchMode = (mode: typeof currentMode) => {
+    setOptimisticMode(mode);
+    setModeMenuOpen(false);
+    startTransition(async () => {
+      await setSiteMode(mode);
+    });
+  };
 
   useEffect(() => {
     if (typeof window === 'undefined' || !pathname.startsWith('/admin')) {
@@ -179,6 +200,60 @@ export default function AdminLayoutUI({ children }: { children: React.ReactNode 
         <main className={styles.content}>
           {children}
         </main>
+      </div>
+
+      {/* Mobile bottom bar — visible only on small screens where sidebar is hidden */}
+      <div className={styles.mobileBar}>
+        <Link href="/admin" className={styles.mobileBarLink}>
+          <LayoutDashboard size={20} />
+          <span>Dashboard</span>
+        </Link>
+        <Link href="/admin/orders" className={styles.mobileBarLink}>
+          <ShoppingBag size={20} />
+          <span>Orders</span>
+        </Link>
+        <Link href="/admin/products" className={styles.mobileBarLink}>
+          <Package size={20} />
+          <span>Products</span>
+        </Link>
+        <Link href="/admin/settings" className={styles.mobileBarLink}>
+          <Settings size={20} />
+          <span>Settings</span>
+        </Link>
+
+        {/* Mode quick-toggle */}
+        <div style={{ position: 'relative' }}>
+          <button
+            className={styles.mobileBarLink}
+            onClick={() => setModeMenuOpen(o => !o)}
+            style={{ border: 'none', background: 'none', cursor: 'pointer', flexDirection: 'column', color: activeMode.color }}
+          >
+            <activeMode.icon size={20} />
+            <span style={{ color: activeMode.color }}>{activeMode.label}</span>
+          </button>
+
+          {modeMenuOpen && (
+            <div className={styles.modePicker}>
+              <div className={styles.modePickerTitle}>Site Mode</div>
+              {MODE_OPTIONS.map(opt => (
+                <button
+                  key={opt.value}
+                  className={styles.modePickerBtn}
+                  onClick={() => switchMode(opt.value)}
+                  style={{
+                    backgroundColor: optimisticMode === opt.value ? opt.bg : 'transparent',
+                    color: optimisticMode === opt.value ? opt.color : '#3A3531',
+                    fontWeight: optimisticMode === opt.value ? 700 : 400,
+                  }}
+                >
+                  <opt.icon size={16} />
+                  {opt.label}
+                  {optimisticMode === opt.value && <span style={{ marginLeft: 'auto', fontSize: '0.7rem' }}>✓ Active</span>}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

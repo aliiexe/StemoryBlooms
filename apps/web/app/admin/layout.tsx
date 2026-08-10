@@ -2,6 +2,7 @@ import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
 import AdminLayoutUI from './AdminLayoutUI';
 import { getUserRoleName, syncClerkUserToDatabase } from '@/lib/user-sync';
+import { db } from '@stemory/database';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const { userId } = await auth();
@@ -22,5 +23,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     redirect('/');
   }
 
-  return <AdminLayoutUI>{children}</AdminLayoutUI>;
+  const settings = await db.query.siteSettings.findFirst();
+  const currentMode = (settings?.mode ?? 'LIVE') as 'LIVE' | 'WAITLIST' | 'MAINTENANCE' | 'DRAFT';
+
+  return <AdminLayoutUI currentMode={currentMode}>{children}</AdminLayoutUI>;
 }
