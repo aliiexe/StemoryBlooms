@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useCartStore, ProductCard } from '@stemory/ui';
 import { submitReview } from './actions';
+import styles from './pdp.module.css';
 
 export default function PDPClient({ product, recommendations }: { product: any, recommendations: any[] }) {
   const [quantity, setQuantity] = useState(1);
@@ -84,26 +85,10 @@ export default function PDPClient({ product, recommendations }: { product: any, 
         </div>
 
         {/* Main Product Layout (Split Column) */}
-        <div 
-          style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', 
-            gap: '4rem',
-            alignItems: 'start'
-          }}
-        >
+        <div className={styles.productLayout}>
           {/* Left Column: Sticky Image Gallery */}
           <div 
-            style={{ 
-              position: 'sticky', 
-              top: '120px', 
-              display: 'flex', 
-              flexDirection: 'column', 
-              gap: '1rem',
-              width: '100%',
-              maxWidth: '600px',
-              margin: '0 auto'
-            }}
+            className={styles.imageGallery}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
           >
