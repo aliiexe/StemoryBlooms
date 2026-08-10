@@ -29,63 +29,69 @@ export default function WaitlistPage() {
   };
 
   return (
-    <main className={styles.container}>
-      <div className={styles.background}>
-        <div className={`${styles.blob} ${styles.blob1}`} />
-        <div className={`${styles.blob} ${styles.blob2}`} />
-        <div className={`${styles.blob} ${styles.blob3}`} />
+    <main className={styles.splitContainer}>
+      <div className={styles.imageSide}>
+        <Image 
+          src="/hero-bouquet.png" 
+          alt="Beautiful stemory blooms bouquet" 
+          fill
+          priority
+          className={styles.heroImage}
+        />
       </div>
 
-      <div className={styles.glassCard}>
-        <div className={styles.logo}>
-          <Image src="/logoSB.png" alt="Stemory Blooms" width={220} height={48} priority style={{ objectFit: 'contain' }} />
-        </div>
-        
-        <h1 className={styles.title}>
-          Something beautiful is blooming.
-        </h1>
-        
-        <p className={styles.subtitle}>
-          We are preparing to launch our collection of luxury, handcrafted everlasting pipe-cleaner bouquets. 
-          Join the exclusive waitlist to be the first to know when we open our doors in Morocco.
-        </p>
-
-        {submitted ? (
-          <div className={styles.successMessage}>
-            <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>You're on the list! ✨</h3>
-            <p style={{ fontSize: '1rem', opacity: 0.9 }}>Keep an eye on your inbox. We'll email you the moment we launch.</p>
+      <div className={styles.contentSide}>
+        <div className={styles.contentWrapper}>
+          <div className={styles.logo}>
+            <Image src="/logoSB.png" alt="Stemory Blooms" width={220} height={48} priority style={{ objectFit: 'contain' }} />
           </div>
-        ) : (
-          <form onSubmit={handleSubmit} className={styles.form}>
-            {error && (
-              <div style={{ backgroundColor: '#FFEBEE', color: '#C62828', padding: '1rem', borderRadius: '12px', fontSize: '0.95rem', textAlign: 'left', border: '1px solid rgba(198, 40, 40, 0.2)' }}>
-                {error}
-              </div>
-            )}
-            <div className={styles.inputWrapper}>
-              <input 
-                type="email" 
-                placeholder="Enter your email address" 
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={isPending}
-                className={styles.input}
-              />
-            </div>
-            <button 
-              type="submit" 
-              disabled={isPending}
-              className={styles.button}
-            >
-              {isPending ? 'Joining...' : 'Join the Waitlist'}
-            </button>
-          </form>
-        )}
+          
+          <h1 className={styles.title}>
+            Something beautiful is blooming.
+          </h1>
+          
+          <p className={styles.subtitle}>
+            We are preparing to launch our collection of luxury, handcrafted everlasting pipe-cleaner bouquets. 
+            Join the exclusive waitlist to be the first to know when we open our doors in Morocco.
+          </p>
 
-        <div className={styles.footer}>
-          <a href="https://instagram.com/stemory.blooms" target="_blank" rel="noreferrer" className={styles.link}>Instagram</a>
-          <a href="https://tiktok.com/@stemoryblooms" target="_blank" rel="noreferrer" className={styles.link}>TikTok</a>
+          {submitted ? (
+            <div className={styles.successMessage}>
+              <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem', fontFamily: 'var(--font-editorial)', fontWeight: 500 }}>You're on the list.</h3>
+              <p style={{ fontSize: '0.95rem', opacity: 0.9 }}>Keep an eye on your inbox. We'll email you the moment we launch.</p>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className={styles.form}>
+              {error && (
+                <div style={{ backgroundColor: '#FFEBEE', color: '#C62828', padding: '1rem', fontSize: '0.9rem', textAlign: 'left', borderLeft: '3px solid #C62828' }}>
+                  {error}
+                </div>
+              )}
+              <div className={styles.inputWrapper}>
+                <input 
+                  type="email" 
+                  placeholder="Enter your email address" 
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={isPending}
+                  className={styles.input}
+                />
+              </div>
+              <button 
+                type="submit" 
+                disabled={isPending}
+                className={styles.button}
+              >
+                {isPending ? 'Joining...' : 'Join Waitlist'}
+              </button>
+            </form>
+          )}
+
+          <div className={styles.footer}>
+            <a href="https://instagram.com/stemory.blooms" target="_blank" rel="noreferrer" className={styles.link}>Instagram</a>
+            <a href="https://tiktok.com/@stemoryblooms" target="_blank" rel="noreferrer" className={styles.link}>TikTok</a>
+          </div>
         </div>
       </div>
     </main>

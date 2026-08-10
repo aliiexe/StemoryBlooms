@@ -1,123 +1,84 @@
-.container {
-  min-height: 100vh;
+.splitContainer {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  min-height: 100vh;
+  width: 100vw;
+  background-color: #F9F6EF; /* Warm off-white canvas */
+  overflow: hidden;
+}
+
+/* LEFT COLUMN - IMAGE */
+.imageSide {
+  flex: 0 0 55%;
   position: relative;
   overflow: hidden;
-  background-color: var(--brand-primary);
 }
 
-.background {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 0;
-  overflow: hidden;
+.heroImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  animation: slowZoom 30s infinite alternate linear;
 }
 
-.blob {
-  position: absolute;
-  filter: blur(80px);
-  border-radius: 50%;
-  animation: float 20s infinite ease-in-out alternate;
-  opacity: 0.6;
+@keyframes slowZoom {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.08); }
 }
 
-.blob1 {
-  top: -10%;
-  left: -10%;
-  width: 50vw;
-  height: 50vw;
-  background-color: #8C9C76;
-  animation-delay: 0s;
-}
-
-.blob2 {
-  bottom: -20%;
-  right: -10%;
-  width: 60vw;
-  height: 60vw;
-  background-color: #E6DFD3;
-  animation-delay: -5s;
-}
-
-.blob3 {
-  top: 40%;
-  left: 60%;
-  width: 40vw;
-  height: 40vw;
-  background-color: #D6CFE6;
-  animation-delay: -10s;
-}
-
-@keyframes float {
-  0% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(5%, 10%) scale(1.1); }
-  66% { transform: translate(-5%, 5%) scale(0.95); }
-  100% { transform: translate(2%, -5%) scale(1.05); }
-}
-
-.glassCard {
+/* RIGHT COLUMN - CONTENT */
+.contentSide {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 4rem 5rem;
+  background-color: #F9F6EF;
   position: relative;
   z-index: 10;
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  padding: 4rem 3.5rem;
-  border-radius: 32px;
-  max-width: 540px;
-  width: 90%;
-  text-align: center;
-  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(255,255,255,0.2) inset;
-  animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  opacity: 0;
-  transform: translateY(30px);
 }
 
-@keyframes slideUp {
+.contentWrapper {
+  max-width: 480px;
+  margin: 0 auto;
+  width: 100%;
+  animation: fadeInRight 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+@keyframes fadeInRight {
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateX(0);
   }
 }
 
 .logo {
-  margin: 0 auto 2.5rem;
-  animation: fadeIn 1s ease 0.5s forwards;
-  opacity: 0;
+  margin-bottom: 4rem;
 }
 
 .title {
   font-family: var(--font-editorial);
-  font-size: 3rem;
+  font-size: 3.5rem;
   color: var(--brand-primary);
-  margin-bottom: 1.25rem;
-  line-height: 1.1;
+  margin-bottom: 1.5rem;
+  line-height: 1.05;
   letter-spacing: -0.02em;
-  animation: fadeIn 1s ease 0.7s forwards;
-  opacity: 0;
 }
 
 .subtitle {
   color: #5A5551;
   font-size: 1.15rem;
-  margin-bottom: 3rem;
+  margin-bottom: 3.5rem;
   line-height: 1.6;
   font-weight: 400;
-  animation: fadeIn 1s ease 0.9s forwards;
-  opacity: 0;
 }
 
+/* FORM STYLING */
 .form {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
-  animation: fadeIn 1s ease 1.1s forwards;
-  opacity: 0;
+  gap: 1.5rem;
 }
 
 .inputWrapper {
@@ -127,21 +88,20 @@
 
 .input {
   width: 100%;
-  padding: 1.25rem 1.5rem;
-  border-radius: 16px;
-  border: 1px solid rgba(214, 207, 230, 0.8);
-  background: rgba(255, 255, 255, 0.7);
-  font-size: 1.05rem;
+  padding: 1rem 0;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #D6CFE6;
+  font-size: 1.1rem;
   outline: none;
   transition: all 0.3s ease;
   font-family: var(--font-sans);
   color: #3A3531;
+  border-radius: 0;
 }
 
 .input:focus {
-  border-color: var(--brand-primary);
-  background: #fff;
-  box-shadow: 0 0 0 4px rgba(111, 126, 89, 0.1);
+  border-bottom-color: var(--brand-primary);
 }
 
 .input::placeholder {
@@ -149,25 +109,24 @@
 }
 
 .button {
-  padding: 1.25rem;
+  padding: 1.25rem 2rem;
   background-color: var(--brand-primary);
   color: var(--surface-primary);
   border: none;
-  border-radius: 16px;
-  font-size: 1.1rem;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   font-family: var(--font-sans);
-  box-shadow: 0 10px 20px rgba(111, 126, 89, 0.2);
-  position: relative;
-  overflow: hidden;
+  margin-top: 1rem;
 }
 
 .button:hover:not(:disabled) {
+  background-color: #2F3E22;
   transform: translateY(-2px);
-  box-shadow: 0 15px 25px rgba(111, 126, 89, 0.3);
-  background-color: #5A6A45;
+  box-shadow: 0 10px 20px rgba(47, 62, 34, 0.15);
 }
 
 .button:active:not(:disabled) {
@@ -177,57 +136,76 @@
 .button:disabled {
   opacity: 0.7;
   cursor: not-allowed;
-  box-shadow: none;
 }
 
 .successMessage {
-  background: linear-gradient(135deg, #E8F5E9, #C8E6C9);
   padding: 2rem;
-  border-radius: 20px;
-  color: #1B5E20;
-  animation: scaleIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  border: 1px solid rgba(27, 94, 32, 0.1);
-}
-
-@keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
+  background: rgba(140, 156, 118, 0.1);
+  border-left: 3px solid #8C9C76;
+  color: #2F3E22;
 }
 
 .footer {
-  margin-top: 3.5rem;
-  border-top: 1px solid rgba(0,0,0,0.06);
-  padding-top: 2rem;
+  margin-top: 5rem;
   display: flex;
-  justify-content: center;
   gap: 2rem;
-  animation: fadeIn 1s ease 1.3s forwards;
-  opacity: 0;
 }
 
 .link {
   color: #7A7571;
   text-decoration: none;
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   font-weight: 500;
   transition: color 0.2s ease;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.1em;
 }
 
 .link:hover {
   color: var(--brand-primary);
 }
 
-@keyframes fadeIn {
-  to { opacity: 1; }
+/* RESPONSIVE STACKING */
+@media (max-width: 992px) {
+  .splitContainer {
+    flex-direction: column;
+  }
+  
+  .imageSide {
+    flex: 0 0 45vh;
+  }
+  
+  .contentSide {
+    padding: 3rem 2rem;
+    align-items: center;
+    text-align: center;
+  }
+  
+  .contentWrapper {
+    max-width: 100%;
+  }
+
+  .logo {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 2.5rem;
+  }
+
+  .title {
+    font-size: 2.8rem;
+  }
+
+  .footer {
+    justify-content: center;
+    margin-top: 4rem;
+  }
 }
 
-@media (max-width: 600px) {
-  .glassCard {
-    padding: 3rem 2rem;
-  }
+@media (max-width: 480px) {
   .title {
-    font-size: 2.5rem;
+    font-size: 2.25rem;
+  }
+  .imageSide {
+    flex: 0 0 35vh;
   }
 }

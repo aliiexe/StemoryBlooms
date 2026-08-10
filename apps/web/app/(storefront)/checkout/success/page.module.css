@@ -1,26 +1,43 @@
 .container {
-  min-height: 70vh;
+  min-height: 80vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--space-8) var(--space-4);
+  padding: 4rem 2rem;
+  background-color: #F9F6EF;
 }
 
 .card {
-  background: var(--bg-primary);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  padding: var(--space-12) var(--space-8);
-  max-width: 500px;
+  background: white;
+  border-radius: 24px;
+  padding: 4rem 3rem;
+  max-width: 560px;
   width: 100%;
   text-align: center;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.04);
+  position: relative;
+  overflow: hidden;
+}
+
+.topDeco {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: var(--brand-primary);
 }
 
 .iconWrapper {
   display: flex;
   justify-content: center;
-  margin-bottom: var(--space-6);
+  margin-bottom: 2rem;
+  animation: scaleIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.5); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }
 
 .successIcon {
@@ -29,96 +46,125 @@
 
 .title {
   font-family: var(--font-editorial);
-  font-size: 2.5rem;
+  font-size: 3.2rem;
   color: var(--text-primary);
-  margin: 0 0 var(--space-2) 0;
+  margin: 0 0 0.5rem 0;
+  line-height: 1.1;
 }
 
 .subtitle {
-  color: var(--text-secondary);
-  font-size: 1.1rem;
-  margin: 0 0 var(--space-8) 0;
+  color: #7A7571;
+  font-size: 1.15rem;
+  margin: 0 0 2.5rem 0;
+  font-family: var(--font-sans);
 }
 
 .orderBox {
-  background: var(--bg-secondary);
-  border-radius: var(--radius-md);
-  padding: var(--space-4);
-  margin-bottom: var(--space-6);
+  background: #F9F6EF;
+  border: 1px solid #E6DFD3;
+  border-radius: 16px;
+  padding: 1.5rem;
+  margin-bottom: 2.5rem;
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: 0.25rem;
 }
 
 .orderLabel {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
+  font-size: 0.85rem;
+  color: #7A7571;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.1em;
+  font-weight: 500;
 }
 
 .orderValue {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  font-family: var(--font-primary);
+  font-size: 1.75rem;
+  font-weight: 500;
+  color: var(--brand-primary);
+  font-family: var(--font-editorial);
 }
 
 .messageBox {
-  font-size: 0.95rem;
-  color: var(--text-secondary);
-  line-height: 1.6;
-  margin-bottom: var(--space-8);
+  font-size: 1rem;
+  color: #5A5551;
+  line-height: 1.7;
+  margin-bottom: 3rem;
+  padding: 0 1rem;
 }
 
 .actions {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  margin-bottom: var(--space-6);
+  gap: 1rem;
+  margin-bottom: 2.5rem;
 }
 
 .primaryBtn {
   width: 100%;
-  padding: var(--space-4);
+  padding: 1.25rem;
   background-color: var(--brand-primary);
-  color: var(--text-inverse);
+  color: white;
   border: none;
-  border-radius: var(--radius-full);
-  font-size: 1rem;
-  font-weight: 600;
+  border-radius: 12px;
+  font-size: 1.05rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 500;
   cursor: pointer;
-  transition: background-color var(--transition-fast);
+  transition: all 0.3s ease;
 }
 
 .primaryBtn:hover {
-  background-color: var(--action-primary-hover);
+  background-color: #2F3E22;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(47, 62, 34, 0.15);
 }
 
 .secondaryBtn {
   width: 100%;
-  padding: var(--space-4);
+  padding: 1.25rem;
   background-color: transparent;
-  color: var(--brand-primary);
-  border: 1px solid var(--brand-primary);
-  border-radius: var(--radius-full);
-  font-size: 1rem;
-  font-weight: 600;
+  color: var(--text-primary);
+  border: 1px solid #D6CFE6;
+  border-radius: 12px;
+  font-size: 1.05rem;
+  font-weight: 500;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all 0.3s ease;
 }
 
 .secondaryBtn:hover {
-  background-color: rgba(111, 126, 89, 0.05);
+  background-color: #F9F6EF;
+  border-color: #C1B9D4;
 }
 
 .supportLink {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
+  font-size: 0.95rem;
+  color: #7A7571;
+  padding-top: 1.5rem;
+  border-top: 1px solid #F0EEE9;
 }
 
 .supportLink a {
   color: var(--brand-primary);
   text-decoration: underline;
   font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.supportLink a:hover {
+  color: #2F3E22;
+}
+
+@media (max-width: 600px) {
+  .card {
+    padding: 3rem 1.5rem;
+  }
+  .title {
+    font-size: 2.5rem;
+  }
+  .messageBox {
+    padding: 0;
+  }
 }

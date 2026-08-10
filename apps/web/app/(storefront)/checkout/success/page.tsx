@@ -2,7 +2,7 @@
 
 import { Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { CheckCircle } from 'lucide-react';
+import { Check } from 'lucide-react';
 import styles from './page.module.css';
 
 function SuccessContent() {
@@ -13,8 +13,8 @@ function SuccessContent() {
   if (!orderNumber) {
     return (
       <div className={styles.card}>
-        <h2>Invalid Order</h2>
-        <p>We could not find the order details.</p>
+        <h2 className={styles.title} style={{ fontSize: '2.5rem' }}>Missing Order</h2>
+        <p className={styles.messageBox}>We could not find the order details. Please check your email for the confirmation link.</p>
         <button onClick={() => router.push('/shop')} className={styles.primaryBtn}>Return to Shop</button>
       </div>
     );
@@ -22,12 +22,16 @@ function SuccessContent() {
 
   return (
     <div className={styles.card}>
+      <div className={styles.topDeco} />
+      
       <div className={styles.iconWrapper}>
-        <CheckCircle size={64} className={styles.successIcon} />
+        <div style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: '#F1F5EC', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Check size={40} className={styles.successIcon} />
+        </div>
       </div>
       
-      <h1 className={styles.title}>Order Confirmed!</h1>
-      <p className={styles.subtitle}>Thank you for your purchase.</p>
+      <h1 className={styles.title}>Order Confirmed.</h1>
+      <p className={styles.subtitle}>Thank you for your purchase</p>
       
       <div className={styles.orderBox}>
         <span className={styles.orderLabel}>Order Number</span>
@@ -35,16 +39,14 @@ function SuccessContent() {
       </div>
 
       <div className={styles.messageBox}>
-        <p>
-          Your order has been received and is now being processed. 
-          We will contact you via WhatsApp shortly to confirm the final details 
-          and coordinate the cash on delivery handoff.
-        </p>
+        Your order has been received and is now being processed. 
+        We will contact you via WhatsApp shortly to confirm the final details 
+        and coordinate the cash on delivery handoff.
       </div>
 
       <div className={styles.actions}>
-        <button onClick={() => router.push('/sign-up')} className={styles.primaryBtn}>
-          Create an Account to track orders
+        <button onClick={() => router.push(`/track?order=${orderNumber}`)} className={styles.primaryBtn}>
+          Track Your Order
         </button>
         
         <button onClick={() => router.push('/shop')} className={styles.secondaryBtn}>
@@ -53,7 +55,7 @@ function SuccessContent() {
       </div>
 
       <div className={styles.supportLink}>
-        Need help? <a href="https://instagram.com/stemory.blooms" target="_blank" rel="noreferrer">Contact us on Instagram</a>
+        Need help? <a href="https://instagram.com/stemory.blooms" target="_blank" rel="noreferrer">Message us on Instagram</a>
       </div>
     </div>
   );
@@ -62,7 +64,7 @@ function SuccessContent() {
 export default function CheckoutSuccessPage() {
   return (
     <div className={styles.container}>
-      <Suspense fallback={<div className={styles.card}>Loading...</div>}>
+      <Suspense fallback={<div className={styles.card}>Loading details...</div>}>
         <SuccessContent />
       </Suspense>
     </div>
