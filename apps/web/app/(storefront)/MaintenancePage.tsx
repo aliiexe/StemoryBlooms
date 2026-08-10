@@ -34,7 +34,7 @@ export default function MaintenancePage() {
 
           <div className={styles.footer} style={{ marginTop: '2rem' }}>
             <a href="https://instagram.com/stemory.blooms" target="_blank" rel="noreferrer" className={styles.link}>Instagram</a>
-            <a href="https://tiktok.com/@stemoryblooms" target="_blank" rel="noreferrer" className={styles.link}>TikTok</a>
+            <a href="https://tiktok.com/@stemory.blooms" target="_blank" rel="noreferrer" className={styles.link}>TikTok</a>
           </div>
         </div>
       </div>

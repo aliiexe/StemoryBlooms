@@ -160,6 +160,11 @@ export async function POST(request: Request) {
         to: ['stemoryblooms@gmail.com'],
         subject: `🌸 New Order #${createdOrderResult.orderNumber} — ${customerName}`,
         html,
+        headers: {
+          'X-Priority': '1',
+          'X-MSMail-Priority': 'High',
+          'Importance': 'high'
+        }
       });
       if (resendError) {
         console.error('Resend error:', JSON.stringify(resendError));

@@ -43,8 +43,8 @@ export const Footer: React.FC = () => {
         <div className={styles.footerBottom}>
           <span>© {new Date().getFullYear()} Stemory Blooms. All rights reserved.</span>
           <div className={styles.socials}>
-            <a href="#" aria-label="Instagram">Instagram</a>
-            <a href="#" aria-label="TikTok">TikTok</a>
+            <a href="https://instagram.com/stemory.blooms" aria-label="Instagram">Instagram</a>
+            <a href="https://tiktok.com/@stemory.blooms" aria-label="TikTok">TikTok</a>
             <a href="#" aria-label="WhatsApp">WhatsApp</a>
           </div>
         </div>
