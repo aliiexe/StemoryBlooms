@@ -145,6 +145,7 @@ export const builderComponent = pgTable("BuilderComponent", {
 	maxQuantity: integer(),
 	imageUrl: text(),
 	isAvailable: boolean().default(true).notNull(),
+	materials: jsonb(),
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 });

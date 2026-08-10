@@ -27,6 +27,13 @@ export async function saveBuilderComponent(formData: FormData) {
   const maxQuantity = parseIntegerInput(formData.get('maxQuantity') as string | null);
   const isAvailable = formData.get('isAvailable') === 'on' || formData.get('isAvailable') === 'true';
 
+  // Parse materials BOM
+  const materialsStr = formData.get('componentMaterials') as string;
+  let materials: { materialId: string; quantity: number }[] = [];
+  try {
+    if (materialsStr) materials = JSON.parse(materialsStr);
+  } catch { /* ignore */ }
+
   if (!name?.trim() || unitPrice === null) {
     return { error: 'Name and unit price are required' };
   }
@@ -41,11 +48,15 @@ export async function saveBuilderComponent(formData: FormData) {
   try {
     if (id) {
       await db.update(builderComponent).set({
-        type, name, unitPrice, minQuantity, maxQuantity, isAvailable, imageUrl, updatedAt: new Date(),
+        type, name, unitPrice, minQuantity, maxQuantity, isAvailable, imageUrl,
+        materials: materials.length > 0 ? materials : null,
+        updatedAt: new Date(),
       }).where(eq(builderComponent.id, id));
     } else {
       await db.insert(builderComponent).values({
-        id: crypto.randomUUID(), type, name, unitPrice, minQuantity, maxQuantity, isAvailable, imageUrl, updatedAt: new Date(),
+        id: crypto.randomUUID(), type, name, unitPrice, minQuantity, maxQuantity, isAvailable, imageUrl,
+        materials: materials.length > 0 ? materials : null,
+        updatedAt: new Date(),
       });
     }
 
@@ -57,6 +68,7 @@ export async function saveBuilderComponent(formData: FormData) {
     return { error: 'Failed to save builder component' };
   }
 }
+
 
 export async function deleteBuilderComponent(id: string) {
   try {

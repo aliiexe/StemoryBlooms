@@ -2,30 +2,47 @@ import { db, builderComponent, eq } from '@stemory/database';
 import styles from './page.module.css';
 import BuilderFlow from './BuilderFlow';
 
-
+const ALL_SECTIONS = ['Flowers', 'Leaves', 'Animals or Bugs', 'Wrapping', 'Cards'] as const;
+const SECTION_TO_TYPE: Record<string, string> = {
+  'Flowers': 'FLOWER',
+  'Leaves': 'LEAF',
+  'Animals or Bugs': 'ANIMAL_BUG',
+  'Wrapping': 'WRAPPING',
+  'Cards': 'CARD',
+};
 
 export default async function CustomBouquetPage() {
-  const components = await db.query.builderComponent.findMany({
-    where: eq(builderComponent.isAvailable, true)
+  const [components, settings] = await Promise.all([
+    db.query.builderComponent.findMany({
+      where: eq(builderComponent.isAvailable, true)
+    }),
+    db.query.siteSettings.findFirst(),
+  ]);
+
+  const config = settings?.config as Record<string, any> | null;
+  const builderSections: Record<string, boolean> = config?.builderSections ?? {};
+
+  // Determine which steps are enabled (default: all enabled if no config)
+  const enabledSections = ALL_SECTIONS.filter(section => {
+    // If config doesn't mention this section, default to true
+    if (typeof builderSections[section] === 'undefined') return true;
+    return builderSections[section] === true;
   });
 
-  // Group by type
   type Component = (typeof components)[number];
-  
-  const mapItem = (c: Component) => ({ 
-    id: c.id, 
-    name: c.name, 
+
+  const mapItem = (c: Component) => ({
+    id: c.id,
+    name: c.name,
     price: c.unitPrice,
-    imageUrl: c.imageUrl 
+    imageUrl: c.imageUrl
   });
 
-  const itemsData = {
-    'Flowers': components.filter((c: Component) => c.type === 'FLOWER').map(mapItem),
-    'Leaves': components.filter((c: Component) => c.type === 'LEAF').map(mapItem),
-    'Animals or Bugs': components.filter((c: Component) => c.type === 'ANIMAL_BUG').map(mapItem),
-    'Wrapping': components.filter((c: Component) => c.type === 'WRAPPING').map(mapItem),
-    'Cards': components.filter((c: Component) => c.type === 'CARD').map(mapItem)
-  };
+  const itemsData: Record<string, ReturnType<typeof mapItem>[]> = {};
+  for (const section of enabledSections) {
+    const type = SECTION_TO_TYPE[section];
+    itemsData[section] = components.filter((c: Component) => c.type === type).map(mapItem);
+  }
 
   return (
     <main className={styles.container}>
@@ -45,7 +62,7 @@ export default async function CustomBouquetPage() {
           </p>
         </div>
       ) : (
-        <BuilderFlow initialData={itemsData} />
+        <BuilderFlow initialData={itemsData} enabledSteps={enabledSections} />
       )}
     </main>
   );

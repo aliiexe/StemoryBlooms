@@ -8,7 +8,7 @@ import path from 'path';
 import { parseIntegerInput } from '../../../lib/form-values';
 
 async function storeUploadedImages(uploadedFiles: File[]) {
-  const uploadDir = path.resolve(process.cwd(), 'apps/web/public/uploads');
+  const uploadDir = path.resolve(process.cwd(), 'public/uploads');
   await mkdir(uploadDir, { recursive: true });
 
   const imageUrls: string[] = [];

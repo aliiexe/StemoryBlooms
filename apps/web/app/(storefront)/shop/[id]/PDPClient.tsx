@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useCartStore, ProductCard } from '@stemory/ui';
@@ -11,9 +11,6 @@ export default function PDPClient({ product, recommendations }: { product: any, 
   const [quantity, setQuantity] = useState(1);
   const images = Array.isArray(product?.images) && product.images.length > 0 ? product.images : ['/hero-bouquet.png'];
   const [activeImage, setActiveImage] = useState(images[0]);
-  const [prevImage, setPrevImage] = useState<string | null>(null);
-  const [transitioning, setTransitioning] = useState(false);
-  const transitioningRef = useRef(false);
   const addItem = useCartStore((state) => state.addItem);
   const [added, setAdded] = useState(false);
   const [reviewStatus, setReviewStatus] = useState<{success?: boolean; error?: string} | null>(null);
@@ -21,35 +18,16 @@ export default function PDPClient({ product, recommendations }: { product: any, 
   const [isHovered, setIsHovered] = useState(false);
 
   const switchImage = (next: string) => {
-    if (next === activeImage || transitioningRef.current) return;
-    transitioningRef.current = true;
-    setTransitioning(true);
-    setPrevImage(activeImage);
     setActiveImage(next);
-    setTimeout(() => {
-      setPrevImage(null);
-      setTransitioning(false);
-      transitioningRef.current = false;
-    }, 450);
   };
 
-  // 10 second slideshow
+  // 10 second auto-slideshow (pauses on hover)
   useEffect(() => {
     if (images.length <= 1 || isHovered) return;
     const interval = setInterval(() => {
       setActiveImage((current) => {
-        const next = images[(images.indexOf(current) + 1) % images.length];
-        if (!transitioningRef.current) {
-          transitioningRef.current = true;
-          setTransitioning(true);
-          setPrevImage(current);
-          setTimeout(() => {
-            setPrevImage(null);
-            setTransitioning(false);
-            transitioningRef.current = false;
-          }, 450);
-        }
-        return next;
+        const idx = images.indexOf(current);
+        return images[(idx + 1) % images.length];
       });
     }, 10000);
     return () => clearInterval(interval);
@@ -93,31 +71,24 @@ export default function PDPClient({ product, recommendations }: { product: any, 
             onMouseLeave={() => setIsHovered(false)}
           >
             <div style={{ position: 'relative', width: '100%', aspectRatio: '4/5', backgroundColor: '#F9F8F6', borderRadius: '24px', overflow: 'hidden' }}>
-              {/* Previous image stays underneath during transition */}
-              {prevImage && (
+              {/* All images stacked — only opacity changes, no re-mount = no flicker */}
+              {images.map((img: string, i: number) => (
                 <Image
-                  key={`prev-${prevImage}`}
-                  src={prevImage}
-                  alt={product.name}
+                  key={img}
+                  src={img}
+                  alt={`${product.name} view ${i + 1}`}
                   fill
-                  style={{ objectFit: 'cover', position: 'absolute', inset: 0 }}
+                  style={{
+                    objectFit: 'cover',
+                    position: 'absolute',
+                    inset: 0,
+                    opacity: img === activeImage ? 1 : 0,
+                    transition: 'opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+                    willChange: 'opacity',
+                  }}
+                  priority={i === 0}
                 />
-              )}
-              {/* Active image fades in on top */}
-              <Image
-                key={`active-${activeImage}`}
-                src={activeImage}
-                alt={product.name}
-                fill
-                style={{
-                  objectFit: 'cover',
-                  position: 'absolute',
-                  inset: 0,
-                  opacity: transitioning ? 0 : 1,
-                  transition: transitioning ? 'none' : 'opacity 0.45s ease-in-out',
-                }}
-                priority
-              />
+              ))}
             </div>
             
             {/* Thumbnails */}

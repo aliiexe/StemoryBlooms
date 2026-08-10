@@ -110,3 +110,19 @@ export async function saveHeroSettings(formData: FormData) {
   revalidatePath('/');
   return { success: true };
 }
+
+export async function saveBuilderSections(sections: Record<string, boolean>) {
+  const existing = await db.query.siteSettings.findFirst();
+  const config = existing?.config as Record<string, any> | null || {};
+  config.builderSections = sections;
+
+  if (existing) {
+    await db.update(siteSettings).set({ config, updatedAt: new Date() }).where(eq(siteSettings.id, existing.id));
+  } else {
+    await db.insert(siteSettings).values({ id: crypto.randomUUID(), config, updatedAt: new Date() });
+  }
+
+  revalidatePath('/admin/builder');
+  revalidatePath('/custom-bouquet');
+  return { success: true };
+}
