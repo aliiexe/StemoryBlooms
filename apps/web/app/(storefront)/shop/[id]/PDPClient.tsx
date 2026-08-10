@@ -219,6 +219,13 @@ export default function PDPClient({ product, recommendations }: { product: any, 
               </button>
             </div>
 
+            <div style={{ marginTop: '1.25rem', padding: '1rem', backgroundColor: '#FDFBF7', border: '1px solid #EAE6DF', borderRadius: '12px', display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+              <span style={{ fontSize: '1.2rem', color: '#8C9C76' }}>⏱️</span>
+              <p style={{ margin: 0, fontSize: '0.9rem', color: '#5A5551', lineHeight: 1.5 }}>
+                <strong>Made to Order:</strong> Since every piece is handmade with care, please allow <strong>2-3 days for production</strong> before your order ships, plus standard delivery time.
+              </p>
+            </div>
+
             {/* Value Props */}
             <div style={{ borderTop: '1px solid #EAE6DF', paddingTop: '2rem' }}>
               <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.25rem', alignItems: 'flex-start' }}>

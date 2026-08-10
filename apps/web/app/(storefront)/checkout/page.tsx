@@ -558,6 +558,9 @@ export default function CheckoutPage() {
             </div>
 
             <div className={styles.deliveryDisclosure}>
+              <p style={{ color: '#5A5551', marginBottom: '10px' }}>
+                <strong>Made to Order:</strong> Since every piece is handmade with care, please allow <strong>2-3 days for production</strong> before your order ships.
+              </p>
               <p>Delivery fees are predefined by the delivery company and added automatically at checkout. Delivery scheduling and the final delivery attempt are handled by the delivery company. We will prepare and hand over your order according to the stated processing estimate.</p>
             </div>
 

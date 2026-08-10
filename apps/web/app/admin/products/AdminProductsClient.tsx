@@ -96,60 +96,60 @@ export function AdminProductsClient({ initialProducts }: { initialProducts: Prod
                 )}
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.5rem', backgroundColor: '#F9F8F6', padding: '0.75rem', borderRadius: '8px' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#5A5551', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={p.status === 'PUBLISHED'}
-                    onChange={(e) => handleUpdate(p.id, { status: e.target.checked ? 'PUBLISHED' : 'DRAFT' })}
-                    style={{ accentColor: 'var(--brand-primary)' }}
-                  />
-                  Published
-                </label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span style={{ fontSize: '0.85rem', color: '#5A5551' }}>Stock:</span>
-                  <input 
-                    type="number"
-                    min="0"
-                    defaultValue={p.stock}
-                    onBlur={(e) => {
-                      const val = parseInt(e.target.value);
-                      handleUpdate(p.id, { stock: isNaN(val) ? 0 : val });
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.currentTarget.blur();
-                      }
-                    }}
-                    style={{ width: '100%', padding: '0.2rem 0.4rem', borderRadius: '4px', border: '1px solid #D6CFE6', fontSize: '0.85rem' }}
-                  />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem', backgroundColor: '#F9F8F6', padding: '1rem', borderRadius: '12px' }}>
+                {/* Stock Controls */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <span style={{ fontSize: '0.85rem', color: '#5A5551', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Stock</span>
+                  <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #D6CFE6', overflow: 'hidden' }}>
+                    <button 
+                      onClick={() => handleUpdate(p.id, { stock: Math.max(0, p.stock - 1) })}
+                      style={{ padding: '0.4rem 0.6rem', border: 'none', background: 'transparent', cursor: 'pointer', color: '#5A5551' }}
+                    >-</button>
+                    <input 
+                      type="number"
+                      min="0"
+                      value={p.stock}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value);
+                        if (!isNaN(val)) handleUpdate(p.id, { stock: val });
+                      }}
+                      style={{ width: '100%', textAlign: 'center', padding: '0.4rem 0', border: 'none', fontSize: '0.9rem', outline: 'none', WebkitAppearance: 'none', MozAppearance: 'textfield' }}
+                    />
+                    <button 
+                      onClick={() => handleUpdate(p.id, { stock: p.stock + 1 })}
+                      style={{ padding: '0.4rem 0.6rem', border: 'none', background: 'transparent', cursor: 'pointer', color: '#5A5551' }}
+                    >+</button>
+                  </div>
                 </div>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#5A5551', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={p.isSaleEnabled}
-                    onChange={(e) => handleUpdate(p.id, { isSaleEnabled: e.target.checked })}
-                    style={{ accentColor: 'var(--brand-primary)' }}
-                  />
-                  Sale Active
-                </label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span style={{ fontSize: '0.85rem', color: '#5A5551' }}>Sale:</span>
-                  <input 
-                    type="number"
-                    defaultValue={p.salePrice || ''}
-                    placeholder="None"
-                    onBlur={(e) => {
-                      const val = parseFloat(e.target.value);
-                      handleUpdate(p.id, { salePrice: isNaN(val) ? null : val });
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.currentTarget.blur();
-                      }
-                    }}
-                    style={{ width: '100%', padding: '0.2rem 0.4rem', borderRadius: '4px', border: '1px solid #D6CFE6', fontSize: '0.85rem' }}
-                  />
+
+                {/* Sale Controls */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#5A5551', fontWeight: 600, cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    <input
+                      type="checkbox"
+                      checked={p.isSaleEnabled}
+                      onChange={(e) => handleUpdate(p.id, { isSaleEnabled: e.target.checked })}
+                      style={{ accentColor: 'var(--brand-primary)', width: '14px', height: '14px' }}
+                    />
+                    On Sale
+                  </label>
+                  {p.isSaleEnabled ? (
+                    <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #F57F17', overflow: 'hidden' }}>
+                      <span style={{ paddingLeft: '0.6rem', color: '#5A5551', fontSize: '0.9rem' }}>MAD</span>
+                      <input 
+                        type="number"
+                        value={p.salePrice || ''}
+                        placeholder="Price"
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value);
+                          if (!isNaN(val)) handleUpdate(p.id, { salePrice: val });
+                        }}
+                        style={{ width: '100%', padding: '0.4rem 0.5rem', border: 'none', fontSize: '0.9rem', outline: 'none' }}
+                      />
+                    </div>
+                  ) : (
+                    <div style={{ height: '31px' }} /> /* Placeholder to keep height consistent */
+                  )}
                 </div>
               </div>
 
@@ -165,7 +165,7 @@ export function AdminProductsClient({ initialProducts }: { initialProducts: Prod
                   href={`/admin/products/${p.id}`} 
                   style={{ flex: 1, textAlign: 'center', padding: '0.5rem', borderRadius: '8px', backgroundColor: 'var(--brand-primary)', color: '#fff', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 500 }}
                 >
-                  Edit Full
+                  Edit all
                 </Link>
                 <button 
                   onClick={() => handleDelete(p.id)}

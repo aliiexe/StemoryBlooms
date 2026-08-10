@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db, eq, sql, promoCode as promoCodeTable, giftCard as giftCardTable, customer, order, orderItem, deliveryZone } from '@stemory/database';
+import { db, eq, sql, promoCode as promoCodeTable, giftCard as giftCardTable, customer, order, orderItem, deliveryZone, adminNotification } from '@stemory/database';
 import { CheckoutPayloadSchema } from '@stemory/contracts';
 import { Resend } from 'resend';
 import { render } from '@react-email/render';
@@ -170,7 +170,17 @@ export async function POST(request: Request) {
       console.error('Email send threw:', emailErr);
     }
 
-    return NextResponse.json(createdOrderResult);
+    // Create an admin notification for the new order
+    await db.insert(adminNotification).values({
+      id: crypto.randomUUID(),
+      type: 'ORDER_NEW',
+      title: 'New Order Received',
+      message: `Order ${createdOrderResult.orderNumber} placed for ${total} MAD by ${customerName}.`,
+      isRead: false,
+      createdAt: new Date()
+    });
+
+    return NextResponse.json(createdOrderResult, { status: 201 });
   } catch (error: unknown) {
     console.error(error);
     return NextResponse.json({ message: 'Failed to create order', error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });

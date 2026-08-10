@@ -19,6 +19,7 @@ type Props = {
   action: (formData: FormData) => Promise<void>;
   templates: Template[];
   existing?: Announcement;
+  preselectedTemplateId?: string;
 };
 
 const ANIM_TYPES = ['FADE', 'SLIDE_H', 'SLIDE_V', 'DISSOLVE', 'NONE'];
@@ -27,22 +28,26 @@ const TARGET_MODES = ['ALL', 'HOMEPAGE', 'SHOP', 'CHECKOUT', 'CUSTOM'];
 const DISMISSAL_DURATIONS = ['SESSION', '24H', 'CAMPAIGN'];
 const COUNTDOWN_END = ['HIDE', 'KEEP', 'REPLACE'];
 
-export default function AnnouncementEditorForm({ action, templates, existing }: Props) {
+export default function AnnouncementEditorForm({ action, templates, existing, preselectedTemplateId }: Props) {
+  // Find default template config if we have a preselected ID and no existing announcement
+  const presetTemplate = !existing && preselectedTemplateId ? templates.find(t => t.id === preselectedTemplateId) : null;
+  const presetCfg = presetTemplate ? (presetTemplate.defaultConfig as any) : null;
+
   const [preview, setPreview] = useState({
-    message: existing?.message ?? 'Your announcement message goes here ✨',
-    highlightedText: existing?.highlightedText ?? '',
-    ctaLabel: existing?.ctaLabel ?? '',
-    backgroundColor: existing?.backgroundColor ?? '#F6F4EC',
-    textColor: existing?.textColor ?? '#4A4A4A',
-    accentColor: existing?.accentColor ?? '#D6CFE6',
-    linkColor: existing?.linkColor ?? '#6F7E59',
-    barHeight: existing?.barHeight ?? '40px',
-    textAlignment: existing?.textAlignment ?? 'CENTER',
-    decorativeAsset: existing?.decorativeAsset ?? '',
+    message: existing?.message ?? presetCfg?.message ?? 'Your announcement message goes here ✨',
+    highlightedText: existing?.highlightedText ?? presetCfg?.highlightedText ?? '',
+    ctaLabel: existing?.ctaLabel ?? presetCfg?.ctaLabel ?? '',
+    backgroundColor: existing?.backgroundColor ?? presetCfg?.backgroundColor ?? '#F6F4EC',
+    textColor: existing?.textColor ?? presetCfg?.textColor ?? '#4A4A4A',
+    accentColor: existing?.accentColor ?? presetCfg?.accentColor ?? '#D6CFE6',
+    linkColor: existing?.linkColor ?? presetCfg?.linkColor ?? '#6F7E59',
+    barHeight: existing?.barHeight ?? presetCfg?.barHeight ?? '40px',
+    textAlignment: existing?.textAlignment ?? presetCfg?.textAlignment ?? 'CENTER',
+    decorativeAsset: existing?.decorativeAsset ?? presetCfg?.decorativeAsset ?? '',
   });
   const [noEndDate, setNoEndDate] = useState(existing?.noEndDate ?? true);
   const [countdownEnabled, setCountdownEnabled] = useState(existing?.countdownEnabled ?? false);
-  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
+  const [selectedTemplate, setSelectedTemplate] = useState<string>(presetTemplate?.slug ?? '');
 
   const applyTemplate = (slug: string) => {
     const t = templates.find(t => t.slug === slug);

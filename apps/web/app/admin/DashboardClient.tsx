@@ -23,14 +23,14 @@ export default function DashboardClient({
   salesData,
   topProducts,
   lowStock,
-  socialInquiries
+  activeDeliveries
 }: {
   metrics: any[];
   recentOrders: any[];
   salesData: any[];
-  topProducts: any[];
-  lowStock: any[];
-  socialInquiries: any[];
+  topProducts: any;
+  lowStock: any;
+  activeDeliveries: any;
 }) {
   return (
     <motion.div 
@@ -120,21 +120,31 @@ export default function DashboardClient({
           </motion.div>
         </div>
 
-        {/* Right Column: Social */}
+        {/* Right Column: Social / Deliveries */}
         <motion.div className={styles.rightCol} variants={itemVariants}>
           <div className={styles.card}>
-            <h3 className={styles.cardTitle}>Recent Admin Alerts</h3>
+            <h3 className={styles.cardTitle}>Active Deliveries</h3>
             <table className={styles.table}>
-              <thead><tr><th>Event</th><th>Time</th></tr></thead>
+              <thead><tr><th>Order</th><th>Status</th></tr></thead>
               <tbody>
-                {socialInquiries.map((s: any, i: number) => (
+                {activeDeliveries.map((s: any, i: number) => (
                   <tr key={i}>
-                    <td>{s.message}</td>
-                    <td><span style={{ fontSize: '0.8rem', color: '#7A7571' }}>{new Date(s.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span></td>
+                    <td>
+                      <div style={{ fontWeight: 500, color: '#3A3531' }}>{s.orderNumber}</div>
+                      <div style={{ fontSize: '0.8rem', color: '#7A7571' }}>{s.customer.firstName} {s.customer.lastName}</div>
+                    </td>
+                    <td>
+                      <span className={styles.badge} style={{ 
+                        backgroundColor: s.status === 'SHIPPED' ? '#E3F2FD' : '#FFF8E1', 
+                        color: s.status === 'SHIPPED' ? '#1565C0' : '#F57F17' 
+                      }}>
+                        {s.status}
+                      </span>
+                    </td>
                   </tr>
                 ))}
-                {socialInquiries.length === 0 && (
-                  <tr><td colSpan={2} style={{ textAlign: 'center', color: '#7A7571' }}>No recent alerts.</td></tr>
+                {activeDeliveries.length === 0 && (
+                  <tr><td colSpan={2} style={{ textAlign: 'center', color: '#7A7571' }}>No active deliveries.</td></tr>
                 )}
               </tbody>
             </table>

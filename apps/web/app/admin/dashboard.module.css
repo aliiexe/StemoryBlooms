@@ -144,6 +144,33 @@
   height: 100%;
 }
 
+.modeBtn {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.modeBtn:not(:disabled):hover {
+  opacity: 1 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.05) !important;
+}
+
+.templateCard {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.templateCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.05) !important;
+  border-color: var(--brand-primary) !important;
+}
+
+.spacedRows tr td {
+  padding-top: 1.5rem !important;
+  padding-bottom: 1.5rem !important;
+}
+
+
 .cardTitle {
   font-family: var(--font-editorial);
   font-size: 1.25rem;

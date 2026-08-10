@@ -6,6 +6,8 @@ import { updateMaterialInline, deleteMaterial, restockMaterial } from '../materi
 import { backfillProductMaterialDeductions } from '../products/actions';
 import styles from '../dashboard.module.css';
 import { MaterialModal } from './MaterialModal';
+import { usePagination } from '../components/usePagination';
+import { TablePagination } from '../components/TablePagination';
 
 interface Material {
   id: string;
@@ -31,6 +33,8 @@ export function InventoryTableClient({ initialMaterials, suppliers }: Props) {
   const [backfilling, setBackfilling] = useState(false);
   const [restockingId, setRestockingId] = useState<string | null>(null);
   const [restockQty, setRestockQty] = useState(1);
+
+  const { page, setPage, rowsPerPage, setRowsPerPage, totalPages, paginatedItems, totalItems } = usePagination(materials, 10);
 
   async function handleRestock(m: Material) {
     if (restockQty <= 0) return;
@@ -100,7 +104,7 @@ export function InventoryTableClient({ initialMaterials, suppliers }: Props) {
             </tr>
           </thead>
           <tbody>
-            {materials.map((m) => {
+            {paginatedItems.map((m) => {
               const totalValue = (m.quantity || 0) * (m.cost || 0);
               return (
                 <tr key={m.id}>
@@ -149,8 +153,8 @@ export function InventoryTableClient({ initialMaterials, suppliers }: Props) {
                   <td>
                     <input
                       type="number"
-                      value={m.lowStockThreshold ?? 10}
-                      onChange={(e) => handleUpdate(m.id, { lowStockThreshold: parseInt(e.target.value) || 0 })}
+                      value={m.lowStockThreshold === null ? '' : m.lowStockThreshold}
+                      onChange={(e) => handleUpdate(m.id, { lowStockThreshold: e.target.value ? parseInt(e.target.value) : null })}
                       style={{ width: '60px', padding: '0.25rem', textAlign: 'center', border: '1px solid #D6CFE6', borderRadius: '4px' }}
                     />
                   </td>
@@ -168,8 +172,8 @@ export function InventoryTableClient({ initialMaterials, suppliers }: Props) {
                   </td>
                   <td>{m.productMaterials?.length ?? 0}</td>
                   <td>
-                    <span className={styles.badge} style={{ backgroundColor: m.quantity < (m.lowStockThreshold ?? 10) ? '#FCE4EC' : '#E8F5E9', color: m.quantity < (m.lowStockThreshold ?? 10) ? '#880E4F' : '#1B5E20' }}>
-                      {m.quantity < (m.lowStockThreshold ?? 10) ? 'Low Stock' : 'In Stock'}
+                    <span className={styles.badge} style={{ backgroundColor: m.lowStockThreshold !== null && m.quantity <= m.lowStockThreshold ? '#FCE4EC' : '#E8F5E9', color: m.lowStockThreshold !== null && m.quantity <= m.lowStockThreshold ? '#880E4F' : '#1B5E20' }}>
+                      {m.lowStockThreshold !== null && m.quantity <= m.lowStockThreshold ? 'Low Stock' : 'In Stock'}
                     </span>
                   </td>
                   <td>
@@ -191,6 +195,14 @@ export function InventoryTableClient({ initialMaterials, suppliers }: Props) {
             )}
           </tbody>
         </table>
+        <TablePagination 
+          page={page} 
+          totalPages={totalPages} 
+          totalItems={totalItems} 
+          rowsPerPage={rowsPerPage} 
+          onPageChange={setPage} 
+          onRowsPerPageChange={setRowsPerPage} 
+        />
       </div>
 
       <MaterialModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} suppliers={suppliers} />

@@ -535,7 +535,7 @@ export const categoryToProduct = pgTable("_CategoryToProduct", {
 
 export const expense = pgTable("Expense", {
 	id: text().primaryKey().notNull(),
-	amount: integer().notNull(),
+	amount: doublePrecision().notNull(),
 	description: text().notNull(),
 	category: text().notNull(),
 	relatedMaterialId: text(),
@@ -669,3 +669,12 @@ export const announcement = pgTable("Announcement", {
 			name: "Announcement_templateId_fkey"
 		}).onUpdate("cascade").onDelete("set null"),
 ]);
+
+export const adminNotification = pgTable("AdminNotification", {
+	id: text().primaryKey().notNull(),
+	type: text().notNull(),
+	title: text().notNull(),
+	message: text().notNull(),
+	isRead: boolean().default(false).notNull(),
+	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+});

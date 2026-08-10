@@ -1,7 +1,7 @@
 import React from 'react';
 import { db } from '@stemory/database';
 import styles from '../dashboard.module.css';
-import { ExpenseForm } from './ExpenseForm';
+import { AdminFinancesClient } from './AdminFinancesClient';
 
 export default async function AdminFinancesPage() {
   const expenses = await db.query.expense.findMany({
@@ -16,9 +16,13 @@ export default async function AdminFinancesPage() {
   // we will just sum all orders for demonstration purposes in this phase.
   const allOrders = await db.query.order.findMany();
 
+  // The user requested to exclude delivery fees from net profit since it goes directly to the delivery company.
+  const totalDeliveryFees = allOrders.reduce((acc, order) => acc + (order.deliveryFee || 0), 0);
   const totalRevenue = allOrders.reduce((acc, order) => acc + order.total, 0);
   const totalExpenses = expenses.reduce((acc, exp) => acc + exp.amount, 0);
-  const netProfit = totalRevenue - totalExpenses;
+  
+  // Net Profit = (Total Revenue - Delivery Fees) - Total Expenses
+  const netProfit = (totalRevenue - totalDeliveryFees) - totalExpenses;
 
   return (
     <div className={styles.dashboard}>
@@ -43,45 +47,7 @@ export default async function AdminFinancesPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem', alignItems: 'start' }}>
-        <div className={styles.card}>
-          <h3 style={{ marginTop: 0, marginBottom: '1.5rem', color: '#3A3531', fontSize: '1.25rem' }}>Recent Expenses</h3>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Description</th>
-                <th>Category</th>
-                <th>Amount</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {expenses.map((e) => (
-                <tr key={e.id}>
-                  <td>{new Intl.DateTimeFormat('en-GB').format(new Date(e.date))}</td>
-                  <td><strong>{e.description}</strong></td>
-                  <td><span style={{ padding: '0.25rem 0.5rem', backgroundColor: '#F5F5F5', borderRadius: '4px', fontSize: '0.8rem' }}>{e.category}</span></td>
-                  <td style={{ color: '#C62828', fontWeight: 500 }}>-{e.amount} MAD</td>
-                  <td>
-                    <button style={{ background: 'none', border: 'none', color: 'var(--brand-primary)', cursor: 'pointer', textDecoration: 'underline' }}>Edit</button>
-                  </td>
-                </tr>
-              ))}
-              {expenses.length === 0 && (
-                <tr>
-                  <td colSpan={5} style={{ textAlign: 'center', padding: '3rem', color: '#7A7571' }}>No expenses logged yet.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        <div className={styles.card}>
-          <h3 style={{ marginTop: 0, marginBottom: '1.5rem', color: '#3A3531', fontSize: '1.25rem' }}>Log Expense</h3>
-          <ExpenseForm />
-        </div>
-      </div>
+      <AdminFinancesClient initialExpenses={expenses} />
     </div>
   );
 }

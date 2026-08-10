@@ -1,8 +1,7 @@
 'use server';
 
-import { db, eq, product, productMaterial } from '@stemory/database';
+import { db, eq, product, productMaterial, material } from '@stemory/database';
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
 import crypto from 'crypto';
 import { mkdir, writeFile } from 'fs/promises';
 import path from 'path';
@@ -55,6 +54,7 @@ export async function saveProduct(formData: FormData) {
   const status = formData.get('status') as string;
   const isAvailable = formData.get('isAvailable') === 'on';
   const isFeatured = formData.get('isFeatured') === 'on';
+  const stock = parseIntegerInput(formData.get('stock') as string | null) ?? 1;
 
   const productMaterialsStr = formData.get('productMaterials') as string;
   let productMaterialsList: { materialId: string, quantity: number }[] = [];
@@ -81,17 +81,60 @@ export async function saveProduct(formData: FormData) {
 
     await db.transaction(async (tx) => {
       if (id) {
+        // Fetch old product stock and BOM
+        const oldProduct = await tx.query.product.findFirst({ where: eq(product.id, id) });
+        const oldStock = oldProduct?.stock ?? 0;
+        const oldBOM = await tx.query.productMaterial.findMany({ where: eq(productMaterial.productId, id) });
+
+        // Calculate material usage differences
+        const oldUsage = new Map<string, number>();
+        for (const ob of oldBOM) {
+          oldUsage.set(ob.materialId, oldStock * ob.quantity);
+        }
+
+        const newUsage = new Map<string, number>();
+        for (const nb of productMaterialsList) {
+          newUsage.set(nb.materialId, stock * nb.quantity);
+        }
+
+        const allMatIds = new Set([...oldUsage.keys(), ...newUsage.keys()]);
+
+        for (const mId of allMatIds) {
+          const oldU = oldUsage.get(mId) ?? 0;
+          const newU = newUsage.get(mId) ?? 0;
+          const diff = newU - oldU;
+
+          if (diff !== 0) {
+            const mat = await tx.query.material.findFirst({ where: eq(material.id, mId) });
+            if (mat) {
+              await tx.update(material)
+                .set({ quantity: mat.quantity - diff, updatedAt: new Date() })
+                .where(eq(material.id, mId));
+            }
+          }
+        }
+
         await tx.delete(productMaterial).where(eq(productMaterial.productId, id));
 
         await tx.update(product).set({
-          name, description, basePrice, salePrice, images: allImages, status, isAvailable, isFeatured, updatedAt: new Date()
+          name, description, basePrice, salePrice, images: allImages, status, isAvailable, isFeatured, stock, updatedAt: new Date()
         }).where(eq(product.id, id));
       } else {
         const [newProduct] = await tx.insert(product).values({
           id: crypto.randomUUID(),
-          name, description, basePrice, salePrice, images: allImages, status, isAvailable, isFeatured, updatedAt: new Date()
+          name, description, basePrice, salePrice, images: allImages, status, isAvailable, isFeatured, stock, updatedAt: new Date()
         }).returning({ id: product.id });
         currentProductId = newProduct.id;
+
+        // Deduct materials for new product
+        for (const pm of productMaterialsList) {
+          const mat = await tx.query.material.findFirst({ where: eq(material.id, pm.materialId) });
+          if (mat) {
+            await tx.update(material)
+              .set({ quantity: mat.quantity - (stock * pm.quantity), updatedAt: new Date() })
+              .where(eq(material.id, pm.materialId));
+          }
+        }
       }
 
       if (productMaterialsList.length > 0) {
@@ -114,7 +157,7 @@ export async function saveProduct(formData: FormData) {
     return { error: 'Failed to save product. Make sure the database schema is updated.' };
   }
 
-  redirect('/admin/products');
+  return { success: true };
 }
 
 export async function deleteProduct(id: string) {
@@ -125,5 +168,65 @@ export async function deleteProduct(id: string) {
     return { success: true };
   } catch {
     return { error: 'Failed to delete product' };
+  }
+}
+
+export async function backfillProductMaterialDeductions() {
+  try {
+    const products = await db.query.product.findMany({
+      with: { productMaterials: true }
+    });
+
+    let deductedCount = 0;
+    const materialDeductions = new Map<string, number>();
+
+    for (const prod of products) {
+      if (prod.stock > 0 && prod.productMaterials) {
+        for (const pm of prod.productMaterials) {
+          const usage = prod.stock * pm.quantity;
+          materialDeductions.set(pm.materialId, (materialDeductions.get(pm.materialId) || 0) + usage);
+          deductedCount++;
+        }
+      }
+    }
+
+    for (const [mId, ded] of materialDeductions.entries()) {
+      const mat = await db.query.material.findFirst({ where: eq(material.id, mId) });
+      if (mat) {
+        await db.update(material)
+          .set({ quantity: mat.quantity - ded, updatedAt: new Date() })
+          .where(eq(material.id, mId));
+      }
+    }
+
+    revalidatePath('/admin/inventory');
+    revalidatePath('/admin/materials');
+    return { deducted: deductedCount };
+  } catch (err) {
+    console.error(err);
+    return { error: 'Failed to backfill deductions' };
+  }
+}
+
+export async function quickUpdateProduct(id: string, updates: { stock?: number, salePrice?: number | null, isOnSale?: boolean }) {
+  try {
+    const payload: any = {};
+    if (updates.stock !== undefined) payload.stock = updates.stock;
+    if (updates.isOnSale !== undefined) {
+      if (!updates.isOnSale) {
+        payload.salePrice = null;
+      } else if (updates.salePrice !== undefined) {
+        payload.salePrice = updates.salePrice;
+      }
+    } else if (updates.salePrice !== undefined) {
+      payload.salePrice = updates.salePrice;
+    }
+    
+    await db.update(product).set({ ...payload, updatedAt: new Date() }).where(eq(product.id, id));
+    revalidatePath('/admin/products');
+    revalidatePath('/shop');
+    return { success: true };
+  } catch {
+    return { error: 'Failed to quick update product' };
   }
 }

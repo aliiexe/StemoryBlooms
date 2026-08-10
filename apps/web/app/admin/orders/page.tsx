@@ -13,7 +13,7 @@ export default async function AdminOrdersPage() {
   const summary = {
     new: orders.filter((o) => o.status === 'NEW').length,
     processing: orders.filter((o) => o.status === 'IN_PRODUCTION' || o.status === 'READY').length,
-    completed: orders.filter((o) => o.status === 'COMPLETED').length,
+    completed: orders.filter((o) => o.status === 'COMPLETED' || o.status === 'DELIVERED').length,
     cancelled: orders.filter((o) => o.status === 'CANCELLED').length,
   };
 
@@ -59,7 +59,7 @@ export default async function AdminOrdersPage() {
                   <div className={styles.orderTitle}>#{o.orderNumber}</div>
                   <div className={styles.orderMeta}>{o.customer?.firstName} {o.customer?.lastName}</div>
                 </div>
-                <span className={styles.badge} style={{ backgroundColor: o.status === 'CANCELLED' ? '#FDECEC' : o.status === 'COMPLETED' ? '#E8F5E9' : '#FFF8E1', color: o.status === 'CANCELLED' ? '#B42318' : o.status === 'COMPLETED' ? '#067647' : '#B54708' }}>
+                <span className={styles.badge} style={{ backgroundColor: o.status === 'CANCELLED' ? '#FDECEC' : (o.status === 'COMPLETED' || o.status === 'DELIVERED') ? '#E8F5E9' : '#FFF8E1', color: o.status === 'CANCELLED' ? '#B42318' : (o.status === 'COMPLETED' || o.status === 'DELIVERED') ? '#067647' : '#B54708' }}>
                   {o.status}
                 </span>
               </div>

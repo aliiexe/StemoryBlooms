@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { db, eq, sql, announcement, announcementBarSettings } from '@stemory/database';
+import { db, eq, sql, announcement, announcementBarSettings, announcementTemplate } from '@stemory/database';
 import { asc, desc } from 'drizzle-orm';
 import crypto from 'crypto';
 import { parseIntegerInput } from '../../../lib/form-values';
@@ -184,4 +184,73 @@ export async function updateBarSettings(formData: FormData) {
   }
   revalidatePath('/admin/announcements/settings');
   revalidatePath('/');
+}
+
+export async function seedTemplatesIfEmpty() {
+  const existing = await db.query.announcementTemplate.findMany({ limit: 1 });
+  if (existing.length > 0) return { success: true, seeded: false };
+
+  const templates = [
+    {
+      id: crypto.randomUUID(),
+      name: 'Flash Sale',
+      slug: 'flash-sale',
+      description: 'Urgent, high-contrast banner for limited time offers.',
+      eventType: 'SALE',
+      previewColor: '#C62828',
+      defaultConfig: {
+        backgroundColor: '#C62828',
+        textColor: '#FFFFFF',
+        accentColor: '#FFCDD2',
+        linkColor: '#FFFFFF',
+        animationType: 'PULSE',
+        message: '⚡ 24-HOUR FLASH SALE: Get 20% off all bouquets with code FLASH20',
+        ctaLabel: 'Shop Now',
+        highlightedText: '24-HOUR FLASH SALE',
+      },
+      updatedAt: new Date()
+    },
+    {
+      id: crypto.randomUUID(),
+      name: 'Holiday Special',
+      slug: 'holiday-special',
+      description: 'Festive design for seasonal campaigns like Mother\'s Day.',
+      eventType: 'HOLIDAY',
+      previewColor: '#FCE4EC',
+      defaultConfig: {
+        backgroundColor: '#FCE4EC',
+        textColor: '#880E4F',
+        accentColor: '#F48FB1',
+        linkColor: '#C2185B',
+        animationType: 'FADE',
+        message: '🌸 Mother\'s Day Pre-orders are open! Order by Friday for guaranteed delivery.',
+        ctaLabel: 'Pre-order',
+        highlightedText: 'Mother\'s Day Pre-orders',
+      },
+      updatedAt: new Date()
+    },
+    {
+      id: crypto.randomUUID(),
+      name: 'Important Update',
+      slug: 'important-update',
+      description: 'Subtle, informative banner for operational notices.',
+      eventType: 'INFO',
+      previewColor: '#E3F2FD',
+      defaultConfig: {
+        backgroundColor: '#E3F2FD',
+        textColor: '#0D47A1',
+        accentColor: '#90CAF9',
+        linkColor: '#1565C0',
+        animationType: 'NONE',
+        message: 'Please note: Deliveries may be delayed by 1-2 days due to weather conditions.',
+        ctaLabel: 'Read more',
+        highlightedText: 'Deliveries may be delayed',
+      },
+      updatedAt: new Date()
+    }
+  ];
+
+  await db.insert(announcementTemplate).values(templates);
+  revalidatePath('/admin/announcements');
+  return { success: true, seeded: true };
 }

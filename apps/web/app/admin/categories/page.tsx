@@ -2,7 +2,7 @@ import React from 'react';
 import { db, category } from '@stemory/database';
 import { asc } from 'drizzle-orm';
 import styles from '../dashboard.module.css';
-import { CategoryForm } from './CategoryForm';
+import { CategoriesClient } from './CategoriesClient';
 
 const categoryIdeas = [
   'Product type: bouquets, gifts, custom arrangements',
@@ -29,47 +29,16 @@ export default async function AdminCategoriesPage() {
 
       <div className={styles.card} style={{ marginBottom: '2rem' }}>
         <h3 style={{ marginTop: 0, marginBottom: '1rem', color: '#3A3531' }}>Good category options</h3>
-        <div style={{ display: 'grid', gap: '0.75rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.75rem' }}>
           {categoryIdeas.map((idea) => (
-            <div key={idea} style={{ padding: '0.85rem 1rem', borderRadius: '10px', backgroundColor: '#FBF9F5', border: '1px solid #EAE6DF', color: '#4E473F' }}>
+            <div key={idea} style={{ padding: '0.85rem 1rem', borderRadius: '10px', backgroundColor: '#FBF9F5', border: '1px solid #EAE6DF', color: '#4E473F', fontSize: '0.9rem' }}>
               {idea}
             </div>
           ))}
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem', alignItems: 'start' }}>
-        <div className={styles.card}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {categories.map((c) => (
-                <tr key={c.id}>
-                  <td><strong>{c.name}</strong></td>
-                  <td>
-                    <button style={{ background: 'none', border: 'none', color: 'var(--brand-primary)', cursor: 'pointer', textDecoration: 'underline' }}>Edit (Client-side toggle omitted for brevity)</button>
-                  </td>
-                </tr>
-              ))}
-              {categories.length === 0 && (
-                <tr>
-                  <td colSpan={3} style={{ textAlign: 'center', padding: '2rem', color: '#7A7571' }}>No categories found</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        <div className={styles.card}>
-          <h3 style={{ marginTop: 0, marginBottom: '1.5rem', color: '#3A3531' }}>Add Category</h3>
-          <CategoryForm />
-        </div>
-      </div>
+      <CategoriesClient initialCategories={categories} />
     </div>
   );
 }

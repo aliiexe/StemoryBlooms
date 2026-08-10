@@ -3,9 +3,13 @@
 import React, { useState } from 'react';
 import styles from '../dashboard.module.css';
 import { CategoryForm } from './CategoryForm';
+import { usePagination } from '../components/usePagination';
+import { TablePagination } from '../components/TablePagination';
 
 export function AdminCategoriesClient({ initialCategories, categoryIdeas }: { initialCategories: any[], categoryIdeas: string[] }) {
   const [editingCategory, setEditingCategory] = useState<any | null>(null);
+
+  const { page, setPage, rowsPerPage, setRowsPerPage, totalPages, paginatedItems, totalItems } = usePagination(initialCategories, 10);
 
   return (
     <div>
@@ -30,7 +34,7 @@ export function AdminCategoriesClient({ initialCategories, categoryIdeas }: { in
               </tr>
             </thead>
             <tbody>
-              {initialCategories.map((c) => (
+              {paginatedItems.map((c) => (
                 <tr key={c.id}>
                   <td><strong>{c.name}</strong></td>
                   <td>
@@ -50,6 +54,14 @@ export function AdminCategoriesClient({ initialCategories, categoryIdeas }: { in
               )}
             </tbody>
           </table>
+          <TablePagination 
+            page={page} 
+            totalPages={totalPages} 
+            totalItems={totalItems} 
+            rowsPerPage={rowsPerPage} 
+            onPageChange={setPage} 
+            onRowsPerPageChange={setRowsPerPage} 
+          />
         </div>
 
         <div className={styles.card}>

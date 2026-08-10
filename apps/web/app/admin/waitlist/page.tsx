@@ -3,7 +3,7 @@ import { db } from '@stemory/database';
 import styles from '../dashboard.module.css';
 
 export default async function AdminWaitlistPage() {
-  const waitlist = await db.query.waitlistEntry.findMany({
+  const waitlistEntry = await db.query.waitlistEntry.findMany({
     orderBy: (table, { desc }) => [desc(table.createdAt)]
   });
 
@@ -23,7 +23,7 @@ export default async function AdminWaitlistPage() {
             </tr>
           </thead>
           <tbody>
-            {waitlist.map((w) => (
+            {waitlistEntry.map((w) => (
               <tr key={w.id}>
                 <td>{new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(w.createdAt))}</td>
                 <td><strong>{w.email}</strong></td>
@@ -34,9 +34,9 @@ export default async function AdminWaitlistPage() {
                 </td>
               </tr>
             ))}
-            {waitlist.length === 0 && (
+            {waitlistEntry.length === 0 && (
               <tr>
-                <td colSpan={3} style={{ textAlign: 'center', padding: '2rem', color: '#7A7571' }}>No waitlist subscribers found.</td>
+                <td colSpan={3} style={{ textAlign: 'center', padding: '2rem', color: '#7A7571' }}>No waitlistEntry subscribers found.</td>
               </tr>
             )}
           </tbody>

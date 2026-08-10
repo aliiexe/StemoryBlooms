@@ -90,7 +90,7 @@ export function MaterialForm({ material, onSaved }: { material?: MaterialFormVal
             type="button" 
             onClick={async () => {
               if (confirm('Delete this material?')) {
-                await deleteMaterial(material.id);
+                await deleteMaterial(material.id!);
                 if (onSaved) onSaved();
               }
             }}

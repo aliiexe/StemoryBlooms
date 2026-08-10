@@ -7,9 +7,10 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard, ShoppingBag, Users, Package,
   FileText, ClipboardList, Truck, Image as ImageIcon,
-  BarChart2, Settings, Bell, ChevronDown, ChevronRight
+  BarChart2, Settings, Bell, ChevronDown, Store
 } from 'lucide-react';
 import { AdminUserSlot } from './AdminUserSlot';
+import { AdminNotifications } from './AdminNotifications';
 import styles from './admin.module.css';
 
 const sidebarSections = [
@@ -36,7 +37,7 @@ const sidebarSections = [
       { href: '/admin/customers', label: 'Customers', icon: Users },
       { href: '/admin/users', label: 'User Management', icon: Users },
       { href: '/admin/finances', label: 'Finances', icon: FileText },
-      { href: '/admin/reports', label: 'Reports', icon: BarChart2 },
+
     ],
   },
   {
@@ -62,9 +63,10 @@ function isLinkActive(pathname: string, href: string) {
 export default function AdminLayoutUI({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(sidebarSections.map((section) => [section.title, false]))
-  );
+  const [openSection, setOpenSection] = useState<string | null>(() => {
+    const active = sidebarSections.find((s) => s.links.some((l) => isLinkActive(pathname, l.href)));
+    return active ? active.title : null;
+  });
   const lastAdminPathKey = 'stemory-admin-last-path';
 
   useEffect(() => {
@@ -92,7 +94,7 @@ export default function AdminLayoutUI({ children }: { children: React.ReactNode 
   );
 
   const toggleSection = (title: string) => {
-    setOpenSections((prev) => ({ ...prev, [title]: !prev[title] }));
+    setOpenSection((prev) => (prev === title ? null : title));
   };
 
   return (
@@ -106,7 +108,7 @@ export default function AdminLayoutUI({ children }: { children: React.ReactNode 
 
         <nav className={styles.sidebarNav}>
           {sidebarSections.map((section) => {
-            const isOpen = openSections[section.title] ?? false;
+            const isOpen = openSection === section.title;
             const hasActiveLink = section.links.some((link) => isLinkActive(pathname, link.href));
 
             return (
@@ -118,10 +120,20 @@ export default function AdminLayoutUI({ children }: { children: React.ReactNode 
                   aria-expanded={isOpen}
                 >
                   <span>{section.title}</span>
-                  {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                  <ChevronDown 
+                    size={16} 
+                    style={{ 
+                      transition: 'transform 0.3s ease',
+                      transform: isOpen ? 'rotate(0deg)' : 'rotate(-90deg)'
+                    }} 
+                  />
                 </button>
-                {isOpen && (
-                  <div className={styles.sectionLinks}>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateRows: isOpen ? '1fr' : '0fr',
+                  transition: 'grid-template-rows 0.3s ease-out'
+                }}>
+                  <div className={styles.sectionLinks} style={{ overflow: 'hidden' }}>
                     {section.links.map((link) => {
                       const isActive = isLinkActive(pathname, link.href);
                       const Icon = link.icon;
@@ -137,11 +149,18 @@ export default function AdminLayoutUI({ children }: { children: React.ReactNode 
                       );
                     })}
                   </div>
-                )}
+                </div>
               </div>
             );
           })}
         </nav>
+
+        <div style={{ marginTop: 'auto', padding: '1.5rem', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+          <Link href="/" className={styles.backToStoreBtn}>
+            <Store size={18} />
+            <span>Back to Store</span>
+          </Link>
+        </div>
       </aside>
 
       <div className={styles.mainArea}>
@@ -151,9 +170,7 @@ export default function AdminLayoutUI({ children }: { children: React.ReactNode 
             <h1 className={styles.pageTitle}>{activeSection?.title ?? 'Dashboard'}</h1>
           </div>
           <div className={styles.topBarRight}>
-            <button className={styles.topBarIcon} aria-label="Notifications">
-              <Bell size={18} />
-            </button>
+            <AdminNotifications />
             <AdminUserSlot />
           </div>
         </header>

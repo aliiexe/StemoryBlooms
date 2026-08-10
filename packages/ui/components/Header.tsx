@@ -235,6 +235,9 @@ export const Header: React.FC<HeaderProps> = ({ authSlot }) => {
                       <span>Subtotal</span>
                       <span>{subtotal} MAD</span>
                     </div>
+                    <p className={styles.shippingNotice} style={{ color: '#5A5551', marginBottom: '8px' }}>
+                      <strong>Made to Order:</strong> Allow 2-3 days for production plus delivery time.
+                    </p>
                     <p className={styles.shippingNotice}>Shipping & taxes calculated at checkout</p>
                     <a 
                       href="/checkout"

@@ -8,7 +8,6 @@ const MODE_CONFIG = {
   LIVE:        { label: 'Live',        bg: '#E8F5E9', color: '#1B5E20', desc: 'Store is fully open. All pages accessible.' },
   WAITLIST:    { label: 'Waitlist',    bg: '#FFF8E1', color: '#E65100', desc: 'Public is redirected to the email capture waitlist page.' },
   MAINTENANCE: { label: 'Maintenance', bg: '#FCE4EC', color: '#880E4F', desc: 'Store is offline for all visitors.' },
-  DRAFT:       { label: 'Draft',       bg: '#F3E5F5', color: '#4A148C', desc: 'Internal preview mode. Admin access only.' },
 } as const;
 
 export default async function AdminSettingsPage() {
@@ -45,23 +44,26 @@ export default async function AdminSettingsPage() {
                   type="submit"
                   style={{
                     width: '100%',
-                    padding: '1.25rem',
-                    borderRadius: '12px',
-                    border: isActive ? `2px solid ${cfg.color}` : '2px solid #EAE6DF',
+                    padding: '1.5rem 1.25rem',
+                    borderRadius: '16px',
+                    border: isActive ? `2px solid ${cfg.color}` : '1px solid #EAE6DF',
                     background: isActive ? cfg.bg : 'white',
                     textAlign: 'left',
                     cursor: isActive ? 'default' : 'pointer',
-                    transition: 'all 0.15s',
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                     fontFamily: 'var(--font-sans)',
+                    boxShadow: isActive ? `0 4px 12px ${cfg.color}15` : '0 2px 4px rgba(0,0,0,0.02)',
+                    opacity: isActive ? 1 : 0.85,
                   }}
                   disabled={isActive}
+                  className={styles.modeBtn}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                    <span style={{ width: 10, height: 10, borderRadius: '50%', background: cfg.color, display: 'inline-block' }} />
-                    <strong style={{ fontSize: '0.95rem', color: cfg.color }}>{cfg.label}</strong>
-                    {isActive && <span style={{ marginLeft: 'auto', fontSize: '0.7rem', background: cfg.bg, color: cfg.color, padding: '2px 8px', borderRadius: '20px', fontWeight: 600 }}>ACTIVE</span>}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                    <span style={{ width: 12, height: 12, borderRadius: '50%', background: cfg.color, display: 'inline-block', boxShadow: `0 0 0 3px ${cfg.bg}` }} />
+                    <strong style={{ fontSize: '1rem', color: isActive ? cfg.color : '#3A3531', fontWeight: 600 }}>{cfg.label}</strong>
+                    {isActive && <span style={{ marginLeft: 'auto', fontSize: '0.65rem', letterSpacing: '0.05em', background: cfg.color, color: 'white', padding: '3px 8px', borderRadius: '20px', fontWeight: 600 }}>ACTIVE</span>}
                   </div>
-                  <p style={{ fontSize: '0.8rem', color: '#7A7571', margin: 0, lineHeight: 1.5 }}>{cfg.desc}</p>
+                  <p style={{ fontSize: '0.85rem', color: isActive ? cfg.color : '#7A7571', margin: 0, lineHeight: 1.5, opacity: isActive ? 0.9 : 1 }}>{cfg.desc}</p>
                 </button>
               </form>
             );
@@ -79,10 +81,14 @@ export default async function AdminSettingsPage() {
           Delivery fees are predefined by the delivery company and used during checkout as a separate line item.
         </p>
 
-        <form action={saveDeliveryCompany} style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+        <form action={async (formData) => { 'use server'; await saveDeliveryCompany(formData); }} style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
           <div>
             <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.9rem', color: '#5A5551' }}>Company name</label>
             <input name="name" required placeholder="Rapid Delivery" style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #D6CFE6' }} />
+          </div>
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.9rem', color: '#5A5551' }}>Email</label>
+            <input name="email" type="email" placeholder="contact@company.com" style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #D6CFE6' }} />
           </div>
           <div>
             <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.9rem', color: '#5A5551' }}>Contact</label>
@@ -110,7 +116,7 @@ export default async function AdminSettingsPage() {
                   <span style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', borderRadius: '999px', backgroundColor: company.isActive ? '#E8F5E9' : '#F5F5F5', color: company.isActive ? '#1B5E20' : '#616161' }}>{company.isActive ? 'Active' : 'Inactive'}</span>
                 </div>
                 <div style={{ color: '#7A7571', fontSize: '0.9rem', marginTop: '0.35rem' }}>
-                  Fee: {company.fee} MAD{company.contact ? ` · ${company.contact}` : ''}
+                  Fee: {company.fee} MAD{company.email ? ` · ${company.email}` : ''}{company.contact ? ` · ${company.contact}` : ''}
                 </div>
               </div>
               <form action={async () => { 'use server'; await deleteDeliveryCompany(company.id); }}>

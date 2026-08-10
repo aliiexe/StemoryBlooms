@@ -21,9 +21,9 @@ export async function saveExpense(formData: FormData) {
 
   try {
     if (id) {
-      await db.update(expense).set({ description, category, amount: Math.round(amount), date, updatedAt: new Date() }).where(eq(expense.id, id));
+      await db.update(expense).set({ description, category, amount, date, updatedAt: new Date() }).where(eq(expense.id, id));
     } else {
-      await db.insert(expense).values({ id: crypto.randomUUID(), description, category, amount: Math.round(amount), date, updatedAt: new Date() });
+      await db.insert(expense).values({ id: crypto.randomUUID(), description, category, amount, date, updatedAt: new Date() });
     }
     
     revalidatePath('/admin/finances');
@@ -41,5 +41,38 @@ export async function deleteExpense(id: string) {
     return { success: true };
   } catch (err) {
     return { error: 'Failed to delete expense' };
+  }
+}
+
+export async function backfillMaterialExpenses() {
+  try {
+    // We need to import material here. The best way is to import it at the top,
+    // but we can just use dynamic import or require if it's tricky, or add the import at the top.
+    // I will use a different replace_file_content chunk to add the import if needed.
+    const { material } = await import('@stemory/database');
+    const materials = await db.query.material.findMany();
+    const expenses = await db.query.expense.findMany();
+
+    const unlinked = materials.filter(m => !expenses.some(e => e.relatedMaterialId === m.id));
+
+    if (unlinked.length === 0) return { backfilled: 0 };
+
+    await db.insert(expense).values(
+      unlinked.map(m => ({
+        id: crypto.randomUUID(),
+        amount: Math.round(m.quantity * (m.cost ?? 0)),
+        description: `Initial stock (backfill): ${m.quantity}x ${m.name}`,
+        category: 'SUPPLIES',
+        relatedMaterialId: m.id,
+        date: new Date(),
+        updatedAt: new Date()
+      }))
+    );
+
+    revalidatePath('/admin/finances');
+    return { backfilled: unlinked.length };
+  } catch (err) {
+    console.error(err);
+    return { error: 'Failed to backfill material expenses' };
   }
 }

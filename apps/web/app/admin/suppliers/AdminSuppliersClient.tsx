@@ -3,6 +3,8 @@
 import React, {  useState, useTransition  } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { saveSupplier, deleteSupplier } from './actions';
+import { usePagination } from '../components/usePagination';
+import { TablePagination } from '../components/TablePagination';
 import styles from '../dashboard.module.css';
 
 interface Supplier {
@@ -26,10 +28,13 @@ export function AdminSuppliersClient({ initialSuppliers }: { initialSuppliers: S
   const [isAdding, setIsAdding] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filteredSuppliers = suppliers.filter(s =>
-    s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (s.contactName && s.contactName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (s.email && s.email.toLowerCase().includes(searchTerm.toLowerCase()))
+  const { page: currentPage, setPage, rowsPerPage, setRowsPerPage, totalPages, paginatedItems, totalItems } = usePagination(
+    suppliers.filter(s =>
+      s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (s.contactName && s.contactName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (s.email && s.email.toLowerCase().includes(searchTerm.toLowerCase()))
+    ),
+    limit
   );
 
   return (
@@ -107,7 +112,7 @@ export function AdminSuppliersClient({ initialSuppliers }: { initialSuppliers: S
             onChange={(e) => setSearchTerm(e.target.value)}
             style={{ padding: '0.65rem 1rem', borderRadius: '10px', border: '1px solid #D6CFE6', width: '280px', fontSize: '0.9rem' }}
           />
-          <span style={{ fontSize: '0.85rem', color: '#7A7571' }}>{filteredSuppliers.length} supplier(s)</span>
+          <span style={{ fontSize: '0.85rem', color: '#7A7571' }}>{totalItems} supplier(s)</span>
         </div>
 
         <div style={{ overflowX: 'auto' }}>
@@ -123,7 +128,7 @@ export function AdminSuppliersClient({ initialSuppliers }: { initialSuppliers: S
               </tr>
             </thead>
             <tbody>
-              {filteredSuppliers.map((sup) => (
+              {paginatedItems.map((sup) => (
                 <tr key={sup.id}>
                   <td><strong>{sup.name}</strong></td>
                   <td>{sup.contactName || '-'}</td>
@@ -155,7 +160,7 @@ export function AdminSuppliersClient({ initialSuppliers }: { initialSuppliers: S
                   </td>
                 </tr>
               ))}
-              {filteredSuppliers.length === 0 && (
+              {totalItems === 0 && (
                 <tr>
                   <td colSpan={6} style={{ textAlign: 'center', color: '#7A7571', padding: '2rem' }}>
                     No suppliers found. Click "+ Add Supplier" to create one.
@@ -164,6 +169,14 @@ export function AdminSuppliersClient({ initialSuppliers }: { initialSuppliers: S
               )}
             </tbody>
           </table>
+          <TablePagination 
+            page={page} 
+            totalPages={totalPages} 
+            totalItems={totalItems} 
+            rowsPerPage={rowsPerPage} 
+            onPageChange={setPage} 
+            onRowsPerPageChange={setRowsPerPage} 
+          />
         </div>
       </div>
     </div>

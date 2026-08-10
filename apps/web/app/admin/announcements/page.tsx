@@ -1,9 +1,9 @@
-import { db, eq, sql, announcement, announcementBarSettings, asc, desc } from '@stemory/database';
+import { db, eq, sql, announcement, announcementBarSettings, announcementTemplate, asc, desc } from '@stemory/database';
 import Link from 'next/link';
 import styles from '../dashboard.module.css';
 import {
   publishAnnouncement, pauseAnnouncement,
-  archiveAnnouncement, duplicateAnnouncement
+  archiveAnnouncement, duplicateAnnouncement, seedTemplatesIfEmpty
 } from './actions';
 import DeleteButton from './DeleteButton';
 
@@ -21,9 +21,13 @@ export default async function Page(props: { searchParams: { page?: string, limit
   const limit = Number(props.searchParams.limit) || 10;
   const offset = (page - 1) * limit;
 
-  const [announcements, settings] = await Promise.all([
+  // Seed templates if needed
+  await seedTemplatesIfEmpty();
+
+  const [announcements, settings, templates] = await Promise.all([
     db.query.announcement.findMany({ orderBy: [asc(announcement.order), desc(announcement.createdAt)] }),
     db.query.announcementBarSettings.findFirst(),
+    db.query.announcementTemplate.findMany({ where: eq(announcementTemplate.active, true) }),
   ]);
 
   return (
@@ -55,6 +59,28 @@ export default async function Page(props: { searchParams: { page?: string, limit
         </Link>
       </header>
 
+      {/* Templates Section */}
+      <div style={{ marginBottom: '2.5rem' }}>
+        <h3 style={{ fontSize: '1.1rem', color: '#3A3531', marginBottom: '1rem', fontWeight: 600 }}>Event Templates</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
+          {templates.map((tpl) => (
+            <Link 
+              key={tpl.id} 
+              href={`/admin/announcements/new?templateId=${tpl.id}`}
+              className={`${styles.card} ${styles.templateCard}`}
+              style={{ padding: '1.25rem', textDecoration: 'none', display: 'flex', gap: '1rem', alignItems: 'center' }}
+            >
+              <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: tpl.previewColor, flexShrink: 0, border: '1px solid rgba(0,0,0,0.05)' }} />
+              <div>
+                <strong style={{ display: 'block', color: '#3A3531', fontSize: '0.95rem', marginBottom: '0.2rem' }}>{tpl.name}</strong>
+                <span style={{ color: '#7A7571', fontSize: '0.8rem', lineHeight: 1.4 }}>{tpl.description}</span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      <h3 style={{ fontSize: '1.1rem', color: '#3A3531', marginBottom: '1rem', fontWeight: 600 }}>Active Announcements</h3>
       <div className={styles.card}>
         {announcements.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '4rem 2rem', color: '#7A7571' }}>
@@ -75,7 +101,7 @@ export default async function Page(props: { searchParams: { page?: string, limit
                 <th>Actions</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className={styles.spacedRows}>
               {(announcements as Array<(typeof announcements)[number]>).map((ann) => {
                 const sc = STATUS_COLORS[ann.status] ?? STATUS_COLORS.DRAFT;
                 return (

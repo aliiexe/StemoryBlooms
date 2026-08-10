@@ -21,6 +21,7 @@ export async function saveDeliveryCompany(formData: FormData) {
   const id = formData.get('id') as string;
   const name = formData.get('name') as string;
   const contact = formData.get('contact') as string;
+  const email = formData.get('email') as string;
   const fee = parseIntegerInput(formData.get('fee') as string | null);
   const isActive = formData.get('isActive') === 'on';
 
@@ -30,9 +31,9 @@ export async function saveDeliveryCompany(formData: FormData) {
 
   try {
     if (id) {
-      await db.update(deliveryCompany).set({ name, contact, fee, isActive, }).where(eq(deliveryCompany.id, id));
+      await db.update(deliveryCompany).set({ name, contact, email, fee, isActive, }).where(eq(deliveryCompany.id, id));
     } else {
-      await db.insert(deliveryCompany).values({ id: crypto.randomUUID(), name, contact, fee, isActive });
+      await db.insert(deliveryCompany).values({ id: crypto.randomUUID(), name, contact, email, fee, isActive });
     }
 
     revalidatePath('/admin/settings');

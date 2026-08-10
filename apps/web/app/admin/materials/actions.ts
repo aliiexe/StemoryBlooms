@@ -22,17 +22,34 @@ export async function saveMaterial(formData: FormData) {
         .set({ name, quantity, updatedAt: new Date(), cost, lowStockThreshold: lowStockThreshold === null ? null : lowStockThreshold })
         .where(eq(material.id, id));
     } else {
+      const newId = crypto.randomUUID();
       await db.insert(material).values({
-        id: crypto.randomUUID(),
+        id: newId,
         name, 
         quantity, 
         updatedAt: new Date(), 
         cost,
         lowStockThreshold: lowStockThreshold === null ? null : lowStockThreshold
       });
+
+      if (quantity > 0) {
+        const { expense } = await import('@stemory/database');
+        const totalCost = quantity * cost;
+        await db.insert(expense).values({
+          id: crypto.randomUUID(),
+          amount: Math.round(totalCost),
+          description: `Initial stock: ${quantity}x ${name}`,
+          category: 'SUPPLIES',
+          relatedMaterialId: newId,
+          date: new Date(),
+          updatedAt: new Date()
+        });
+      }
     }
     
     revalidatePath('/admin/materials');
+    revalidatePath('/admin/inventory');
+    revalidatePath('/admin/finances');
     return { success: true };
   } catch (error) {
     console.error(error);
@@ -47,5 +64,45 @@ export async function deleteMaterial(id: string) {
     return { success: true };
   } catch {
     return { error: 'Failed to delete material' };
+  }
+}
+
+export async function updateMaterialInline(id: string, updates: Partial<typeof material.$inferInsert>) {
+  try {
+    await db.update(material).set({ ...updates, updatedAt: new Date() }).where(eq(material.id, id));
+    revalidatePath('/admin/materials');
+    return { success: true };
+  } catch (error) {
+    return { error: 'Failed to update material inline' };
+  }
+}
+
+export async function restockMaterial(id: string, restockQty: number) {
+  try {
+    const { expense } = await import('@stemory/database');
+    const existing = await db.query.material.findFirst({ where: eq(material.id, id) });
+    if (!existing) return { error: 'Material not found' };
+
+    await db.update(material)
+      .set({ quantity: existing.quantity + restockQty, updatedAt: new Date() })
+      .where(eq(material.id, id));
+
+    const totalCost = restockQty * (existing.cost ?? 0);
+    
+    await db.insert(expense).values({
+      id: crypto.randomUUID(),
+      amount: Math.round(totalCost),
+      description: `Restock: ${restockQty}x ${existing.name}`,
+      category: 'SUPPLIES',
+      relatedMaterialId: existing.id,
+      date: new Date(),
+      updatedAt: new Date()
+    });
+
+    revalidatePath('/admin/materials');
+    revalidatePath('/admin/finances');
+    return { success: true };
+  } catch (error) {
+    return { error: 'Failed to restock material' };
   }
 }

@@ -1,6 +1,6 @@
 import { db } from '@stemory/database';
 import { order, material, adminInboxEvent, orderItem } from '@stemory/database/schema';
-import { count, sum, eq, gte, lt, desc } from 'drizzle-orm';
+import { count, sum, eq, gte, lt, desc, inArray } from 'drizzle-orm';
 import DashboardClient from './DashboardClient';
 
 
@@ -17,7 +17,7 @@ export default async function AdminDashboardPage() {
     db.select({ count: count() }).from(order).where(eq(order.status, 'NEW')),
     db.select({ count: count() }).from(order).where(eq(order.status, 'IN_PRODUCTION')),
     db.select({ count: count() }).from(order).where(eq(order.status, 'READY')),
-    db.select({ count: count() }).from(order).where(eq(order.status, 'COMPLETED'))
+    db.select({ count: count() }).from(order).where(inArray(order.status, ['COMPLETED', 'DELIVERED']))
   ]);
   const awaitingCount = awaitingResult[0].count;
   const productionCount = productionResult[0].count;
@@ -89,15 +89,17 @@ export default async function AdminDashboardPage() {
 
   // Get low stock materials
   const lowStock = await db.query.material.findMany({
-    where: (table, { lt }) => lt(table.quantity, 20),
+    where: (table, { and, isNotNull, lte }) => and(isNotNull(table.lowStockThreshold), lte(table.quantity, table.lowStockThreshold!)),
     limit: 5,
     orderBy: (table, { asc }) => [asc(table.quantity)]
   });
 
-  // Get recent admin alerts
-  const socialInquiries = await db.query.adminInboxEvent.findMany({
+  // Get active deliveries (orders that are SHIPPED or PROCESSING)
+  const activeDeliveries = await db.query.order.findMany({
+    where: (table, { inArray }) => inArray(table.status, ['PROCESSING', 'SHIPPED', 'READY']),
     limit: 5,
-    orderBy: (table, { desc }) => [desc(table.createdAt)]
+    orderBy: (table, { desc }) => [desc(table.updatedAt)],
+    with: { customer: true }
   });
 
   // Calculate top products by aggregating OrderItem
@@ -122,7 +124,7 @@ export default async function AdminDashboardPage() {
       salesData={salesData}
       topProducts={topProducts}
       lowStock={lowStock}
-      socialInquiries={socialInquiries}
+      activeDeliveries={activeDeliveries}
     />
   );
 }

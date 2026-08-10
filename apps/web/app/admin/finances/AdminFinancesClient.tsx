@@ -1,59 +1,70 @@
 'use client';
 
-import React, {  useState  } from 'react';
-import { useSearchParams } from 'next/navigation';
+import React, { useState } from 'react';
+import { Plus, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import styles from '../dashboard.module.css';
 import { ExpenseForm } from './ExpenseForm';
-import { backfillMaterialExpenses } from './actions';
 
-export function AdminFinancesClient({ 
-  initialExpenses, 
-  totalRevenue, 
-  totalExpenses,
-  netProfit 
-}: { 
-  initialExpenses: any[], 
-  totalRevenue: number, 
-  totalExpenses: number,
-  netProfit: number 
-}) {
+export function AdminFinancesClient({ initialExpenses }: { initialExpenses: any[] }) {
+  const router = useRouter();
+  
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  
+  // Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<any>(null);
 
-  const [editingExpense, setEditingExpense] = useState<any | null>(null);
-  const [backfilling, setBackfilling] = useState(false);
+  // Pagination Logic
+  const totalPages = Math.max(1, Math.ceil(initialExpenses.length / itemsPerPage));
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const currentExpenses = initialExpenses.slice(startIndex, startIndex + itemsPerPage);
 
-  async function handleBackfill() {
-    setBackfilling(true);
-    const result = await backfillMaterialExpenses();
-    setBackfilling(false);
-    if (result.backfilled === 0) alert('All materials already have expense records.');
-    else alert(`Backfilled ${result.backfilled} material(s). Refresh to see updated totals.`);
-  }
+  const handleNextPage = () => {
+    if (currentPage < totalPages) setCurrentPage(p => p + 1);
+  };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'MAD' }).format(amount);
+  const handlePrevPage = () => {
+    if (currentPage > 1) setCurrentPage(p => p - 1);
+  };
+
+  const openAddModal = () => {
+    setEditingExpense(null);
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (expense: any) => {
+    setEditingExpense(expense);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setEditingExpense(null);
+  };
+
+  const handleSaved = () => {
+    closeModal();
+    router.refresh();
   };
 
   return (
-    <div>
-      {/* Overview Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '3rem' }}>
-        <div className={styles.card} style={{ backgroundColor: '#FDFBF7', border: '1px solid #EAE6DF' }}>
-          <h3 style={{ margin: '0 0 0.5rem 0', color: '#7A7571', fontSize: '1rem', fontWeight: 500 }}>Total Revenue</h3>
-          <p style={{ margin: 0, fontSize: '2rem', fontWeight: 600, color: '#3A3531' }}>{formatCurrency(totalRevenue)}</p>
+    <>
+      <div className={styles.card} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <h3 style={{ margin: 0, color: '#3A3531', fontSize: '1.25rem' }}>Expenses ({initialExpenses.length})</h3>
+          <button 
+            onClick={openAddModal}
+            className={styles.actionButton} 
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+          >
+            <Plus size={16} /> Log Expense
+          </button>
         </div>
-        <div className={styles.card} style={{ backgroundColor: '#FFEBEE', border: '1px solid #FFCDD2' }}>
-          <h3 style={{ margin: '0 0 0.5rem 0', color: '#C62828', fontSize: '1rem', fontWeight: 500 }}>Total Expenses</h3>
-          <p style={{ margin: 0, fontSize: '2rem', fontWeight: 600, color: '#C62828' }}>{formatCurrency(totalExpenses)}</p>
-        </div>
-        <div className={styles.card} style={{ backgroundColor: netProfit >= 0 ? '#E8F5E9' : '#FFEBEE', border: `1px solid ${netProfit >= 0 ? '#C8E6C9' : '#FFCDD2'}` }}>
-          <h3 style={{ margin: '0 0 0.5rem 0', color: netProfit >= 0 ? '#2E7D32' : '#C62828', fontSize: '1rem', fontWeight: 500 }}>Net Profit (Loss)</h3>
-          <p style={{ margin: 0, fontSize: '2rem', fontWeight: 600, color: netProfit >= 0 ? '#2E7D32' : '#C62828' }}>{formatCurrency(netProfit)}</p>
-        </div>
-      </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem', alignItems: 'start' }}>
-        <div className={styles.card}>
-          <h3 style={{ marginTop: 0, marginBottom: '1.5rem', color: '#3A3531', fontSize: '1.25rem' }}>Expense Ledger</h3>
+        <div style={{ overflowX: 'auto', flex: 1 }}>
           <table className={styles.table}>
             <thead>
               <tr>
@@ -61,23 +72,19 @@ export function AdminFinancesClient({
                 <th>Description</th>
                 <th>Category</th>
                 <th>Amount</th>
-                <th>Actions</th>
+                <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {initialExpenses.map((e) => (
+              {currentExpenses.map((e) => (
                 <tr key={e.id}>
                   <td>{new Intl.DateTimeFormat('en-GB').format(new Date(e.date))}</td>
-                  <td>
-                    <strong>{e.description}</strong>
-                    {e.relatedMaterialId && <div style={{ fontSize: '0.75rem', color: '#8C9C76', marginTop: '0.25rem' }}>✦ Linked to Raw Material</div>}
-                    {e.relatedOrderId && <div style={{ fontSize: '0.75rem', color: '#8C9C76', marginTop: '0.25rem' }}>✦ Linked to Order</div>}
-                  </td>
+                  <td><strong>{e.description}</strong></td>
                   <td><span style={{ padding: '0.25rem 0.5rem', backgroundColor: '#F5F5F5', borderRadius: '4px', fontSize: '0.8rem' }}>{e.category}</span></td>
                   <td style={{ color: '#C62828', fontWeight: 500 }}>-{e.amount} MAD</td>
-                  <td>
+                  <td style={{ textAlign: 'right' }}>
                     <button 
-                      onClick={() => setEditingExpense(e)}
+                      onClick={() => openEditModal(e)}
                       style={{ background: 'none', border: 'none', color: 'var(--brand-primary)', cursor: 'pointer', textDecoration: 'underline' }}
                     >
                       Edit
@@ -94,34 +101,86 @@ export function AdminFinancesClient({
           </table>
         </div>
 
-        <div className={styles.card}>
-          <h3 style={{ marginTop: 0, marginBottom: '1.5rem', color: '#3A3531', fontSize: '1.25rem' }}>
-            {editingExpense ? 'Edit Expense' : 'Log Manual Expense'}
-          </h3>
-          {!editingExpense && (
-            <button
-              onClick={handleBackfill}
-              disabled={backfilling}
-              style={{ width: '100%', padding: '0.6rem', marginBottom: '1rem', background: '#FFF8E1', border: '1px solid #FFE082', borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem', color: '#F57F17' }}
-            >
-              {backfilling ? 'Backfilling…' : '⚡ Backfill existing material expenses'}
-            </button>
-          )}
-          <ExpenseForm 
-            key={editingExpense ? editingExpense.id : 'new'} 
-            expense={editingExpense} 
-            onSaved={() => setEditingExpense(null)} 
-          />
-          {editingExpense && (
-            <button 
-              onClick={() => setEditingExpense(null)}
-              style={{ width: '100%', padding: '0.75rem', marginTop: '0.75rem', background: 'transparent', border: '1px solid #EAE6DF', borderRadius: '8px', cursor: 'pointer' }}
-            >
-              Cancel Edit
-            </button>
-          )}
-        </div>
+        {/* Pagination Controls */}
+        {initialExpenses.length > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #EAE6DF' }}>
+            <span style={{ fontSize: '0.9rem', color: '#7A7571' }}>
+              Showing {startIndex + 1}-{Math.min(startIndex + itemsPerPage, initialExpenses.length)} of {initialExpenses.length}
+            </span>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button 
+                onClick={handlePrevPage} 
+                disabled={currentPage === 1}
+                className={styles.modeBtn}
+                style={{ padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <span style={{ display: 'flex', alignItems: 'center', padding: '0 0.5rem', fontSize: '0.9rem', color: '#3A3531' }}>
+                Page {currentPage} of {totalPages}
+              </span>
+              <button 
+                onClick={handleNextPage} 
+                disabled={currentPage === totalPages}
+                className={styles.modeBtn}
+                style={{ padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
-    </div>
+
+      {/* Modal Overlay */}
+      {isModalOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '1rem'
+        }}>
+          <div style={{
+            backgroundColor: '#fff',
+            borderRadius: '12px',
+            width: '100%',
+            maxWidth: '500px',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            padding: '2rem',
+            position: 'relative',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+          }}>
+            <button 
+              onClick={closeModal}
+              style={{
+                position: 'absolute',
+                top: '1.5rem',
+                right: '1.5rem',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: '#7A7571'
+              }}
+            >
+              <X size={20} />
+            </button>
+            
+            <h2 style={{ margin: '0 0 1.5rem 0', fontSize: '1.5rem', color: '#3A3531' }}>
+              {editingExpense ? 'Edit Expense' : 'Log Expense'}
+            </h2>
+            
+            <ExpenseForm 
+              expense={editingExpense} 
+              onSaved={handleSaved} 
+            />
+          </div>
+        </div>
+      )}
+    </>
   );
 }

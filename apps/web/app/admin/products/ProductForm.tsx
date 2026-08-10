@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { saveProduct } from './actions';
 import styles from '../dashboard.module.css';
 import { CustomSelect } from '../../../components/ui/CustomSelect';
@@ -22,13 +23,14 @@ type ProductMaterialItem = {
 type ProductFormValue = {
   id?: string;
   name?: string;
-  description?: string;
+  description?: string | null;
   basePrice?: number;
   salePrice?: number | null;
   status?: string;
   isAvailable?: boolean;
   isFeatured?: boolean;
-  images?: string[];
+  stock?: number;
+  images?: string[] | null;
   materials?: ProductMaterialItem[];
 };
 
@@ -36,6 +38,7 @@ export function ProductForm({ product, materials = [] }: { product?: ProductForm
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pendingImageFiles, setPendingImageFiles] = useState<File[]>([]);
+  const router = useRouter();
 
   const [status, setStatus] = useState(product?.status || 'PUBLISHED');
   const [isAvailable, setIsAvailable] = useState(product ? product.isAvailable : true);
@@ -69,8 +72,12 @@ export function ProductForm({ product, materials = [] }: { product?: ProductForm
           setIsSubmitting(true);
           pendingImageFiles.forEach((file) => formData.append('newImages', file));
           const res = await saveProduct(formData);
-          if (res?.error) setError(res.error);
-          setIsSubmitting(false);
+          if (res?.error) {
+            setError(res.error);
+            setIsSubmitting(false);
+          } else {
+            router.push('/admin/products');
+          }
         }}
       >
         {error && <div style={{ color: '#C62828', backgroundColor: '#FFEBEE', padding: '1rem', borderRadius: '12px', marginBottom: '2rem' }}>{error}</div>}
@@ -129,7 +136,7 @@ export function ProductForm({ product, materials = [] }: { product?: ProductForm
             <div className={styles.card}>
               <h3 style={{ margin: '0 0 1.5rem 0', color: '#3A3531', fontSize: '1.25rem' }}>Pricing</h3>
               
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '2rem' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#5A5551', fontSize: '0.95rem' }}>Base Price (MAD)</label>
                   <input 
@@ -154,6 +161,18 @@ export function ProductForm({ product, materials = [] }: { product?: ProductForm
                     disabled={!isOnSale}
                     placeholder={isOnSale ? "0.00" : "Enable sale to set price"}
                     style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #D6CFE6', fontSize: '1rem', backgroundColor: isOnSale ? '#FFFFFF' : '#F5F5F5', cursor: isOnSale ? 'text' : 'not-allowed' }} 
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#5A5551', fontSize: '0.95rem' }}>Initial Stock</label>
+                  <input 
+                    type="number" 
+                    name="stock" 
+                    defaultValue={product?.stock ?? 1} 
+                    required 
+                    min="1"
+                    style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #D6CFE6', fontSize: '1rem' }} 
                   />
                 </div>
               </div>
@@ -229,13 +248,13 @@ export function ProductForm({ product, materials = [] }: { product?: ProductForm
                   <ToggleSwitch 
                     name="isAvailable"
                     label="Available in stock"
-                    checked={isAvailable}
+                    checked={isAvailable ?? false}
                     onChange={setIsAvailable}
                   />
                   <ToggleSwitch 
                     name="isFeatured"
                     label="Feature on homepage"
-                    checked={isFeatured}
+                    checked={isFeatured ?? false}
                     onChange={setIsFeatured}
                   />
                 </div>
