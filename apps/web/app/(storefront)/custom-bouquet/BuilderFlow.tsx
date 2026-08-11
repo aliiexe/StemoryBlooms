@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCartStore } from '@stemory/ui';
 import styles from './BuilderFlow.module.css';
@@ -88,14 +87,18 @@ export default function BuilderFlow({
           return (
             <div key={item.id} className={styles.itemCard}>
               <div className={styles.itemInfo}>
+                {/* Fixed-size square, image always fills it centered */}
                 <div className={styles.itemImageWrapper}>
-                  <Image
+                  <img
                     src={item.imageUrl || '/hero-bouquet.png'}
                     alt={item.name}
-                    width={60}
-                    height={60}
-                    className={styles.itemImage}
-                    style={{ objectFit: 'cover' }}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      objectPosition: 'center',
+                      display: 'block',
+                    }}
                   />
                 </div>
                 <div className={styles.itemDetails}>
@@ -104,9 +107,9 @@ export default function BuilderFlow({
                 </div>
               </div>
               <div className={styles.quantityPill}>
-                <button className={styles.qtyBtn} onClick={() => updateQuantity(item.id, -1)} aria-label="Decrease quantity">−</button>
+                <button className={styles.qtyBtn} onClick={() => updateQuantity(item.id, -1)} aria-label="Decrease">−</button>
                 <span className={styles.qtyValue}>{qty}</span>
-                <button className={styles.qtyBtn} onClick={() => updateQuantity(item.id, 1)} aria-label="Increase quantity">+</button>
+                <button className={styles.qtyBtn} onClick={() => updateQuantity(item.id, 1)} aria-label="Increase">+</button>
               </div>
             </div>
           );
