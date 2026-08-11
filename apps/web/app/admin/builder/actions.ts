@@ -3,20 +3,9 @@
 import { revalidatePath } from 'next/cache';
 import { db, eq, builderComponent } from '@stemory/database';
 import crypto from 'crypto';
-import { mkdir, writeFile } from 'fs/promises';
-import path from 'path';
 import { parseIntegerInput } from '../../../lib/form-values';
+import { uploadImage } from '../../../lib/upload';
 
-async function storeUploadedImage(file: File): Promise<string> {
-  const uploadDir = path.join(process.cwd(), 'public/uploads');
-  await mkdir(uploadDir, { recursive: true });
-  const safeName = file.name.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9._-]/g, '').toLowerCase();
-  const ext = path.extname(safeName) || '.jpg';
-  const base = path.basename(safeName, ext) || 'upload';
-  const fileName = `${Date.now()}-${crypto.randomUUID()}-${base}${ext}`;
-  await writeFile(path.join(uploadDir, fileName), Buffer.from(await file.arrayBuffer()));
-  return `/uploads/${fileName}`;
-}
 
 export async function saveBuilderComponent(formData: FormData) {
   const id = formData.get('id') as string;
@@ -42,7 +31,7 @@ export async function saveBuilderComponent(formData: FormData) {
   let imageUrl: string | null = (formData.get('existingImageUrl') as string) || null;
   const newImageFile = formData.get('newImage');
   if (newImageFile instanceof File && newImageFile.size > 0) {
-    imageUrl = await storeUploadedImage(newImageFile);
+    imageUrl = await uploadImage(newImageFile);
   }
 
   try {

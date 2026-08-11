@@ -3,32 +3,8 @@
 import { db, eq, product, productMaterial, material } from '@stemory/database';
 import { revalidatePath } from 'next/cache';
 import crypto from 'crypto';
-import { mkdir, writeFile } from 'fs/promises';
-import path from 'path';
 import { parseIntegerInput } from '../../../lib/form-values';
-
-async function storeUploadedImages(uploadedFiles: File[]) {
-  const uploadDir = path.resolve(process.cwd(), 'public/uploads');
-  await mkdir(uploadDir, { recursive: true });
-
-  const imageUrls: string[] = [];
-
-  for (const file of uploadedFiles) {
-    const safeName = file.name
-      .replace(/\s+/g, '-')
-      .replace(/[^a-zA-Z0-9._-]/g, '')
-      .toLowerCase();
-    const extension = path.extname(safeName) || '.jpg';
-    const baseName = path.basename(safeName, extension) || 'upload';
-    const fileName = `${Date.now()}-${crypto.randomUUID()}-${baseName}${extension}`;
-    const filePath = path.join(uploadDir, fileName);
-    const bytes = Buffer.from(await file.arrayBuffer());
-    await writeFile(filePath, bytes);
-    imageUrls.push(`/uploads/${fileName}`);
-  }
-
-  return imageUrls;
-}
+import { uploadImages } from '../../../lib/upload';
 
 export async function saveProduct(formData: FormData) {
   const id = formData.get('id') as string;
@@ -48,7 +24,7 @@ export async function saveProduct(formData: FormData) {
   }
 
   const uploadedFiles = formData.getAll('newImages').filter((value): value is File => value instanceof File);
-  const uploadedImageUrls = uploadedFiles.length > 0 ? await storeUploadedImages(uploadedFiles) : [];
+  const uploadedImageUrls = uploadedFiles.length > 0 ? await uploadImages(uploadedFiles) : [];
   const allImages = [...images, ...uploadedImageUrls];
 
   const status = formData.get('status') as string;
