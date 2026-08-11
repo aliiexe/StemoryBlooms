@@ -11,8 +11,8 @@ interface HeroSettingsFormProps {
 }
 
 export function HeroSettingsForm({ initialImages, initialFadeSpeed }: HeroSettingsFormProps) {
+  // ImageUploader now delivers base64 data URLs directly — no File tracking needed
   const [images, setImages] = useState<string[]>(initialImages);
-  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [fadeSpeed, setFadeSpeed] = useState(initialFadeSpeed);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -21,25 +21,21 @@ export function HeroSettingsForm({ initialImages, initialFadeSpeed }: HeroSettin
     e.preventDefault();
     setIsSaving(true);
     setMessage('');
-    
+
     try {
       const formData = new FormData();
+      // All images (existing URLs + new base64 data URLs) are already in the images array
       formData.append('images', JSON.stringify(images));
       formData.append('fadeSpeed', fadeSpeed.toString());
-      
-      pendingFiles.forEach(file => {
-        formData.append('newImages', file);
-      });
-      
+
       const result = await saveHeroSettings(formData);
       if (result.success) {
-        setMessage('Hero settings saved successfully!');
-        setPendingFiles([]); // Clear pending files since they're now uploaded
+        setMessage('Hero settings saved!');
         setTimeout(() => setMessage(''), 3000);
       } else {
         setMessage('Error saving hero settings.');
       }
-    } catch (err) {
+    } catch {
       setMessage('An error occurred.');
     } finally {
       setIsSaving(false);
@@ -50,14 +46,14 @@ export function HeroSettingsForm({ initialImages, initialFadeSpeed }: HeroSettin
     <form onSubmit={handleSubmit} className={styles.card}>
       <h3 className={styles.cardTitle}>Hero Slideshow</h3>
       <p style={{ color: '#7A7571', fontSize: '0.9rem', marginBottom: '1.5rem', lineHeight: 1.6 }}>
-        Configure the images displayed on the main storefront, waitlist, and maintenance pages. If multiple images are uploaded, they will automatically fade into one another.
+        Configure the images displayed on the main storefront, waitlist, and maintenance pages.
+        If multiple images are uploaded they will automatically fade into one another.
       </p>
 
       <div style={{ marginBottom: '2rem' }}>
         <ImageUploader
           initialImages={images}
           onChange={setImages}
-          onFilesChange={setPendingFiles}
         />
       </div>
 
@@ -65,14 +61,14 @@ export function HeroSettingsForm({ initialImages, initialFadeSpeed }: HeroSettin
         <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#5A5551', fontSize: '0.95rem' }}>
           Fade Interval (Seconds)
         </label>
-        <input 
-          type="number" 
+        <input
+          type="number"
           value={fadeSpeed}
           onChange={(e) => setFadeSpeed(parseInt(e.target.value) || 5)}
           min="2"
           max="30"
-          required 
-          style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #D6CFE6', fontSize: '1rem' }} 
+          required
+          style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #D6CFE6', fontSize: '1rem' }}
         />
         <p style={{ fontSize: '0.8rem', color: '#7A7571', marginTop: '0.5rem' }}>
           How long each image stays on screen before transitioning.
@@ -80,25 +76,16 @@ export function HeroSettingsForm({ initialImages, initialFadeSpeed }: HeroSettin
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        <button 
-          type="submit" 
+        <button
+          type="submit"
           disabled={isSaving}
-          style={{
-            padding: '0.85rem 2rem',
-            backgroundColor: 'var(--brand-primary)',
-            color: 'white',
-            border: 'none',
-            borderRadius: '12px',
-            fontWeight: 600,
-            cursor: isSaving ? 'not-allowed' : 'pointer',
-            opacity: isSaving ? 0.7 : 1,
-            transition: 'opacity 0.2s'
-          }}
+          className={styles.submitBtn}
+          style={{ width: 'auto', padding: '0.85rem 2rem', margin: 0, borderRadius: '50px' }}
         >
-          {isSaving ? 'Saving...' : 'Save Hero Settings'}
+          {isSaving ? 'Saving…' : 'Save Hero Settings'}
         </button>
         {message && (
-          <span style={{ color: message.includes('error') ? '#E65100' : '#2E7D32', fontSize: '0.9rem', fontWeight: 500 }}>
+          <span style={{ color: message.includes('Error') ? '#C62828' : '#1B5E20', fontSize: '0.9rem', fontWeight: 500 }}>
             {message}
           </span>
         )}

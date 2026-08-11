@@ -57,7 +57,6 @@ function ComponentForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isAvailable, setIsAvailable] = useState(item?.isAvailable ?? true);
-  const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
 
   // BOM state
   const [bom, setBom] = useState<{ materialId: string; quantity: number }[]>(
@@ -75,7 +74,6 @@ function ComponentForm({
         action={async (formData) => {
           setIsSubmitting(true);
           setError(null);
-          if (pendingImageFile) formData.append('newImage', pendingImageFile);
           formData.set('isAvailable', isAvailable ? 'on' : 'off');
           formData.set('componentMaterials', JSON.stringify(bom.filter(b => b.materialId)));
           const res = await saveBuilderComponent(formData);
@@ -88,7 +86,6 @@ function ComponentForm({
         }}
       >
         {item?.id && <input type="hidden" name="id" value={item.id} />}
-        {item?.imageUrl && <input type="hidden" name="existingImageUrl" value={item.imageUrl} />}
 
         {error && (
           <div style={{ color: '#C62828', backgroundColor: '#FFEBEE', padding: '1rem', borderRadius: '12px', marginBottom: '2rem' }}>
@@ -134,8 +131,8 @@ function ComponentForm({
           <div className={styles.card}>
             <h3 style={{ margin: '0 0 1.5rem 0', color: '#3A3531', fontSize: '1.25rem' }}>Media</h3>
             <ImageUploader
+              name="images"
               initialImages={item?.imageUrl ? [item.imageUrl] : []}
-              onFilesChange={(files) => setPendingImageFile(files[0] ?? null)}
             />
           </div>
 

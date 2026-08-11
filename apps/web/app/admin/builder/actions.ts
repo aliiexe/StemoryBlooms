@@ -4,7 +4,6 @@ import { revalidatePath } from 'next/cache';
 import { db, eq, builderComponent } from '@stemory/database';
 import crypto from 'crypto';
 import { parseIntegerInput } from '../../../lib/form-values';
-import { uploadImage } from '../../../lib/upload';
 
 
 export async function saveBuilderComponent(formData: FormData) {
@@ -27,12 +26,16 @@ export async function saveBuilderComponent(formData: FormData) {
     return { error: 'Name and unit price are required' };
   }
 
-  // Handle image: new upload takes priority, else keep existing
-  let imageUrl: string | null = (formData.get('existingImageUrl') as string) || null;
-  const newImageFile = formData.get('newImage');
-  if (newImageFile instanceof File && newImageFile.size > 0) {
-    imageUrl = await uploadImage(newImageFile);
-  }
+  // Image: the ImageUploader sends all images as a JSON array via the hidden 'images' input
+  // For single-image builder components we take the first one.
+  let imageUrl: string | null = null;
+  const imagesStr = formData.get('images') as string;
+  try {
+    if (imagesStr) {
+      const parsed = JSON.parse(imagesStr) as string[];
+      imageUrl = parsed[0] ?? null;
+    }
+  } catch { /* ignore */ }
 
   try {
     if (id) {

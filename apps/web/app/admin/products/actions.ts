@@ -4,7 +4,6 @@ import { db, eq, product, productMaterial, material } from '@stemory/database';
 import { revalidatePath } from 'next/cache';
 import crypto from 'crypto';
 import { parseIntegerInput } from '../../../lib/form-values';
-import { uploadImages } from '../../../lib/upload';
 
 export async function saveProduct(formData: FormData) {
   const id = formData.get('id') as string;
@@ -15,17 +14,15 @@ export async function saveProduct(formData: FormData) {
   const salePriceStr = formData.get('salePrice') as string;
   const salePrice = salePriceStr ? parseIntegerInput(salePriceStr) : null;
 
+  // Images: the ImageUploader sends all images (existing URLs + new base64 data URLs)
+  // as a JSON array in the 'images' hidden input field.
   const imagesStr = formData.get('images') as string;
-  let images: string[] = [];
+  let allImages: string[] = [];
   try {
-    if (imagesStr) images = JSON.parse(imagesStr);
+    if (imagesStr) allImages = JSON.parse(imagesStr);
   } catch (e) {
     console.error('Failed to parse images json', e);
   }
-
-  const uploadedFiles = formData.getAll('newImages').filter((value): value is File => value instanceof File);
-  const uploadedImageUrls = uploadedFiles.length > 0 ? await uploadImages(uploadedFiles) : [];
-  const allImages = [...images, ...uploadedImageUrls];
 
   const status = formData.get('status') as string;
   const isAvailable = formData.get('isAvailable') === 'on';

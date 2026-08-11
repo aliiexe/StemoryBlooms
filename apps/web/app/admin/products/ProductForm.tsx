@@ -37,7 +37,6 @@ type ProductFormValue = {
 export function ProductForm({ product, materials = [] }: { product?: ProductFormValue, materials?: Array<{ id: string; name: string; quantity: number }> }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pendingImageFiles, setPendingImageFiles] = useState<File[]>([]);
   const router = useRouter();
 
   const [status, setStatus] = useState(product?.status || 'PUBLISHED');
@@ -70,7 +69,6 @@ export function ProductForm({ product, materials = [] }: { product?: ProductForm
       <form
         action={async (formData) => {
           setIsSubmitting(true);
-          pendingImageFiles.forEach((file) => formData.append('newImages', file));
           const res = await saveProduct(formData);
           if (res?.error) {
             setError(res.error);
@@ -128,7 +126,6 @@ export function ProductForm({ product, materials = [] }: { product?: ProductForm
               <ImageUploader
                 name="images"
                 initialImages={product?.images || []}
-                onFilesChange={setPendingImageFiles}
               />
             </div>
 

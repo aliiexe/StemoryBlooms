@@ -4,7 +4,6 @@ import { revalidatePath } from 'next/cache';
 import { db, eq, siteSettings, deliveryCompany } from '@stemory/database';
 import crypto from 'crypto';
 import { parseIntegerInput } from '../../../lib/form-values';
-import { uploadImages } from '../../../lib/upload';
 
 export async function setSiteMode(mode: 'WAITLIST' | 'LIVE' | 'MAINTENANCE' | 'DRAFT') {
   const existing = await db.query.siteSettings.findFirst();
@@ -58,16 +57,12 @@ export async function deleteDeliveryCompany(id: string) {
 
 export async function saveHeroSettings(formData: FormData) {
   const imagesStr = formData.get('images') as string;
-  let images: string[] = [];
+  let allImages: string[] = [];
   try {
-    if (imagesStr) images = JSON.parse(imagesStr);
+    if (imagesStr) allImages = JSON.parse(imagesStr);
   } catch (e) {
     console.error('Failed to parse images json', e);
   }
-
-  const uploadedFiles = formData.getAll('newImages').filter((value): value is File => value instanceof File);
-  const uploadedImageUrls = uploadedFiles.length > 0 ? await uploadImages(uploadedFiles) : [];
-  const allImages = [...images, ...uploadedImageUrls];
 
   const fadeSpeed = parseIntegerInput(formData.get('fadeSpeed') as string | null) ?? 5;
 
