@@ -1,5 +1,5 @@
 import { pgTable, foreignKey, text, timestamp, uniqueIndex, boolean, integer, jsonb, index, doublePrecision } from "drizzle-orm/pg-core"
-import { sql } from "drizzle-orm"
+import { sql, relations } from "drizzle-orm"
 
 
 
@@ -141,6 +141,7 @@ export const builderComponent = pgTable("BuilderComponent", {
 	type: text().notNull(),
 	name: text().notNull(),
 	unitPrice: integer().notNull(),
+	stock: integer().default(0).notNull(),
 	minQuantity: integer().default(0).notNull(),
 	maxQuantity: integer(),
 	imageUrl: text(),
@@ -423,6 +424,31 @@ export const analyticsEvent = pgTable("AnalyticsEvent", {
 	userId: text(),
 	metadata: jsonb(),
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const productBuilderComponent = pgTable("ProductBuilderComponent", {
+	id: text().primaryKey().notNull(),
+	productId: text().notNull(),
+	builderComponentId: text().notNull(),
+	quantity: integer().notNull(),
+});
+
+export const productBuilderComponentRelations = relations(productBuilderComponent, ({ one }) => ({
+	product: one(product, {
+		fields: [productBuilderComponent.productId],
+		references: [product.id],
+	}),
+	builderComponent: one(builderComponent, {
+		fields: [productBuilderComponent.builderComponentId],
+		references: [builderComponent.id],
+	}),
+}));
+
+export const adminSettings = pgTable("AdminSettings", {
+	id: text().primaryKey().notNull(),
+	mode: text().default('WAITLIST').notNull(),
+	config: jsonb(),
+	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 });
 
 export const siteSettings = pgTable("SiteSettings", {

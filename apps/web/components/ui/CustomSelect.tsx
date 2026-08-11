@@ -1,67 +1,107 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-interface Option {
-  label: string;
+export interface SelectOption {
   value: string;
+  label: string;
+  disabled?: boolean;
 }
 
 interface CustomSelectProps {
-  options: Option[];
+  options: SelectOption[];
   value: string;
-  onChange: (val: string) => void;
+  onChange: (value: string) => void;
   placeholder?: string;
+  disabled?: boolean;
+  className?: string;
+  style?: React.CSSProperties;
   name?: string;
 }
 
-export function CustomSelect({ options, value, onChange, placeholder = 'Select an option', name }: CustomSelectProps) {
+export function CustomSelect({
+  options,
+  value,
+  onChange,
+  placeholder = 'Select an option...',
+  disabled = false,
+  className = '',
+  style,
+  name,
+}: CustomSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const selectedOption = options.find(o => o.value === value);
+  const selectedOption = options.find((opt) => opt.value === value);
 
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
-    };
+    }
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
   return (
-    <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
+    <div
+      ref={containerRef}
+      className={`custom-select-container ${className}`}
+      style={{
+        position: 'relative',
+        width: '100%',
+        fontFamily: 'inherit',
+        ...style,
+      }}
+    >
       {name && <input type="hidden" name={name} value={value} />}
-      
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        disabled={disabled}
+        onClick={() => setIsOpen((prev) => !prev)}
         style={{
           width: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0.75rem 1rem',
-          backgroundColor: '#FFFFFF',
-          border: '1px solid #D6CFE6',
+          padding: '0.85rem 1rem',
           borderRadius: '12px',
-          cursor: 'pointer',
-          textAlign: 'left',
-          fontSize: '0.95rem',
+          border: '1px solid #D6CFE6',
+          backgroundColor: disabled ? '#F5F5F5' : '#FFFFFF',
           color: selectedOption ? '#3A3531' : '#9A9591',
-          transition: 'all 0.2s ease',
+          fontSize: '1rem',
+          textAlign: 'left',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          cursor: disabled ? 'not-allowed' : 'pointer',
+          transition: 'all 0.2s',
           boxShadow: isOpen ? '0 0 0 3px rgba(95, 113, 97, 0.1)' : 'none',
-          borderColor: isOpen ? 'var(--brand-primary)' : '#D6CFE6'
+          borderColor: isOpen ? '#5F7161' : '#D6CFE6',
         }}
       >
-        <span>{selectedOption ? selectedOption.label : placeholder}</span>
-        <motion.div animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
-          <ChevronDown size={18} color="#7A7571" />
-        </motion.div>
+        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {selectedOption ? selectedOption.label : placeholder}
+        </span>
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{
+            transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+            transition: 'transform 0.2s ease',
+            flexShrink: 0,
+            marginLeft: '0.5rem',
+          }}
+        >
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
       </button>
 
       <AnimatePresence>
@@ -73,45 +113,58 @@ export function CustomSelect({ options, value, onChange, placeholder = 'Select a
             transition={{ duration: 0.15 }}
             style={{
               position: 'absolute',
-              top: '100%',
+              top: 'calc(100% + 8px)',
               left: 0,
               right: 0,
-              marginTop: '0.5rem',
               backgroundColor: '#FFFFFF',
               border: '1px solid #EAE6DF',
               borderRadius: '12px',
-              boxShadow: '0 10px 30px rgba(0,0,0,0.05)',
-              zIndex: 50,
+              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.08)',
               maxHeight: '250px',
-              overflowY: 'auto'
+              overflowY: 'auto',
+              zIndex: 50,
+              padding: '0.5rem',
             }}
           >
-            {options.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => {
-                  onChange(option.value);
-                  setIsOpen(false);
-                }}
-                style={{
-                  width: '100%',
-                  textAlign: 'left',
-                  padding: '0.75rem 1rem',
-                  backgroundColor: value === option.value ? '#FDFBF7' : 'transparent',
-                  border: 'none',
-                  borderBottom: '1px solid #F5F5F5',
-                  cursor: 'pointer',
-                  color: value === option.value ? 'var(--brand-primary)' : '#5A5551',
-                  fontWeight: value === option.value ? 500 : 400,
-                  transition: 'background-color 0.2s'
-                }}
-                onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#FDFBF7')}
-                onMouseOut={(e) => (e.currentTarget.style.backgroundColor = value === option.value ? '#FDFBF7' : 'transparent')}
-              >
-                {option.label}
-              </button>
-            ))}
+            {options.length === 0 ? (
+              <div style={{ padding: '0.75rem 1rem', color: '#9A9591', textAlign: 'center', fontSize: '0.95rem' }}>
+                No options available
+              </div>
+            ) : (
+              options.map((opt) => (
+                <div
+                  key={opt.value}
+                  onClick={() => {
+                    if (!opt.disabled) {
+                      onChange(opt.value);
+                      setIsOpen(false);
+                    }
+                  }}
+                  style={{
+                    padding: '0.75rem 1rem',
+                    borderRadius: '8px',
+                    cursor: opt.disabled ? 'not-allowed' : 'pointer',
+                    backgroundColor: value === opt.value ? 'rgba(95, 113, 97, 0.08)' : 'transparent',
+                    color: opt.disabled ? '#C8C4BB' : value === opt.value ? '#5F7161' : '#3A3531',
+                    fontWeight: value === opt.value ? 600 : 400,
+                    fontSize: '0.95rem',
+                    transition: 'background-color 0.15s',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!opt.disabled && value !== opt.value) {
+                      e.currentTarget.style.backgroundColor = '#FDFBF7';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!opt.disabled && value !== opt.value) {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }
+                  }}
+                >
+                  {opt.label}
+                </div>
+              ))
+            )}
           </motion.div>
         )}
       </AnimatePresence>

@@ -35,7 +35,9 @@ export default async function CustomBouquetPage() {
     id: c.id,
     name: c.name,
     price: c.unitPrice,
-    imageUrl: c.imageUrl
+    imageUrl: c.imageUrl,
+    minQuantity: c.minQuantity,
+    maxQuantity: c.maxQuantity
   });
 
   const itemsData: Record<string, ReturnType<typeof mapItem>[]> = {};

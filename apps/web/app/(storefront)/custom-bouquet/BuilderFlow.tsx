@@ -9,6 +9,8 @@ type BuilderItem = {
   id: string;
   name: string;
   price: number;
+  minQuantity?: number;
+  maxQuantity?: number | null;
   imageUrl?: string | null;
 };
 
@@ -28,15 +30,37 @@ export default function BuilderFlow({
   const addItem = useCartStore((state) => state.addItem);
   const currentStep = STEPS[currentStepIndex];
 
-  const updateQuantity = (id: string, delta: number) => {
+  const updateQuantity = (item: BuilderItem, delta: number, currentQty: number) => {
     setCart((prev) => {
-      const newQty = (prev[id] || 0) + delta;
-      if (newQty <= 0) {
+      // If adding item for the first time, default to minQuantity or 1
+      if (currentQty === 0 && delta > 0) {
+        return { ...prev, [item.id]: Math.max(item.minQuantity ?? 1, 1) };
+      }
+
+      const newQty = currentQty + delta;
+      const minQty = item.minQuantity ?? 0;
+      const maxQty = item.maxQuantity ?? Infinity;
+
+      // If they try to go below minQty, they probably want to remove it entirely
+      // Or we can just snap it to 0 if they hit minus while at minQty
+      if (newQty < minQty && newQty > 0) {
+        // Option 1: snap to 0
         const next = { ...prev };
-        delete next[id];
+        delete next[item.id];
         return next;
       }
-      return { ...prev, [id]: newQty };
+
+      if (newQty <= 0) {
+        const next = { ...prev };
+        delete next[item.id];
+        return next;
+      }
+      
+      if (newQty > maxQty) {
+        return prev; // Ignore, can't go above max
+      }
+
+      return { ...prev, [item.id]: newQty };
     });
   };
 
@@ -104,12 +128,17 @@ export default function BuilderFlow({
                 <div className={styles.itemDetails}>
                   <h3 className={styles.itemName}>{item.name}</h3>
                   <p className={styles.itemPrice}>{item.price === 0 ? 'Free' : `${item.price} MAD`}</p>
+                  {item.minQuantity && item.minQuantity > 1 && (
+                    <p style={{ fontSize: '0.8rem', color: '#9A9591', margin: '0.25rem 0 0 0' }}>
+                      Min. {item.minQuantity} required
+                    </p>
+                  )}
                 </div>
               </div>
               <div className={styles.quantityPill}>
-                <button className={styles.qtyBtn} onClick={() => updateQuantity(item.id, -1)} aria-label="Decrease">−</button>
+                <button className={styles.qtyBtn} onClick={() => updateQuantity(item, -1, qty)} aria-label="Decrease">−</button>
                 <span className={styles.qtyValue}>{qty}</span>
-                <button className={styles.qtyBtn} onClick={() => updateQuantity(item.id, 1)} aria-label="Increase">+</button>
+                <button className={styles.qtyBtn} onClick={() => updateQuantity(item, 1, qty)} aria-label="Increase">+</button>
               </div>
             </div>
           );

@@ -1,6 +1,6 @@
 'use server';
 
-import { db, eq, product, productMaterial, material } from '@stemory/database';
+import { db, eq, product, productMaterial, material, builderComponent, productBuilderComponent } from '@stemory/database';
 import { revalidatePath } from 'next/cache';
 import crypto from 'crypto';
 import { parseIntegerInput } from '../../../lib/form-values';
@@ -37,6 +37,14 @@ export async function saveProduct(formData: FormData) {
     console.error('Failed to parse productMaterials', e);
   }
 
+  const productBuilderComponentsStr = formData.get('productBuilderComponents') as string;
+  let productBuilderComponentsList: { builderComponentId: string, quantity: number }[] = [];
+  try {
+    if (productBuilderComponentsStr) productBuilderComponentsList = JSON.parse(productBuilderComponentsStr);
+  } catch (e) {
+    console.error('Failed to parse productBuilderComponents', e);
+  }
+
   if (!name?.trim() || !description?.trim() || basePrice === null) {
     return { error: 'Name, description, and valid base price are required' };
   }
@@ -45,8 +53,8 @@ export async function saveProduct(formData: FormData) {
     return { error: 'At least one product image is required' };
   }
 
-  if (productMaterialsList.length === 0 || productMaterialsList.some((entry) => !entry.materialId || entry.quantity <= 0)) {
-    return { error: 'At least one valid material line is required' };
+  if (productMaterialsList.length === 0 && productBuilderComponentsList.length === 0) {
+    return { error: 'At least one valid material or custom flower line is required' };
   }
 
   try {
@@ -58,20 +66,18 @@ export async function saveProduct(formData: FormData) {
         const oldProduct = await tx.query.product.findFirst({ where: eq(product.id, id) });
         const oldStock = oldProduct?.stock ?? 0;
         const oldBOM = await tx.query.productMaterial.findMany({ where: eq(productMaterial.productId, id) });
+        const oldCustomBOM = await tx.query.productBuilderComponent.findMany({ where: eq(productBuilderComponent.productId, id) });
 
-        // Calculate material usage differences
+        // --- Calculate raw material usage differences ---
         const oldUsage = new Map<string, number>();
         for (const ob of oldBOM) {
           oldUsage.set(ob.materialId, oldStock * ob.quantity);
         }
-
         const newUsage = new Map<string, number>();
         for (const nb of productMaterialsList) {
           newUsage.set(nb.materialId, stock * nb.quantity);
         }
-
         const allMatIds = new Set([...oldUsage.keys(), ...newUsage.keys()]);
-
         for (const mId of allMatIds) {
           const oldU = oldUsage.get(mId) ?? 0;
           const newU = newUsage.get(mId) ?? 0;
@@ -87,7 +93,33 @@ export async function saveProduct(formData: FormData) {
           }
         }
 
+        // --- Calculate custom flower (builder component) usage differences ---
+        const oldCustomUsage = new Map<string, number>();
+        for (const ob of oldCustomBOM) {
+          oldCustomUsage.set(ob.builderComponentId, oldStock * ob.quantity);
+        }
+        const newCustomUsage = new Map<string, number>();
+        for (const nb of productBuilderComponentsList) {
+          newCustomUsage.set(nb.builderComponentId, stock * nb.quantity);
+        }
+        const allCompIds = new Set([...oldCustomUsage.keys(), ...newCustomUsage.keys()]);
+        for (const cId of allCompIds) {
+          const oldU = oldCustomUsage.get(cId) ?? 0;
+          const newU = newCustomUsage.get(cId) ?? 0;
+          const diff = newU - oldU;
+
+          if (diff !== 0) {
+            const comp = await tx.query.builderComponent.findFirst({ where: eq(builderComponent.id, cId) });
+            if (comp) {
+              await tx.update(builderComponent)
+                .set({ stock: comp.stock - diff, updatedAt: new Date() })
+                .where(eq(builderComponent.id, cId));
+            }
+          }
+        }
+
         await tx.delete(productMaterial).where(eq(productMaterial.productId, id));
+        await tx.delete(productBuilderComponent).where(eq(productBuilderComponent.productId, id));
 
         await tx.update(product).set({
           name, description, basePrice, salePrice, images: allImages, status, isAvailable, isFeatured, stock, updatedAt: new Date()
@@ -108,6 +140,16 @@ export async function saveProduct(formData: FormData) {
               .where(eq(material.id, pm.materialId));
           }
         }
+
+        // Deduct builder components for new product
+        for (const pbc of productBuilderComponentsList) {
+          const comp = await tx.query.builderComponent.findFirst({ where: eq(builderComponent.id, pbc.builderComponentId) });
+          if (comp) {
+            await tx.update(builderComponent)
+              .set({ stock: comp.stock - (stock * pbc.quantity), updatedAt: new Date() })
+              .where(eq(builderComponent.id, pbc.builderComponentId));
+          }
+        }
       }
 
       if (productMaterialsList.length > 0) {
@@ -116,6 +158,15 @@ export async function saveProduct(formData: FormData) {
           productId: currentProductId,
           materialId: pm.materialId,
           quantity: pm.quantity
+        })));
+      }
+
+      if (productBuilderComponentsList.length > 0) {
+        await tx.insert(productBuilderComponent).values(productBuilderComponentsList.map((pbc) => ({
+          id: crypto.randomUUID(),
+          productId: currentProductId,
+          builderComponentId: pbc.builderComponentId,
+          quantity: pbc.quantity
         })));
       }
     });

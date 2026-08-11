@@ -20,6 +20,11 @@ type ProductMaterialItem = {
   quantity: number;
 };
 
+type ProductBuilderComponentItem = {
+  builderComponentId: string;
+  quantity: number;
+};
+
 type ProductFormValue = {
   id?: string;
   name?: string;
@@ -32,9 +37,18 @@ type ProductFormValue = {
   stock?: number;
   images?: string[] | null;
   materials?: ProductMaterialItem[];
+  builderComponents?: ProductBuilderComponentItem[];
 };
 
-export function ProductForm({ product, materials = [] }: { product?: ProductFormValue, materials?: Array<{ id: string; name: string; quantity: number }> }) {
+export function ProductForm({ 
+  product, 
+  materials = [], 
+  builderComponents = [] 
+}: { 
+  product?: ProductFormValue, 
+  materials?: Array<{ id: string; name: string; quantity: number }>,
+  builderComponents?: Array<{ id: string; name: string; stock: number }>
+}) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -64,6 +78,25 @@ export function ProductForm({ product, materials = [] }: { product?: ProductForm
     setBom(newBom);
   };
 
+  const [customBom, setCustomBom] = useState<{builderComponentId: string, quantity: number}[]>(
+    product?.builderComponents ? product.builderComponents.map((b) => ({ builderComponentId: b.builderComponentId, quantity: b.quantity })) : []
+  );
+
+  const addCustomBom = () => setCustomBom([...customBom, { builderComponentId: '', quantity: 1 }]);
+  const removeCustomBom = (idx: number) => {
+    const newBom = [...customBom];
+    newBom.splice(idx, 1);
+    setCustomBom(newBom);
+  };
+  const updateCustomBom = (idx: number, field: 'builderComponentId' | 'quantity', value: string | number) => {
+    const newBom = [...customBom];
+    newBom[idx] = {
+      ...newBom[idx],
+      [field]: value,
+    } as ProductBuilderComponentItem;
+    setCustomBom(newBom);
+  };
+
   return (
     <div style={{ width: '100%', maxWidth: '1400px', margin: '0 auto' }}>
       <form
@@ -81,8 +114,9 @@ export function ProductForm({ product, materials = [] }: { product?: ProductForm
         {error && <div style={{ color: '#C62828', backgroundColor: '#FFEBEE', padding: '1rem', borderRadius: '12px', marginBottom: '2rem' }}>{error}</div>}
         
         {product?.id && <input type="hidden" name="id" value={product.id} />}
-        {/* Hidden input to submit the BOM array */}
+        {/* Hidden inputs to submit the BOM arrays */}
         <input type="hidden" name="productMaterials" value={JSON.stringify(bom.filter(b => b.materialId))} />
+        <input type="hidden" name="productBuilderComponents" value={JSON.stringify(customBom.filter(b => b.builderComponentId))} />
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem' }}>
           
@@ -178,48 +212,95 @@ export function ProductForm({ product, materials = [] }: { product?: ProductForm
             {/* Recipe / BOM Card */}
             <div className={styles.card}>
               <h3 style={{ margin: '0 0 0.5rem 0', color: '#3A3531', fontSize: '1.25rem' }}>Recipe (Bill of Materials)</h3>
-              <p style={{ color: '#9A9591', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Define exactly which raw materials are consumed when this bouquet is sold.</p>
+              <p style={{ color: '#9A9591', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Define exactly which items are consumed when this bouquet is manufactured/sold.</p>
               
-              {bom.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
-                  {bom.map((item, idx) => (
+              <div style={{ marginBottom: '2rem' }}>
+                <h4 style={{ margin: '0 0 1rem 0', color: '#5A5551', fontSize: '1.05rem' }}>Raw Materials</h4>
+                {bom.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1rem' }}>
+                    {bom.map((item, idx) => (
                       <div key={idx} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(120px, 1fr) auto', gap: '1rem', alignItems: 'center', width: '100%' }}>
-                      <select 
-                        value={item.materialId}
-                        onChange={(e) => updateMaterial(idx, 'materialId', e.target.value)}
-                          style={{ width: '100%', minWidth: 0, padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #D6CFE6', fontSize: '0.95rem', backgroundColor: '#FFFFFF' }}
-                      >
-                        <option value="">Select Material...</option>
-                        {materials.map(m => (
-                          <option key={m.id} value={m.id}>{m.name} ({m.quantity} in stock)</option>
-                        ))}
-                      </select>
-                      <input 
-                        type="number"
-                        min="1"
-                        value={item.quantity}
-                        onChange={(e) => updateMaterial(idx, 'quantity', parseInt(e.target.value) || 1)}
-                        style={{ width: '100%', minWidth: 0, padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #D6CFE6', fontSize: '0.95rem' }}
-                      />
-                      <button 
-                        type="button" 
-                        onClick={() => removeMaterial(idx)}
-                        style={{ padding: '0.5rem', backgroundColor: '#FFEBEE', color: '#C62828', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
+                        <CustomSelect 
+                          value={item.materialId}
+                          onChange={(val) => updateMaterial(idx, 'materialId', val)}
+                          options={[
+                            { value: '', label: 'Select Material...' },
+                            ...materials.map(m => ({
+                              value: m.id,
+                              label: `${m.name} (${m.quantity} in stock)`,
+                            }))
+                          ]}
+                        />
+                        <input 
+                          type="number"
+                          min="1"
+                          value={item.quantity}
+                          onChange={(e) => updateMaterial(idx, 'quantity', parseInt(e.target.value) || 1)}
+                          style={{ width: '100%', minWidth: 0, padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #D6CFE6', fontSize: '0.95rem' }}
+                        />
+                        <button 
+                          type="button" 
+                          onClick={() => removeMaterial(idx)}
+                          style={{ padding: '0.5rem', backgroundColor: '#FFEBEE', color: '#C62828', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <button 
+                  type="button"
+                  onClick={addMaterial}
+                  style={{ padding: '0.75rem 1.5rem', backgroundColor: '#FDFBF7', color: 'var(--brand-primary)', border: '1px dashed var(--brand-primary)', borderRadius: '50px', cursor: 'pointer', fontSize: '0.95rem', fontWeight: 500 }}
+                >
+                  + Add Raw Material
+                </button>
+              </div>
 
-              <button 
-                type="button"
-                onClick={addMaterial}
-                style={{ padding: '0.75rem 1.5rem', backgroundColor: '#FDFBF7', color: 'var(--brand-primary)', border: '1px dashed var(--brand-primary)', borderRadius: '50px', cursor: 'pointer', fontSize: '0.95rem', fontWeight: 500 }}
-              >
-                + Add Material
-              </button>
+              <div>
+                <h4 style={{ margin: '0 0 1rem 0', color: '#5A5551', fontSize: '1.05rem' }}>Custom Flowers (Assembled Components)</h4>
+                {customBom.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1rem' }}>
+                    {customBom.map((item, idx) => (
+                      <div key={idx} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(120px, 1fr) auto', gap: '1rem', alignItems: 'center', width: '100%' }}>
+                        <CustomSelect 
+                          value={item.builderComponentId}
+                          onChange={(val) => updateCustomBom(idx, 'builderComponentId', val)}
+                          options={[
+                            { value: '', label: 'Select Custom Flower...' },
+                            ...builderComponents.map(m => ({
+                              value: m.id,
+                              label: `${m.name} (${m.stock} in stock)`,
+                            }))
+                          ]}
+                        />
+                        <input 
+                          type="number"
+                          min="1"
+                          value={item.quantity}
+                          onChange={(e) => updateCustomBom(idx, 'quantity', parseInt(e.target.value) || 1)}
+                          style={{ width: '100%', minWidth: 0, padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #D6CFE6', fontSize: '0.95rem' }}
+                        />
+                        <button 
+                          type="button" 
+                          onClick={() => removeCustomBom(idx)}
+                          style={{ padding: '0.5rem', backgroundColor: '#FFEBEE', color: '#C62828', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <button 
+                  type="button"
+                  onClick={addCustomBom}
+                  style={{ padding: '0.75rem 1.5rem', backgroundColor: '#FDFBF7', color: 'var(--brand-primary)', border: '1px dashed var(--brand-primary)', borderRadius: '50px', cursor: 'pointer', fontSize: '0.95rem', fontWeight: 500 }}
+                >
+                  + Add Custom Flower
+                </button>
+              </div>
             </div>
           </div>
 

@@ -7,6 +7,7 @@ import { saveBuilderSections } from '../settings/actions';
 import styles from '../dashboard.module.css';
 import { ImageUploader } from '../../../components/ui/ImageUploader';
 import { ToggleSwitch } from '../../../components/ui/ToggleSwitch';
+import { CustomSelect } from '../../../components/ui/CustomSelect';
 
 interface BuilderComponent {
   id: string;
@@ -136,10 +137,10 @@ function ComponentForm({
             />
           </div>
 
-          {/* Pricing */}
+          {/* Pricing & Inventory */}
           <div className={styles.card}>
-            <h3 style={{ margin: '0 0 1.5rem 0', color: '#3A3531', fontSize: '1.25rem' }}>Pricing</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1.5rem' }}>
+            <h3 style={{ margin: '0 0 1.5rem 0', color: '#3A3531', fontSize: '1.25rem' }}>Pricing & Inventory</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '1.5rem' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#5A5551', fontSize: '0.95rem' }}>Unit Price (MAD) — set 0 for free</label>
                 <input
@@ -171,6 +172,15 @@ function ComponentForm({
                   style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #D6CFE6', fontSize: '1rem' }}
                 />
               </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#5A5551', fontSize: '0.95rem' }}>Stock (Assembled)</label>
+                <input
+                  name="stock"
+                  type="number"
+                  defaultValue={item?.stock ?? 0}
+                  style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #D6CFE6', fontSize: '1rem' }}
+                />
+              </div>
             </div>
           </div>
 
@@ -184,16 +194,18 @@ function ComponentForm({
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
                 {bom.map((row, idx) => (
                   <div key={idx} style={{ display: 'grid', gridTemplateColumns: 'minmax(0,2fr) minmax(120px,1fr) auto', gap: '1rem', alignItems: 'center' }}>
-                    <select
+                    <CustomSelect
                       value={row.materialId}
-                      onChange={(e) => updateBom(idx, 'materialId', e.target.value)}
-                      style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #D6CFE6', fontSize: '0.95rem', backgroundColor: '#fff' }}
-                    >
-                      <option value="">Select Material...</option>
-                      {allMaterials.map(m => (
-                        <option key={m.id} value={m.id}>{m.name} ({m.quantity} in stock)</option>
-                      ))}
-                    </select>
+                      onChange={(val) => updateBom(idx, 'materialId', val)}
+                      options={[
+                        { value: '', label: 'Select Material...' },
+                        ...allMaterials.map(m => ({
+                          value: m.id,
+                          label: `${m.name} (${m.quantity} in stock)`,
+                        }))
+                      ]}
+                      placeholder="Select Material..."
+                    />
                     <input
                       type="number"
                       min="1"
