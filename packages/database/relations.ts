@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { user, auditLog, customer, address, product, review, productVariant, cart, cartItem, order, orderItem, orderAdjustment, paymentStatusHistory, material, stockMovement, orderStatusHistory, receipt, productMaterial, permission, permissionToRole, role, category, categoryToProduct, supplier, announcementTemplate, announcement, deliveryHandoff } from "./schema";
+import { user, auditLog, customer, address, product, review, productVariant, cart, cartItem, order, orderItem, orderAdjustment, paymentStatusHistory, material, stockMovement, orderStatusHistory, receipt, productMaterial, permission, permissionToRole, role, category, categoryToProduct, supplier, announcementTemplate, announcement, deliveryHandoff, productBuilderComponent } from "./schema";
 
 export const auditLogRelations = relations(auditLog, ({one}) => ({
 	user: one(user, {
@@ -46,6 +46,7 @@ export const productRelations = relations(product, ({many}) => ({
 	productVariants: many(productVariant),
 	productMaterials: many(productMaterial),
 	categoryToProducts: many(categoryToProduct),
+	productBuilderComponents: many(productBuilderComponent),
 }));
 
 export const productVariantRelations = relations(productVariant, ({one}) => ({

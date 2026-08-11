@@ -14,6 +14,7 @@ interface BuilderComponent {
   type: string;
   name: string;
   unitPrice: number;
+  stock: number;
   minQuantity: number;
   maxQuantity: number | null;
   imageUrl: string | null;
