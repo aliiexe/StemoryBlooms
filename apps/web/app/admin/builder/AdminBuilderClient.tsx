@@ -547,6 +547,9 @@ export function AdminBuilderClient({
                             fontSize: '0.9rem',
                             textAlign: 'center'
                           }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') e.currentTarget.blur();
+                          }}
                         />
                         <button
                           onClick={() => {

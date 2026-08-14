@@ -108,12 +108,16 @@ export function AdminProductsClient({ initialProducts }: { initialProducts: Prod
                     <input 
                       type="number"
                       min="0"
+                      className="no-spinners"
                       value={p.stock}
                       onChange={(e) => {
                         const val = parseInt(e.target.value);
                         if (!isNaN(val)) handleUpdate(p.id, { stock: val });
                       }}
-                      style={{ width: '100%', textAlign: 'center', padding: '0.4rem 0', border: 'none', fontSize: '0.9rem', outline: 'none', WebkitAppearance: 'none', MozAppearance: 'textfield' }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') e.currentTarget.blur();
+                      }}
+                      style={{ width: '100%', textAlign: 'center', padding: '0.4rem 0', border: 'none', fontSize: '0.9rem', outline: 'none' }}
                     />
                     <button 
                       onClick={() => handleUpdate(p.id, { stock: p.stock + 1 })}
@@ -138,11 +142,15 @@ export function AdminProductsClient({ initialProducts }: { initialProducts: Prod
                       <span style={{ paddingLeft: '0.6rem', color: '#5A5551', fontSize: '0.9rem' }}>MAD</span>
                       <input 
                         type="number"
+                        className="no-spinners"
                         value={p.salePrice || ''}
                         placeholder="Price"
                         onChange={(e) => {
                           const val = parseFloat(e.target.value);
                           if (!isNaN(val)) handleUpdate(p.id, { salePrice: val });
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') e.currentTarget.blur();
                         }}
                         style={{ width: '100%', padding: '0.4rem 0.5rem', border: 'none', fontSize: '0.9rem', outline: 'none' }}
                       />

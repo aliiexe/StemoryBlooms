@@ -235,7 +235,6 @@ export async function backfillProductMaterialDeductions() {
 export async function quickUpdateProduct(id: string, updates: { stock?: number, salePrice?: number | null, isOnSale?: boolean }) {
   try {
     const payload: any = {};
-    if (updates.stock !== undefined) payload.stock = updates.stock;
     if (updates.isOnSale !== undefined) {
       if (!updates.isOnSale) {
         payload.salePrice = null;
@@ -245,8 +244,55 @@ export async function quickUpdateProduct(id: string, updates: { stock?: number, 
     } else if (updates.salePrice !== undefined) {
       payload.salePrice = updates.salePrice;
     }
-    
-    await db.update(product).set({ ...payload, updatedAt: new Date() }).where(eq(product.id, id));
+
+    if (updates.stock !== undefined) {
+      await db.transaction(async (tx) => {
+        const prod = await tx.query.product.findFirst({
+          where: eq(product.id, id),
+          with: { productMaterials: true, productBuilderComponents: true }
+        });
+        
+        if (prod && prod.stock !== updates.stock) {
+          const oldStock = prod.stock;
+          const newStock = updates.stock as number;
+          
+          for (const pm of prod.productMaterials) {
+            const oldU = oldStock * pm.quantity;
+            const newU = newStock * pm.quantity;
+            const diff = newU - oldU;
+            
+            if (diff !== 0) {
+              const mat = await tx.query.material.findFirst({ where: eq(material.id, pm.materialId) });
+              if (mat) {
+                await tx.update(material)
+                  .set({ quantity: mat.quantity - diff, updatedAt: new Date() })
+                  .where(eq(material.id, pm.materialId));
+              }
+            }
+          }
+          
+          for (const pbc of prod.productBuilderComponents) {
+            const oldU = oldStock * pbc.quantity;
+            const newU = newStock * pbc.quantity;
+            const diff = newU - oldU;
+            
+            if (diff !== 0) {
+              const comp = await tx.query.builderComponent.findFirst({ where: eq(builderComponent.id, pbc.builderComponentId) });
+              if (comp) {
+                await tx.update(builderComponent)
+                  .set({ stock: comp.stock - diff, updatedAt: new Date() })
+                  .where(eq(builderComponent.id, pbc.builderComponentId));
+              }
+            }
+          }
+        }
+        
+        payload.stock = updates.stock;
+        await tx.update(product).set({ ...payload, updatedAt: new Date() }).where(eq(product.id, id));
+      });
+    } else {
+      await db.update(product).set({ ...payload, updatedAt: new Date() }).where(eq(product.id, id));
+    }
     revalidatePath('/admin/products');
     revalidatePath('/shop');
     return { success: true };

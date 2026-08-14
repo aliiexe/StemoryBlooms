@@ -121,6 +121,9 @@ export function InventoryTableClient({ initialMaterials, suppliers }: Props) {
                         className="no-spinners"
                         value={m.quantity}
                         onChange={(e) => handleUpdate(m.id, { quantity: parseInt(e.target.value) || 0 })}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') e.currentTarget.blur();
+                        }}
                         style={{ width: '60px', padding: '0.25rem', textAlign: 'center', border: '1px solid #D6CFE6', borderRadius: '4px' }}
                       />
                       {restockingId === m.id ? (
@@ -131,6 +134,9 @@ export function InventoryTableClient({ initialMaterials, suppliers }: Props) {
                             className="no-spinners"
                             value={restockQty}
                             onChange={(e) => setRestockQty(parseInt(e.target.value) || 1)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') e.currentTarget.blur();
+                            }}
                             style={{ width: '50px', padding: '0.25rem', textAlign: 'center', border: '1px solid #8C9C76', borderRadius: '4px' }}
                             autoFocus
                           />
