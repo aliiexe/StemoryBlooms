@@ -511,33 +511,53 @@ export function AdminBuilderClient({
                       )}
                     </td>
                     <td>
-                      <input 
-                        type="number" 
-                        min="0"
-                        defaultValue={item.stock}
-                        onBlur={(e) => {
-                          const newStock = parseInt(e.target.value) || 0;
-                          if (newStock !== item.stock) {
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
+                        <button
+                          onClick={() => {
+                            const newStock = Math.max(0, item.stock - 1);
+                            if (newStock !== item.stock) {
+                              startTransition(async () => {
+                                await updateBuilderComponentStock(item.id, newStock);
+                                setComponents(prev => prev.map(c => c.id === item.id ? { ...c, stock: newStock } : c));
+                              });
+                            }
+                          }}
+                          style={{ width: '24px', height: '24px', borderRadius: '4px', border: '1px solid #D6CFE6', background: '#fff', cursor: 'pointer' }}
+                        >-</button>
+                        <input 
+                          type="number" 
+                          min="0"
+                          value={item.stock}
+                          onChange={(e) => {
+                            let newStock = parseInt(e.target.value);
+                            if (isNaN(newStock)) return;
+                            if (newStock !== item.stock) {
+                              startTransition(async () => {
+                                await updateBuilderComponentStock(item.id, newStock);
+                                setComponents(prev => prev.map(c => c.id === item.id ? { ...c, stock: newStock } : c));
+                              });
+                            }
+                          }}
+                          style={{ 
+                            width: '50px', 
+                            padding: '0.25rem', 
+                            borderRadius: '4px', 
+                            border: '1px solid #D6CFE6', 
+                            fontSize: '0.9rem',
+                            textAlign: 'center'
+                          }}
+                        />
+                        <button
+                          onClick={() => {
+                            const newStock = item.stock + 1;
                             startTransition(async () => {
                               await updateBuilderComponentStock(item.id, newStock);
                               setComponents(prev => prev.map(c => c.id === item.id ? { ...c, stock: newStock } : c));
                             });
-                          }
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.currentTarget.blur();
-                          }
-                        }}
-                        style={{ 
-                          width: '70px', 
-                          padding: '0.4rem', 
-                          borderRadius: '8px', 
-                          border: '1px solid #D6CFE6', 
-                          fontSize: '0.9rem',
-                          textAlign: 'center'
-                        }}
-                      />
+                          }}
+                          style={{ width: '24px', height: '24px', borderRadius: '4px', border: '1px solid #D6CFE6', background: '#fff', cursor: 'pointer' }}
+                        >+</button>
+                      </div>
                     </td>
                     <td>
                       <button
