@@ -4,6 +4,8 @@ import { ProductForm } from '../ProductForm';
 
 import { db } from '@stemory/database';
 
+export const dynamic = 'force-dynamic';
+
 export default async function NewProductPage() {
   const materials = await db.query.material.findMany({ orderBy: (table, { asc }) => [asc(table.name)] });
   const builderComponents = await db.query.builderComponent.findMany({ orderBy: (table, { asc }) => [asc(table.name)] });

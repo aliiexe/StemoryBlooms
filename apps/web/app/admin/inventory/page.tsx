@@ -4,6 +4,8 @@ import { asc } from 'drizzle-orm';
 import styles from '../dashboard.module.css';
 import { InventoryTableClient } from './InventoryTableClient';
 
+export const dynamic = 'force-dynamic';
+
 export default async function AdminInventoryPage() {
   const materials = await db.query.material.findMany({
     orderBy: [asc(material.name)],

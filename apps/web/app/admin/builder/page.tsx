@@ -3,6 +3,8 @@ import { db, builderComponent, material } from '@stemory/database';
 import { asc } from 'drizzle-orm';
 import { AdminBuilderClient } from './AdminBuilderClient';
 
+export const dynamic = 'force-dynamic';
+
 export default async function AdminBuilderPage() {
   const [components, materials, settings] = await Promise.all([
     db.query.builderComponent.findMany({
