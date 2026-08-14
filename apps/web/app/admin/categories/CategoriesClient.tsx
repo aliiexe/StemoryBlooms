@@ -52,7 +52,7 @@ export function CategoriesClient({ initialCategories }: { initialCategories: any
   };
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem', alignItems: 'start' }}>
+    <div className={styles.twoColumnResponsive}>
       
       {/* Categories List */}
       <div className={styles.card} style={{ padding: '2rem' }}>
@@ -66,7 +66,7 @@ export function CategoriesClient({ initialCategories }: { initialCategories: any
             No categories yet. Create your first one to organize your catalog.
           </div>
         ) : (
-          <div style={{ display: 'grid', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
             {categories.map((c) => {
               const isEditing = editingId === c.id;
               
@@ -76,69 +76,67 @@ export function CategoriesClient({ initialCategories }: { initialCategories: any
                   style={{ 
                     display: 'flex', 
                     alignItems: 'center', 
-                    justifyContent: 'space-between', 
-                    padding: '1rem 1.25rem', 
+                    gap: '0.5rem',
+                    padding: '0.4rem 0.75rem', 
                     backgroundColor: isEditing ? '#FFFFFF' : '#FDFBF7', 
                     border: isEditing ? '1px solid var(--brand-primary)' : '1px solid #EAE6DF',
-                    borderRadius: '12px',
+                    borderRadius: '20px',
                     transition: 'all 0.2s',
-                    boxShadow: isEditing ? '0 4px 12px rgba(0,0,0,0.05)' : 'none'
+                    boxShadow: isEditing ? '0 2px 8px rgba(0,0,0,0.05)' : 'none'
                   }}
                 >
                   {isEditing ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, marginRight: '1rem' }}>
-                      <input 
-                        autoFocus
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleSaveEdit(c.id);
-                          if (e.key === 'Escape') cancelEdit();
-                        }}
-                        style={{ flex: 1, padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid #D6CFE6', fontSize: '0.95rem', outline: 'none' }}
-                      />
-                    </div>
+                    <input 
+                      autoFocus
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSaveEdit(c.id);
+                        if (e.key === 'Escape') cancelEdit();
+                      }}
+                      style={{ width: '120px', padding: '0.2rem 0.5rem', borderRadius: '4px', border: '1px solid #D6CFE6', fontSize: '0.85rem', outline: 'none' }}
+                    />
                   ) : (
-                    <strong style={{ fontSize: '1rem', color: '#3A3531', fontWeight: 500 }}>{c.name}</strong>
+                    <strong style={{ fontSize: '0.9rem', color: '#3A3531', fontWeight: 500 }}>{c.name}</strong>
                   )}
                   
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', gap: '0.2rem' }}>
                     {isEditing ? (
                       <>
                         <button 
                           onClick={() => handleSaveEdit(c.id)}
-                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '6px', backgroundColor: '#E8F5E9', color: '#1B5E20', border: 'none', cursor: 'pointer', transition: 'background-color 0.2s' }}
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#E8F5E9', color: '#1B5E20', border: 'none', cursor: 'pointer' }}
                           title="Save"
                         >
-                          <Check size={16} />
+                          <Check size={12} />
                         </button>
                         <button 
                           onClick={cancelEdit}
-                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '6px', backgroundColor: '#FDECEC', color: '#C62828', border: 'none', cursor: 'pointer', transition: 'background-color 0.2s' }}
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#FDECEC', color: '#C62828', border: 'none', cursor: 'pointer' }}
                           title="Cancel"
                         >
-                          <X size={16} />
+                          <X size={12} />
                         </button>
                       </>
                     ) : (
                       <>
                         <button 
                           onClick={() => handleEdit(c)}
-                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '6px', backgroundColor: 'transparent', color: '#5A5551', border: '1px solid transparent', cursor: 'pointer', transition: 'all 0.2s' }}
-                          onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#F5F5F5'; e.currentTarget.style.borderColor = '#EAE6DF'; }}
-                          onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.borderColor = 'transparent'; }}
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '24px', height: '24px', borderRadius: '50%', backgroundColor: 'transparent', color: '#5A5551', border: 'none', cursor: 'pointer' }}
+                          onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#F5F5F5'; }}
+                          onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
                           title="Edit"
                         >
-                          <Edit2 size={14} />
+                          <Edit2 size={12} />
                         </button>
                         <button 
                           onClick={() => handleDelete(c.id)}
-                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '6px', backgroundColor: 'transparent', color: '#C62828', border: '1px solid transparent', cursor: 'pointer', transition: 'all 0.2s' }}
-                          onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#FFEBEE'; e.currentTarget.style.borderColor = '#FFCDD2'; }}
-                          onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.borderColor = 'transparent'; }}
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '24px', height: '24px', borderRadius: '50%', backgroundColor: 'transparent', color: '#C62828', border: 'none', cursor: 'pointer' }}
+                          onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#FFEBEE'; }}
+                          onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
                           title="Delete"
                         >
-                          <Trash2 size={14} />
+                          <Trash2 size={12} />
                         </button>
                       </>
                     )}
