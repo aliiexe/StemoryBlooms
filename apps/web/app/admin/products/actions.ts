@@ -1,6 +1,6 @@
 'use server';
 
-import { db, eq, product, productMaterial, material, builderComponent, productBuilderComponent } from '@stemory/database';
+import { db, eq, product, productMaterial, material, builderComponent, productBuilderComponent, categoryToProduct } from '@stemory/database';
 import { revalidatePath } from 'next/cache';
 import crypto from 'crypto';
 import { parseIntegerInput } from '../../../lib/form-values';
@@ -29,20 +29,36 @@ export async function saveProduct(formData: FormData) {
   const isFeatured = formData.get('isFeatured') === 'on';
   const stock = parseIntegerInput(formData.get('stock') as string | null) ?? 1;
 
-  const productMaterialsStr = formData.get('productMaterials') as string;
+  const productMaterialsStr = formData.get('componentMaterials') as string;
   let productMaterialsList: { materialId: string, quantity: number }[] = [];
   try {
-    if (productMaterialsStr) productMaterialsList = JSON.parse(productMaterialsStr);
+    if (productMaterialsStr) {
+      const parsed = JSON.parse(productMaterialsStr);
+      productMaterialsList = parsed.filter((b: any) => b.materialId && b.quantity > 0);
+    }
   } catch (e) {
-    console.error('Failed to parse productMaterials', e);
+    console.error('Failed to parse product materials JSON', e);
   }
 
-  const productBuilderComponentsStr = formData.get('productBuilderComponents') as string;
+  const customFlowersBomStr = formData.get('customFlowersBom') as string;
   let productBuilderComponentsList: { builderComponentId: string, quantity: number }[] = [];
   try {
-    if (productBuilderComponentsStr) productBuilderComponentsList = JSON.parse(productBuilderComponentsStr);
+    if (customFlowersBomStr) {
+      const parsed = JSON.parse(customFlowersBomStr);
+      productBuilderComponentsList = parsed.filter((b: any) => b.builderComponentId && b.quantity > 0);
+    }
   } catch (e) {
-    console.error('Failed to parse productBuilderComponents', e);
+    console.error('Failed to parse custom flowers BOM JSON', e);
+  }
+
+  const categoryIdsStr = formData.get('categoryIds') as string;
+  let categoryIds: string[] = [];
+  try {
+    if (categoryIdsStr) {
+      categoryIds = JSON.parse(categoryIdsStr);
+    }
+  } catch (e) {
+    console.error('Failed to parse category IDs JSON', e);
   }
 
   if (!name?.trim() || !description?.trim() || basePrice === null) {
@@ -120,6 +136,7 @@ export async function saveProduct(formData: FormData) {
 
         await tx.delete(productMaterial).where(eq(productMaterial.productId, id));
         await tx.delete(productBuilderComponent).where(eq(productBuilderComponent.productId, id));
+        await tx.delete(categoryToProduct).where(eq(categoryToProduct.b, id));
 
         await tx.update(product).set({
           name, description, basePrice, salePrice, images: allImages, status, isAvailable, isFeatured, stock, updatedAt: new Date()
@@ -167,6 +184,13 @@ export async function saveProduct(formData: FormData) {
           productId: currentProductId,
           builderComponentId: pbc.builderComponentId,
           quantity: pbc.quantity
+        })));
+      }
+
+      if (categoryIds.length > 0) {
+        await tx.insert(categoryToProduct).values(categoryIds.map(catId => ({
+          a: catId,
+          b: currentProductId
         })));
       }
     });

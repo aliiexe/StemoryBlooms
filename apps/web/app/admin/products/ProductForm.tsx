@@ -38,16 +38,19 @@ type ProductFormValue = {
   images?: string[] | null;
   materials?: ProductMaterialItem[];
   builderComponents?: ProductBuilderComponentItem[];
+  categories?: string[];
 };
 
 export function ProductForm({ 
   product, 
   materials = [], 
-  builderComponents = [] 
+  builderComponents = [],
+  categories = []
 }: { 
   product?: ProductFormValue, 
   materials?: Array<{ id: string; name: string; quantity: number }>,
-  builderComponents?: Array<{ id: string; name: string; stock: number }>
+  builderComponents?: Array<{ id: string; name: string; stock: number }>,
+  categories?: Array<{ id: string; name: string }>
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -97,6 +100,13 @@ export function ProductForm({
     setCustomBom(newBom);
   };
 
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(product?.categories || []);
+  const toggleCategory = (catId: string) => {
+    setSelectedCategories(prev => 
+      prev.includes(catId) ? prev.filter(id => id !== catId) : [...prev, catId]
+    );
+  };
+
   return (
     <div style={{ width: '100%', maxWidth: '1400px', margin: '0 auto' }}>
       <form
@@ -117,6 +127,7 @@ export function ProductForm({
         {/* Hidden inputs to submit the BOM arrays */}
         <input type="hidden" name="productMaterials" value={JSON.stringify(bom.filter(b => b.materialId))} />
         <input type="hidden" name="productBuilderComponents" value={JSON.stringify(customBom.filter(b => b.builderComponentId))} />
+        <input type="hidden" name="categoryIds" value={JSON.stringify(selectedCategories)} />
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem' }}>
           
@@ -151,6 +162,27 @@ export function ProductForm({
                     style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #D6CFE6', resize: 'vertical', fontSize: '1rem', lineHeight: 1.6 }} 
                   />
                 </div>
+              </div>
+
+              <div style={{ marginTop: '1.5rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: 500, color: '#5A5551', fontSize: '0.95rem' }}>Categories</label>
+                {categories.length === 0 ? (
+                  <p style={{ color: '#9A9591', fontSize: '0.9rem' }}>No categories available.</p>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '1rem', backgroundColor: '#F8F6F2', padding: '1rem', borderRadius: '12px' }}>
+                    {categories.map(cat => (
+                      <label key={cat.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.95rem', color: '#3A3531', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedCategories.includes(cat.id)}
+                          onChange={() => toggleCategory(cat.id)}
+                          style={{ accentColor: 'var(--brand-primary)', width: '16px', height: '16px' }}
+                        />
+                        {cat.name}
+                      </label>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
