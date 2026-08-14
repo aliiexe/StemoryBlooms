@@ -127,7 +127,7 @@ export function ProductForm({
         {/* Hidden inputs to submit the BOM arrays */}
         <input type="hidden" name="productMaterials" value={JSON.stringify(bom.filter(b => b.materialId))} />
         <input type="hidden" name="productBuilderComponents" value={JSON.stringify(customBom.filter(b => b.builderComponentId))} />
-        <input type="hidden" name="categoryIds" value={JSON.stringify(selectedCategories)} />
+        <input type="hidden" name="categoryIds" value={JSON.stringify(selectedCategories.filter(id => id.trim() !== ''))} />
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem' }}>
           

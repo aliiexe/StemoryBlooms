@@ -29,7 +29,7 @@ export async function saveProduct(formData: FormData) {
   const isFeatured = formData.get('isFeatured') === 'on';
   const stock = parseIntegerInput(formData.get('stock') as string | null) ?? 1;
 
-  const productMaterialsStr = formData.get('componentMaterials') as string;
+  const productMaterialsStr = formData.get('productMaterials') as string;
   let productMaterialsList: { materialId: string, quantity: number }[] = [];
   try {
     if (productMaterialsStr) {
@@ -40,7 +40,7 @@ export async function saveProduct(formData: FormData) {
     console.error('Failed to parse product materials JSON', e);
   }
 
-  const customFlowersBomStr = formData.get('customFlowersBom') as string;
+  const customFlowersBomStr = formData.get('productBuilderComponents') as string;
   let productBuilderComponentsList: { builderComponentId: string, quantity: number }[] = [];
   try {
     if (customFlowersBomStr) {
@@ -55,7 +55,8 @@ export async function saveProduct(formData: FormData) {
   let categoryIds: string[] = [];
   try {
     if (categoryIdsStr) {
-      categoryIds = JSON.parse(categoryIdsStr);
+      const parsed = JSON.parse(categoryIdsStr);
+      categoryIds = [...new Set(parsed as string[])];
     }
   } catch (e) {
     console.error('Failed to parse category IDs JSON', e);
