@@ -169,18 +169,51 @@ export function ProductForm({
                 {categories.length === 0 ? (
                   <p style={{ color: '#9A9591', fontSize: '0.9rem' }}>No categories available.</p>
                 ) : (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '1rem', backgroundColor: '#F8F6F2', padding: '1rem', borderRadius: '12px' }}>
-                    {categories.map(cat => (
-                      <label key={cat.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.95rem', color: '#3A3531', cursor: 'pointer' }}>
-                        <input
-                          type="checkbox"
-                          checked={selectedCategories.includes(cat.id)}
-                          onChange={() => toggleCategory(cat.id)}
-                          style={{ accentColor: 'var(--brand-primary)', width: '16px', height: '16px' }}
-                        />
-                        {cat.name}
-                      </label>
-                    ))}
+                  <div>
+                    {selectedCategories.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
+                        {selectedCategories.map((catId, idx) => (
+                          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: 'fit-content', backgroundColor: '#F8F6F2', padding: '0.5rem', borderRadius: '12px' }}>
+                            <div style={{ width: '220px' }}>
+                              <CustomSelect 
+                                value={catId}
+                                onChange={(val) => {
+                                  const newCats = [...selectedCategories];
+                                  newCats[idx] = val as string;
+                                  setSelectedCategories(newCats);
+                                }}
+                                options={[
+                                  { value: '', label: 'Select Category...' },
+                                  ...categories.map(c => ({
+                                    value: c.id,
+                                    label: c.name,
+                                  }))
+                                ]}
+                              />
+                            </div>
+                            <button 
+                              type="button" 
+                              onClick={() => {
+                                const newCats = [...selectedCategories];
+                                newCats.splice(idx, 1);
+                                setSelectedCategories(newCats);
+                              }}
+                              style={{ padding: '0.5rem', backgroundColor: '#FFEBEE', color: '#C62828', border: 'none', borderRadius: '8px', cursor: 'pointer', height: '42px' }}
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <button 
+                      type="button" 
+                      onClick={() => setSelectedCategories([...selectedCategories, ''])}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px dashed #D6CFE6', backgroundColor: '#fff', color: 'var(--brand-primary)', cursor: 'pointer', fontWeight: 500 }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                      Add Category
+                    </button>
                   </div>
                 )}
               </div>
