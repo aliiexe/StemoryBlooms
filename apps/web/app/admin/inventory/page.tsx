@@ -19,8 +19,13 @@ export default async function AdminInventoryPage() {
     orderBy: [asc(supplier.name)],
   });
 
+  const { expense } = await import('@stemory/database');
+  const expenses = await db.query.expense.findMany({
+    where: (table, { isNotNull }) => isNotNull(table.relatedMaterialId)
+  });
+
   const totalUnits = materials.reduce((sum, item) => sum + item.quantity, 0);
-  const totalValue = materials.reduce((sum, item) => sum + ((item.quantity || 0) * (item.cost || 0)), 0);
+  const totalExpense = expenses.reduce((sum, e) => sum + e.amount, 0);
   const lowStockCount = materials.filter((item) => item.lowStockThreshold !== null && item.quantity <= item.lowStockThreshold).length;
 
   return (
@@ -42,8 +47,8 @@ export default async function AdminInventoryPage() {
           <div style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--brand-primary)' }}>{totalUnits}</div>
         </div>
         <div className={styles.card} style={{ padding: '1.25rem' }}>
-          <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#7A7571', marginBottom: '0.5rem' }}>Total Value</div>
-          <div style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--brand-primary)' }}>{totalValue.toFixed(2)} MAD</div>
+          <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#7A7571', marginBottom: '0.5rem' }}>Total Expense</div>
+          <div style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--brand-primary)' }}>{totalExpense.toFixed(2)} MAD</div>
         </div>
         <div className={styles.card} style={{ padding: '1.25rem' }}>
           <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#7A7571', marginBottom: '0.5rem' }}>Low stock items</div>
