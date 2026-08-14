@@ -4,9 +4,11 @@ import { revalidatePath } from 'next/cache';
 import { db, eq, builderComponent, material } from '@stemory/database';
 import crypto from 'crypto';
 import { parseIntegerInput } from '../../../lib/form-values';
+import { assertAdmin } from '../../../lib/user-sync';
 
 
 export async function saveBuilderComponent(formData: FormData) {
+  await assertAdmin();
   const id = formData.get('id') as string;
   const type = (formData.get('type') as string) || 'FLOWER';
   const name = formData.get('name') as string;
@@ -105,6 +107,7 @@ export async function saveBuilderComponent(formData: FormData) {
 
 
 export async function deleteBuilderComponent(id: string) {
+  await assertAdmin();
   try {
     await db.delete(builderComponent).where(eq(builderComponent.id, id));
     revalidatePath('/admin/builder');
@@ -117,6 +120,7 @@ export async function deleteBuilderComponent(id: string) {
 }
 
 export async function toggleBuilderComponentAvailable(id: string, isAvailable: boolean) {
+  await assertAdmin();
   try {
     await db.update(builderComponent).set({ isAvailable, updatedAt: new Date() }).where(eq(builderComponent.id, id));
     revalidatePath('/admin/builder');
@@ -129,6 +133,7 @@ export async function toggleBuilderComponentAvailable(id: string, isAvailable: b
 }
 
 export async function updateBuilderComponentStock(id: string, newStock: number) {
+  await assertAdmin();
   try {
     await db.transaction(async (tx) => {
       const existing = await tx.query.builderComponent.findFirst({ where: eq(builderComponent.id, id) });

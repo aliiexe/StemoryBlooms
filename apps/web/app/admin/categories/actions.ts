@@ -4,8 +4,10 @@ import { db } from '@stemory/database';
 import { eq } from 'drizzle-orm';
 import { category } from '@stemory/database/schema';
 import { revalidatePath } from 'next/cache';
+import { assertAdmin } from '../../../lib/user-sync';
 
 export async function saveCategory(formData: FormData) {
+  await assertAdmin();
   const id = formData.get('id') as string;
   const name = formData.get('name') as string;
 
@@ -28,6 +30,7 @@ export async function saveCategory(formData: FormData) {
 }
 
 export async function deleteCategory(id: string) {
+  await assertAdmin();
   try {
     await db.delete(category).where(eq(category.id, id));
     revalidatePath('/admin/categories');

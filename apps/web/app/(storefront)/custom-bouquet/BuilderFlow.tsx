@@ -87,7 +87,8 @@ export default function BuilderFlow({
         name: 'Custom Built Bouquet',
         price: total,
         quantity: 1,
-        imageUrl: '/hero-bouquet.png'
+        imageUrl: '/hero-bouquet.png',
+        configuration: cart // Pass the configuration to server for validation and fulfillment
       });
 
       setCart({});

@@ -1,5 +1,5 @@
 import { db, eq, role as roleTable, user as userTable } from '@stemory/database';
-import { clerkClient } from '@clerk/nextjs/server';
+import { clerkClient, auth } from '@clerk/nextjs/server';
 import crypto from 'crypto';
 
 const CUSTOMER_ROLE_NAME = 'CUSTOMER';
@@ -31,6 +31,17 @@ export async function getUserRoleName(clerkUserId: string) {
     .limit(1);
 
   return rows[0]?.roleName ?? null;
+}
+
+export async function assertAdmin() {
+  const { userId } = await auth();
+  if (!userId) {
+    throw new Error('Unauthorized: You must be logged in to perform this action.');
+  }
+  const roleName = await getUserRoleName(userId);
+  if (roleName !== ADMIN_ROLE_NAME) {
+    throw new Error('Forbidden: You do not have permission to perform this action.');
+  }
 }
 
 export async function syncClerkUserToDatabase(clerkUserId: string) {

@@ -4,8 +4,10 @@ import { db, eq, material } from '@stemory/database';
 import { revalidatePath } from 'next/cache';
 import crypto from 'crypto';
 import { parseIntegerInput, parseOptionalDecimalInput } from '../../../lib/form-values';
+import { assertAdmin } from '../../../lib/user-sync';
 
 export async function saveMaterial(formData: FormData) {
+  await assertAdmin();
   const id = formData.get('id') as string;
   const name = formData.get('name') as string;
   const quantity = parseIntegerInput(formData.get('quantity') as string | null);
@@ -58,6 +60,7 @@ export async function saveMaterial(formData: FormData) {
 }
 
 export async function deleteMaterial(id: string) {
+  await assertAdmin();
   try {
     await db.delete(material).where(eq(material.id, id));
     revalidatePath('/admin/materials');
@@ -68,6 +71,7 @@ export async function deleteMaterial(id: string) {
 }
 
 export async function updateMaterialInline(id: string, updates: Partial<typeof material.$inferInsert>) {
+  await assertAdmin();
   try {
     await db.update(material).set({ ...updates, updatedAt: new Date() }).where(eq(material.id, id));
     revalidatePath('/admin/materials');
@@ -78,6 +82,7 @@ export async function updateMaterialInline(id: string, updates: Partial<typeof m
 }
 
 export async function restockMaterial(id: string, restockQty: number) {
+  await assertAdmin();
   try {
     const { expense } = await import('@stemory/database');
     const existing = await db.query.material.findFirst({ where: eq(material.id, id) });

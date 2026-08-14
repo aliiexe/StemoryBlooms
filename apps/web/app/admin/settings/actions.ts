@@ -4,8 +4,10 @@ import { revalidatePath } from 'next/cache';
 import { db, eq, siteSettings, deliveryCompany } from '@stemory/database';
 import crypto from 'crypto';
 import { parseIntegerInput } from '../../../lib/form-values';
+import { assertAdmin } from '../../../lib/user-sync';
 
 export async function setSiteMode(mode: 'WAITLIST' | 'LIVE' | 'MAINTENANCE' | 'DRAFT') {
+  await assertAdmin();
   const existing = await db.query.siteSettings.findFirst();
   if (existing) {
     await db.update(siteSettings).set({ mode, updatedAt: new Date() }).where(eq(siteSettings.id, existing.id));
@@ -18,6 +20,7 @@ export async function setSiteMode(mode: 'WAITLIST' | 'LIVE' | 'MAINTENANCE' | 'D
 }
 
 export async function saveDeliveryCompany(formData: FormData) {
+  await assertAdmin();
   const id = formData.get('id') as string;
   const name = formData.get('name') as string;
   const contact = formData.get('contact') as string;
@@ -45,6 +48,7 @@ export async function saveDeliveryCompany(formData: FormData) {
 }
 
 export async function deleteDeliveryCompany(id: string) {
+  await assertAdmin();
   try {
     await db.delete(deliveryCompany).where(eq(deliveryCompany.id, id));
     revalidatePath('/admin/settings');
@@ -56,6 +60,7 @@ export async function deleteDeliveryCompany(id: string) {
 }
 
 export async function saveHeroSettings(formData: FormData) {
+  await assertAdmin();
   const imagesStr = formData.get('images') as string;
   let allImages: string[] = [];
   try {
@@ -83,6 +88,7 @@ export async function saveHeroSettings(formData: FormData) {
 }
 
 export async function saveBuilderSections(sections: Record<string, boolean>) {
+  await assertAdmin();
   const existing = await db.query.siteSettings.findFirst();
   const config = existing?.config as Record<string, any> | null || {};
   config.builderSections = sections;

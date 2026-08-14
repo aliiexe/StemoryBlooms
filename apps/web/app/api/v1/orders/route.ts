@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db, eq, sql, promoCode as promoCodeTable, giftCard as giftCardTable, customer, order, orderItem, deliveryZone, adminNotification } from '@stemory/database';
+import { db, eq, sql, promoCode as promoCodeTable, giftCard as giftCardTable, customer, order, orderItem, deliveryZone, adminNotification, product, builderComponent } from '@stemory/database';
 import { CheckoutPayloadSchema } from '@stemory/contracts';
 import { Resend } from 'resend';
 import { render } from '@react-email/render';
@@ -24,50 +24,88 @@ export async function POST(request: Request) {
 
     const { cartItems, customerName, email, phoneNumber, city, address, deliveryInstructions, promoCode, giftCardCode, deliveryCompanyId } = parsed.data;
 
-    let subtotal = 0;
+    let verifiedSubtotal = 0;
+    const finalOrderItems: any[] = [];
+    
+    const productIds = cartItems.map(i => i.productId).filter(Boolean) as string[];
+    const dbProducts = productIds.length > 0 ? await db.query.product.findMany({ where: (t, { inArray }) => inArray(t.id, productIds) }) : [];
+    const productsMap = new Map(dbProducts.map(p => [p.id, p]));
+
     for (const item of cartItems) {
-      subtotal += item.price * item.quantity;
+      if (item.productId) {
+        const p = productsMap.get(item.productId);
+        if (!p) return NextResponse.json({ message: `Product not found: ${item.name}` }, { status: 400 });
+        const realPrice = p.salePrice ?? p.basePrice;
+        verifiedSubtotal += realPrice * item.quantity;
+        finalOrderItems.push({
+           ...item,
+           unitPrice: realPrice,
+           totalPrice: realPrice * item.quantity,
+           configuration: item.configuration
+        });
+      } else {
+        let customPrice = 0;
+        if (item.configuration && typeof item.configuration === 'object') {
+          const compIds = Object.keys(item.configuration);
+          if (compIds.length > 0) {
+             const comps = await db.query.builderComponent.findMany({ where: (t, { inArray }) => inArray(t.id, compIds) });
+             const compsMap = new Map(comps.map(c => [c.id, c]));
+             for (const [cId, qty] of Object.entries(item.configuration)) {
+               const c = compsMap.get(cId);
+               if (c) customPrice += c.unitPrice * (qty as number);
+             }
+          }
+        }
+        verifiedSubtotal += customPrice * item.quantity;
+        finalOrderItems.push({
+           ...item,
+           unitPrice: customPrice,
+           totalPrice: customPrice * item.quantity,
+           configuration: item.configuration
+        });
+      }
     }
+
     const activeDeliveryZone = deliveryCompanyId
       ? await db.query.deliveryZone.findFirst({ where: eq(deliveryZone.id, deliveryCompanyId) })
       : await db.query.deliveryZone.findFirst({ where: (table, { eq }) => eq(table.isActive, true) });
     const deliveryFee = activeDeliveryZone?.fee ?? 50;
-    let discountAmount = 0;
-    let appliedPromoId: string | null = null;
-    let appliedGiftCardId: string | null = null;
-    let promoDetails: { type: 'PERCENTAGE' | 'FIXED'; value: number } | null = null;
-
-    if (promoCode) {
-      const dbPromo = await db.query.promoCode.findFirst({
-        where: eq(promoCodeTable.code, promoCode.toUpperCase().trim())
-      });
-      if (dbPromo && dbPromo.isActive && (!dbPromo.usageLimit || dbPromo.usageCount < dbPromo.usageLimit)) {
-        appliedPromoId = dbPromo.id;
-        promoDetails = { type: dbPromo.type as 'PERCENTAGE' | 'FIXED', value: dbPromo.value };
-      } else {
-        return NextResponse.json({ message: 'Invalid or expired promo code' }, { status: 400 });
-      }
-    }
-
-    if (giftCardCode) {
-      const dbGiftCard = await db.query.giftCard.findFirst({
-        where: eq(giftCardTable.code, giftCardCode.toUpperCase().trim())
-      });
-      if (dbGiftCard && dbGiftCard.isActive && dbGiftCard.currentBalance > 0) {
-        appliedGiftCardId = dbGiftCard.id;
-        const giftDiscount = Math.min(dbGiftCard.currentBalance, subtotal);
-        discountAmount += giftDiscount;
-      } else {
-        return NextResponse.json({ message: 'Invalid or expired gift card' }, { status: 400 });
-      }
-    }
-
-    const orderTotals = calculateOrderTotals({ subtotal, promoCode, promoDetails, deliveryFee });
-    discountAmount += orderTotals.discountAmount;
-    const total = Math.max(0, subtotal - discountAmount) + deliveryFee;
 
     const createdOrderResult = await db.transaction(async (tx) => {
-      // Upsert customer
+      let discountAmount = 0;
+      let appliedPromoId: string | null = null;
+      let promoDetails: { type: 'PERCENTAGE' | 'FIXED'; value: number } | null = null;
+
+      if (promoCode) {
+        const dbPromo = await tx.query.promoCode.findFirst({
+          where: eq(promoCodeTable.code, promoCode.toUpperCase().trim())
+        });
+        if (!dbPromo || !dbPromo.isActive || (dbPromo.usageLimit && dbPromo.usageCount >= dbPromo.usageLimit)) {
+          throw new Error('Invalid or expired promo code');
+        }
+        appliedPromoId = dbPromo.id;
+        promoDetails = { type: dbPromo.type as 'PERCENTAGE' | 'FIXED', value: dbPromo.value };
+      }
+
+      const orderTotals = calculateOrderTotals({ subtotal: verifiedSubtotal, promoCode, promoDetails, deliveryFee });
+      discountAmount += orderTotals.discountAmount;
+
+      let appliedGiftCardId: string | null = null;
+      let usedGiftCardAmount = 0;
+      if (giftCardCode) {
+        const dbGiftCard = await tx.query.giftCard.findFirst({
+          where: eq(giftCardTable.code, giftCardCode.toUpperCase().trim())
+        });
+        if (!dbGiftCard || !dbGiftCard.isActive || dbGiftCard.currentBalance <= 0) {
+          throw new Error('Invalid or expired gift card');
+        }
+        appliedGiftCardId = dbGiftCard.id;
+        usedGiftCardAmount = Math.min(dbGiftCard.currentBalance, verifiedSubtotal - discountAmount);
+        discountAmount += usedGiftCardAmount;
+      }
+
+      const total = Math.max(0, verifiedSubtotal - discountAmount) + deliveryFee;
+
       const [dbCustomer] = await tx.insert(customer).values({
         id: crypto.randomUUID(),
         firstName: customerName,
@@ -80,7 +118,6 @@ export async function POST(request: Request) {
         set: { firstName: customerName, phone: phoneNumber, updatedAt: new Date() }
       }).returning();
 
-      // Generate a random order number
       const orderNumber = `ORD-${Date.now().toString().slice(-6)}`;
 
       const [createdOrder] = await tx.insert(order).values({
@@ -88,7 +125,7 @@ export async function POST(request: Request) {
         orderNumber,
         idempotencyKey,
         customerId: dbCustomer.id,
-        subtotal,
+        subtotal: verifiedSubtotal,
         deliveryFee,
         discount: discountAmount,
         total,
@@ -98,96 +135,85 @@ export async function POST(request: Request) {
         updatedAt: new Date()
       }).returning();
 
-      if (cartItems.length > 0) {
-        await tx.insert(orderItem).values(cartItems.map(i => ({
+      if (finalOrderItems.length > 0) {
+        await tx.insert(orderItem).values(finalOrderItems.map(i => ({
           id: crypto.randomUUID(),
           orderId: createdOrder.id,
-          productId: i.productId, // Make sure productId is stored in the DB if available! Wait, cartItems maps id to productId in the payload. Let's assume cartItem has productId.
+          productId: i.productId,
           productName: i.name,
           quantity: i.quantity,
-          unitPrice: i.price,
-          totalPrice: i.price * i.quantity,
+          unitPrice: i.unitPrice,
+          totalPrice: i.totalPrice,
+          configuration: i.configuration,
           updatedAt: new Date()
         })));
 
-        // Decrement stock for each product
-        for (const item of cartItems) {
+        for (const item of finalOrderItems) {
           if (item.productId) {
             await tx.execute(
-              sql`UPDATE "Product" SET "stock" = "stock" - ${item.quantity}, "isAvailable" = CASE WHEN ("stock" - ${item.quantity}) > 0 THEN true ELSE false END WHERE "id" = ${item.productId}`
+              sql`UPDATE "Product" SET "stock" = "stock" - ${item.quantity}, "isAvailable" = CASE WHEN ("stock" - ${item.quantity}) > 0 THEN true ELSE false END WHERE "id" = ${item.productId} AND "stock" >= ${item.quantity}`
             );
+          } else if (item.configuration) {
+            for (const [cId, qty] of Object.entries(item.configuration)) {
+               const totalDeduct = (qty as number) * item.quantity;
+               await tx.execute(
+                 sql`UPDATE "BuilderComponent" SET "stock" = "stock" - ${totalDeduct}, "isAvailable" = CASE WHEN ("stock" - ${totalDeduct}) > 0 THEN true ELSE false END WHERE "id" = ${cId} AND "stock" >= ${totalDeduct}`
+               );
+            }
           }
         }
       }
 
-      return createdOrder;
+      if (appliedPromoId) {
+        await tx.execute(sql`UPDATE "PromoCode" SET "usageCount" = "usageCount" + 1, "updatedAt" = CURRENT_TIMESTAMP WHERE "id" = ${appliedPromoId} AND ("usageLimit" IS NULL OR "usageCount" < "usageLimit")`);
+      }
+
+      if (appliedGiftCardId && usedGiftCardAmount > 0) {
+        await tx.execute(sql`UPDATE "GiftCard" SET "currentBalance" = "currentBalance" - ${usedGiftCardAmount}, "updatedAt" = CURRENT_TIMESTAMP WHERE "id" = ${appliedGiftCardId} AND "currentBalance" >= ${usedGiftCardAmount}`);
+      }
+
+      return { createdOrder, verifiedSubtotal, discountAmount, total };
     });
 
-    if (appliedPromoId) {
-      await db.update(promoCodeTable)
-        .set({ usageCount: sql`${promoCodeTable.usageCount} + 1`, updatedAt: new Date() })
-        .where(eq(promoCodeTable.id, appliedPromoId));
-    }
+    const { createdOrder, verifiedSubtotal: finalSub, discountAmount: finalDisc, total: finalTotal } = createdOrderResult;
 
-    if (appliedGiftCardId) {
-      const dbGiftCard = await db.query.giftCard.findFirst({ where: eq(giftCardTable.id, appliedGiftCardId) });
-      if (dbGiftCard) {
-        const used = Math.min(dbGiftCard.currentBalance, subtotal);
-        await db.update(giftCardTable)
-          .set({ currentBalance: dbGiftCard.currentBalance - used, updatedAt: new Date() })
-          .where(eq(giftCardTable.id, appliedGiftCardId));
-      }
-    }
-
-    // Attempt to send email
     try {
       const html = await render(
         OrderConfirmationTemplate({
           customerName,
           customerEmail: email,
-          orderNumber: createdOrderResult.orderNumber,
-          subtotal,
+          orderNumber: createdOrder.orderNumber,
+          subtotal: finalSub,
           deliveryFee,
-          discount: discountAmount,
-          total,
+          discount: finalDisc,
+          total: finalTotal,
           city,
           address,
-          items: cartItems.map(i => ({ name: i.name, quantity: i.quantity, price: i.price })),
+          items: finalOrderItems.map(i => ({ name: i.name, quantity: i.quantity, price: i.unitPrice })),
         })
       );
-      const { data, error: resendError } = await resend.emails.send({
+      await resend.emails.send({
         from: 'Stemory Blooms <onboarding@resend.dev>',
         to: ['stemoryblooms@gmail.com'],
-        subject: `🌸 New Order #${createdOrderResult.orderNumber} — ${customerName}`,
+        subject: `🌸 New Order #${createdOrder.orderNumber} — ${customerName}`,
         html,
-        headers: {
-          'X-Priority': '1',
-          'X-MSMail-Priority': 'High',
-          'Importance': 'high'
-        }
       });
-      if (resendError) {
-        console.error('Resend error:', JSON.stringify(resendError));
-      } else {
-        console.log('Email sent, id:', data?.id);
-      }
-    } catch (emailErr) {
-      console.error('Email send threw:', emailErr);
+    } catch (e) {
+      console.error('Email send failed', e);
     }
 
-    // Create an admin notification for the new order
     await db.insert(adminNotification).values({
       id: crypto.randomUUID(),
       type: 'ORDER_NEW',
       title: 'New Order Received',
-      message: `Order ${createdOrderResult.orderNumber} placed for ${total} MAD by ${customerName}.`,
+      message: `Order ${createdOrder.orderNumber} placed for ${finalTotal} MAD by ${customerName}.`,
       isRead: false,
       createdAt: new Date()
     });
 
-    return NextResponse.json(createdOrderResult, { status: 201 });
-  } catch (error: unknown) {
+    return NextResponse.json(createdOrder, { status: 201 });
+  } catch (error: any) {
     console.error(error);
-    return NextResponse.json({ message: 'Failed to create order', error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
+    return NextResponse.json({ message: 'Failed to create order', error: error.message || 'Unknown error' }, { status: 500 });
   }
 }

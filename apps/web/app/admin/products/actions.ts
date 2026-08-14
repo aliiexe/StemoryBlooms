@@ -4,8 +4,10 @@ import { db, eq, product, productMaterial, material, builderComponent, productBu
 import { revalidatePath } from 'next/cache';
 import crypto from 'crypto';
 import { parseIntegerInput } from '../../../lib/form-values';
+import { assertAdmin } from '../../../lib/user-sync';
 
 export async function saveProduct(formData: FormData) {
+  await assertAdmin();
   const id = formData.get('id') as string;
   const name = formData.get('name') as string;
   const description = formData.get('description') as string;
@@ -210,6 +212,7 @@ export async function saveProduct(formData: FormData) {
 }
 
 export async function deleteProduct(id: string) {
+  await assertAdmin();
   try {
     await db.delete(product).where(eq(product.id, id));
     revalidatePath('/admin/products');
@@ -221,6 +224,7 @@ export async function deleteProduct(id: string) {
 }
 
 export async function backfillProductMaterialDeductions() {
+  await assertAdmin();
   try {
     const products = await db.query.product.findMany({
       with: { productMaterials: true }
