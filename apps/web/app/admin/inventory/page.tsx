@@ -25,7 +25,15 @@ export default async function AdminInventoryPage() {
   });
 
   const totalUnits = materials.reduce((sum, item) => sum + item.quantity, 0);
-  const totalExpense = expenses.reduce((sum, e) => sum + e.amount, 0);
+
+  // Sum all material-related expenses (tracks every purchase/restock)
+  const expensedMaterialIds = new Set(expenses.map(e => e.relatedMaterialId));
+  const expensesTotal = expenses.reduce((sum, e) => sum + e.amount, 0);
+  // For materials that pre-date expense tracking, fall back to current stock value
+  const untracked = materials.filter(m => !expensedMaterialIds.has(m.id));
+  const untrackedValue = untracked.reduce((sum, m) => sum + ((m.quantity || 0) * (m.cost || 0)), 0);
+  const totalExpense = expensesTotal + untrackedValue;
+
   const lowStockCount = materials.filter((item) => item.lowStockThreshold !== null && item.quantity <= item.lowStockThreshold).length;
 
   return (
