@@ -127,3 +127,53 @@ export async function toggleBuilderComponentAvailable(id: string, isAvailable: b
     return { error: 'Failed to toggle availability' };
   }
 }
+
+export async function updateBuilderComponentStock(id: string, newStock: number) {
+  try {
+    await db.transaction(async (tx) => {
+      const existing = await tx.query.builderComponent.findFirst({ where: eq(builderComponent.id, id) });
+      if (!existing) return;
+
+      const oldStock = existing.stock;
+      if (oldStock === newStock) return;
+
+      const materials = (existing.materials as { materialId: string; quantity: number }[]) || [];
+      
+      const oldUsage = new Map<string, number>();
+      for (const om of materials) {
+        oldUsage.set(om.materialId, oldStock * om.quantity);
+      }
+
+      const newUsage = new Map<string, number>();
+      for (const nm of materials) {
+        newUsage.set(nm.materialId, newStock * nm.quantity);
+      }
+
+      const allMatIds = new Set([...oldUsage.keys(), ...newUsage.keys()]);
+
+      for (const mId of allMatIds) {
+        const oldU = oldUsage.get(mId) ?? 0;
+        const newU = newUsage.get(mId) ?? 0;
+        const diff = newU - oldU;
+
+        if (diff !== 0) {
+          const mat = await tx.query.material.findFirst({ where: eq(material.id, mId) });
+          if (mat) {
+            await tx.update(material)
+              .set({ quantity: mat.quantity - diff, updatedAt: new Date() })
+              .where(eq(material.id, mId));
+          }
+        }
+      }
+
+      await tx.update(builderComponent).set({ stock: newStock, updatedAt: new Date() }).where(eq(builderComponent.id, id));
+    });
+
+    revalidatePath('/admin/builder');
+    revalidatePath('/custom-bouquet');
+    return { success: true };
+  } catch (error) {
+    console.error(error);
+    return { error: 'Failed to update stock' };
+  }
+}

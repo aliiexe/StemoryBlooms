@@ -2,7 +2,7 @@
 
 import React, { useState, useTransition } from 'react';
 import Image from 'next/image';
-import { saveBuilderComponent, deleteBuilderComponent, toggleBuilderComponentAvailable } from './actions';
+import { saveBuilderComponent, deleteBuilderComponent, toggleBuilderComponentAvailable, updateBuilderComponentStock } from './actions';
 import { saveBuilderSections } from '../settings/actions';
 import styles from '../dashboard.module.css';
 import { ImageUploader } from '../../../components/ui/ImageUploader';
@@ -477,6 +477,7 @@ export function AdminBuilderClient({
                   <th>Unit Price</th>
                   <th>Qty Limits</th>
                   <th>Materials</th>
+                  <th>Stock</th>
                   <th>Status</th>
                   <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
@@ -508,6 +509,35 @@ export function AdminBuilderClient({
                       ) : (
                         <span style={{ fontSize: '0.8rem', color: '#C4C0BB' }}>—</span>
                       )}
+                    </td>
+                    <td>
+                      <input 
+                        type="number" 
+                        min="0"
+                        defaultValue={item.stock}
+                        onBlur={(e) => {
+                          const newStock = parseInt(e.target.value) || 0;
+                          if (newStock !== item.stock) {
+                            startTransition(async () => {
+                              await updateBuilderComponentStock(item.id, newStock);
+                              setComponents(prev => prev.map(c => c.id === item.id ? { ...c, stock: newStock } : c));
+                            });
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.currentTarget.blur();
+                          }
+                        }}
+                        style={{ 
+                          width: '70px', 
+                          padding: '0.4rem', 
+                          borderRadius: '8px', 
+                          border: '1px solid #D6CFE6', 
+                          fontSize: '0.9rem',
+                          textAlign: 'center'
+                        }}
+                      />
                     </td>
                     <td>
                       <button
