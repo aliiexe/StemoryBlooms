@@ -527,6 +527,7 @@ export function AdminBuilderClient({
                         <input 
                           type="number" 
                           min="0"
+                          className="no-spinners"
                           value={item.stock}
                           onChange={(e) => {
                             let newStock = parseInt(e.target.value);

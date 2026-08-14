@@ -118,6 +118,7 @@ export function InventoryTableClient({ initialMaterials, suppliers }: Props) {
                       >-</button>
                       <input
                         type="number"
+                        className="no-spinners"
                         value={m.quantity}
                         onChange={(e) => handleUpdate(m.id, { quantity: parseInt(e.target.value) || 0 })}
                         style={{ width: '60px', padding: '0.25rem', textAlign: 'center', border: '1px solid #D6CFE6', borderRadius: '4px' }}
@@ -127,6 +128,7 @@ export function InventoryTableClient({ initialMaterials, suppliers }: Props) {
                           <input
                             type="number"
                             min={1}
+                            className="no-spinners"
                             value={restockQty}
                             onChange={(e) => setRestockQty(parseInt(e.target.value) || 1)}
                             style={{ width: '50px', padding: '0.25rem', textAlign: 'center', border: '1px solid #8C9C76', borderRadius: '4px' }}
