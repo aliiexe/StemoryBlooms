@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Bodoni_Moda, Sora, Cormorant_Garamond } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
+import { Analytics } from "@vercel/analytics/react";
 import "@stemory/ui/tokens.css";
 import "@stemory/ui/typography.css";
 import "./globals.css";
@@ -78,6 +79,7 @@ export default function RootLayout({
       <html lang="en" className={`${bodoniModa.variable} ${sora.variable} ${cormorantGaramond.variable}`}>
         <body>
           {children}
+          <Analytics />
         </body>
       </html>
     </ClerkProvider>
