@@ -4,9 +4,10 @@ import { notFound } from 'next/navigation';
 import styles from '../../dashboard.module.css';
 import { ProductForm } from '../ProductForm';
 
-export default async function EditProductPage({ params }: { params: { id: string } }) {
+export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const productRaw = await db.query.product.findFirst({
-    where: (table, { eq }) => eq(table.id, params.id),
+    where: (table, { eq }) => eq(table.id, id),
     with: { 
       productMaterials: true,
       productBuilderComponents: true 
