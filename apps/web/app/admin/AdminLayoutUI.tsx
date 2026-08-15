@@ -21,6 +21,7 @@ const sidebarSections = [
     links: [
       { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
       { href: '/admin/orders', label: 'Orders', icon: ShoppingBag },
+      { href: '/admin/orders/new', label: 'New Assisted Order', icon: ShoppingBag },
       { href: '/admin/custom-orders', label: 'Custom Orders', icon: FileText },
       { href: '/admin/deliveries', label: 'Deliveries', icon: Truck },
     ],
