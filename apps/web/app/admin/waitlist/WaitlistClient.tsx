@@ -24,8 +24,8 @@ export default function WaitlistClient({ waitlist }: { waitlist: any[] }) {
       animate="show"
     >
       <header style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'linear-gradient(135deg, var(--brand-primary), #6366F1)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 16px rgba(99, 102, 241, 0.2)' }}>
-          <MailCheck color="white" size={24} />
+        <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(99, 102, 241, 0.1)', color: '#4F46E5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <MailCheck size={24} />
         </div>
         <div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#111827', margin: 0 }}>Waitlist Subscribers</h1>

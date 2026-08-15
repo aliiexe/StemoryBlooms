@@ -92,47 +92,57 @@ export function AdminFinancesClient({
       </header>
 
       {/* Metric Cards */}
-      <motion.div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }} variants={itemVariants}>
-        <div className={styles.metricCard} style={{ display: 'flex', flexDirection: 'column' }}>
-          <div className={styles.metricHeader}>
-            <span className={styles.metricLabel}>Total Revenue</span>
-            <div className={styles.metricIconWrapper} style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10B981' }}>
-              <TrendingUp size={20} />
+      <motion.div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.25rem', marginBottom: '2rem' }} variants={itemVariants}>
+        <div className={styles.metricCard} style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+              <span className={styles.metricLabel}>Total Revenue</span>
+              <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.1)', color: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <TrendingUp size={18} />
+              </div>
             </div>
+            <div className={styles.metricValue}>{formatMoney(totalRevenue)}</div>
           </div>
-          <div className={styles.metricValue}>{formatMoney(totalRevenue)}</div>
-          <div className={styles.metricTrend} style={{ color: '#6B7280' }}>Product sales only</div>
+          <div className={styles.metricTrend} style={{ color: '#6B7280', marginTop: '0.5rem' }}>Product sales only</div>
         </div>
 
-        <div className={styles.metricCard} style={{ display: 'flex', flexDirection: 'column' }}>
-          <div className={styles.metricHeader}>
-            <span className={styles.metricLabel}>Delivery Fees</span>
-            <div className={styles.metricIconWrapper} style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#F59E0B' }}>
-              <Package size={20} />
+        <div className={styles.metricCard} style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+              <span className={styles.metricLabel}>Delivery Fees</span>
+              <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(245, 158, 11, 0.1)', color: '#F59E0B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Package size={18} />
+              </div>
             </div>
+            <div className={styles.metricValue} style={{ color: '#D97706' }}>{formatMoney(totalDeliveryFees)}</div>
           </div>
-          <div className={styles.metricValue} style={{ color: '#D97706' }}>{formatMoney(totalDeliveryFees)}</div>
-          <div className={styles.metricTrend} style={{ color: '#6B7280' }}>Passed to carrier</div>
+          <div className={styles.metricTrend} style={{ color: '#6B7280', marginTop: '0.5rem' }}>Passed to carrier</div>
         </div>
 
-        <div className={styles.metricCard} style={{ display: 'flex', flexDirection: 'column' }}>
-          <div className={styles.metricHeader}>
-            <span className={styles.metricLabel}>Total Expenses</span>
-            <div className={styles.metricIconWrapper} style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444' }}>
-              <TrendingDown size={20} />
+        <div className={styles.metricCard} style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+              <span className={styles.metricLabel}>Total Expenses</span>
+              <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <TrendingDown size={18} />
+              </div>
             </div>
+            <div className={styles.metricValue} style={{ color: '#DC2626' }}>{formatMoney(totalExpenses)}</div>
           </div>
-          <div className={styles.metricValue} style={{ color: '#DC2626' }}>{formatMoney(totalExpenses)}</div>
+          <div className={styles.metricTrend} style={{ color: 'transparent', marginTop: '0.5rem', userSelect: 'none' }}>-</div>
         </div>
 
-        <div className={styles.metricCard} style={{ display: 'flex', flexDirection: 'column', background: netProfit >= 0 ? 'rgba(240, 253, 244, 0.5)' : 'rgba(254, 242, 242, 0.5)' }}>
-          <div className={styles.metricHeader}>
-            <span className={styles.metricLabel} style={{ color: netProfit >= 0 ? '#166534' : '#991B1B' }}>Net Profit</span>
-            <div className={styles.metricIconWrapper} style={{ background: netProfit >= 0 ? 'rgba(22, 101, 52, 0.1)' : 'rgba(153, 27, 27, 0.1)', color: netProfit >= 0 ? '#166534' : '#991B1B' }}>
-              <DollarSign size={20} />
+        <div className={styles.metricCard} style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between', background: netProfit >= 0 ? 'rgba(240, 253, 244, 0.5)' : 'rgba(254, 242, 242, 0.5)' }}>
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+              <span className={styles.metricLabel} style={{ color: netProfit >= 0 ? '#166534' : '#991B1B' }}>Net Profit</span>
+              <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: netProfit >= 0 ? 'rgba(22, 101, 52, 0.1)' : 'rgba(153, 27, 27, 0.1)', color: netProfit >= 0 ? '#166534' : '#991B1B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <DollarSign size={18} />
+              </div>
             </div>
+            <div className={styles.metricValue} style={{ color: netProfit >= 0 ? '#15803D' : '#DC2626' }}>{formatMoney(netProfit)}</div>
           </div>
-          <div className={styles.metricValue} style={{ color: netProfit >= 0 ? '#15803D' : '#DC2626' }}>{formatMoney(netProfit)}</div>
+          <div className={styles.metricTrend} style={{ color: 'transparent', marginTop: '0.5rem', userSelect: 'none' }}>-</div>
         </div>
       </motion.div>
 
@@ -145,7 +155,7 @@ export function AdminFinancesClient({
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             style={{ 
-              background: 'linear-gradient(135deg, var(--brand-primary), #4CAF50)',
+              background: 'var(--brand-primary)',
               color: 'white',
               border: 'none',
               padding: '0.6rem 1rem',
@@ -155,7 +165,7 @@ export function AdminFinancesClient({
               alignItems: 'center',
               gap: '0.5rem',
               cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(46, 125, 50, 0.2)'
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
             }}
           >
             <Plus size={16} /> Log Expense

@@ -25,8 +25,8 @@ export default function UsersClient({ users }: { users: any[] }) {
       animate="show"
     >
       <header style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'linear-gradient(135deg, var(--brand-primary), #4CAF50)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 16px rgba(46, 125, 50, 0.2)' }}>
-          <Users color="white" size={24} />
+        <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(99, 102, 241, 0.1)', color: '#4F46E5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Users size={24} />
         </div>
         <div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#111827', margin: 0 }}>User Management</h1>
@@ -61,10 +61,9 @@ export default function UsersClient({ users }: { users: any[] }) {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                         <div style={{ 
                           width: '40px', height: '40px', borderRadius: '50%', 
-                          background: isAdmin ? 'linear-gradient(135deg, #10B981, #059669)' : 'linear-gradient(135deg, #6B7280, #4B5563)', 
-                          color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                          fontSize: '0.9rem', fontWeight: 700, 
-                          boxShadow: isAdmin ? '0 4px 10px rgba(16, 185, 129, 0.2)' : 'none' 
+                          background: isAdmin ? 'rgba(16, 185, 129, 0.1)' : 'rgba(107, 114, 128, 0.1)', 
+                          color: isAdmin ? '#10B981' : '#6B7280', display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                          fontSize: '0.9rem', fontWeight: 700
                         }}>
                           {initials.toUpperCase()}
                         </div>

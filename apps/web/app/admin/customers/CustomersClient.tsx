@@ -24,8 +24,8 @@ export default function CustomersClient({ customers }: { customers: any[] }) {
       animate="show"
     >
       <header style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'linear-gradient(135deg, var(--brand-primary), #4CAF50)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 16px rgba(46, 125, 50, 0.2)' }}>
-          <Users color="white" size={24} />
+        <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(99, 102, 241, 0.1)', color: '#4F46E5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Users size={24} />
         </div>
         <div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#111827', margin: 0 }}>Customers</h1>
@@ -54,7 +54,7 @@ export default function CustomersClient({ customers }: { customers: any[] }) {
                 >
                   <td style={{ padding: '1.25rem 1.5rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'linear-gradient(135deg, #1E3A8A, #3B82F6)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', fontWeight: 700, boxShadow: '0 4px 10px rgba(59, 130, 246, 0.2)' }}>
+                      <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(99, 102, 241, 0.1)', color: '#4F46E5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', fontWeight: 700 }}>
                         {initials.toUpperCase()}
                       </div>
                       <div style={{ fontWeight: 600, color: '#111827', fontSize: '1rem' }}>
