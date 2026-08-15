@@ -34,7 +34,7 @@ export default async function Page(props: { searchParams: { page?: string, limit
     <div className={styles.dashboard}>
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.75rem', fontFamily: 'var(--font-editorial)', fontWeight: 500 }}>Announcement Bar</h1>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 500 }}>Announcement Bar</h1>
           <p style={{ color: '#7A7571', fontSize: '0.9rem', marginTop: '0.25rem' }}>
             Bar is currently <strong>{settings?.enabled ? '🟢 Enabled' : '🔴 Disabled'}</strong>.
             <Link href="/admin/announcements/settings" style={{ marginLeft: '0.5rem', color: 'var(--brand-primary)', fontSize: '0.85rem' }}>

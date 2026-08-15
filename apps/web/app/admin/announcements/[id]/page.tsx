@@ -18,7 +18,7 @@ export default async function EditAnnouncementPage({ params }: { params: Promise
   return (
     <div className={styles.dashboard}>
       <header style={{ marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '1.75rem', fontFamily: 'var(--font-editorial)', fontWeight: 500 }}>Edit: {ann.internalTitle}</h1>
+        <h1 style={{ fontSize: '1.75rem', fontWeight: 500 }}>Edit: {ann.internalTitle}</h1>
       </header>
       <AnnouncementEditorForm
         action={actionWithId}

@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { saveMaterial } from '../materials/actions';
 
+import { CustomSelect } from '../../../components/ui/CustomSelect';
+
 interface MaterialModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -13,6 +15,7 @@ interface MaterialModalProps {
 export function MaterialModal({ isOpen, onClose, suppliers }: MaterialModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [supplierId, setSupplierId] = useState('');
 
   if (!isOpen) return null;
 
@@ -38,23 +41,20 @@ export function MaterialModal({ isOpen, onClose, suppliers }: MaterialModalProps
             action={async (formData) => {
               setIsSubmitting(true);
               const res = await saveMaterial(formData);
-              if (res?.error) {
-                setError(res.error);
-                setIsSubmitting(false);
-              } else {
-                onClose();
-              }
+              if (res?.error) setError(res.error);
+              else { setError(null); onClose(); }
+              setIsSubmitting(false);
             }}
             style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
           >
-            {error && <div style={{ color: '#C62828', backgroundColor: '#FFEBEE', padding: '1rem', borderRadius: '8px' }}>{error}</div>}
+            {error && <div style={{ color: '#D32F2F', backgroundColor: '#FFEBEE', padding: '0.75rem', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.9rem' }}>{error}</div>}
             
-            <div>
+            <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#5A5551', fontSize: '0.9rem' }}>Material Name</label>
               <input type="text" name="name" required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #D6CFE6' }} />
             </div>
             
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#5A5551', fontSize: '0.9rem' }}>Quantity</label>
                 <input type="number" name="quantity" defaultValue={0} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #D6CFE6' }} />
@@ -67,12 +67,15 @@ export function MaterialModal({ isOpen, onClose, suppliers }: MaterialModalProps
 
             <div>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#5A5551', fontSize: '0.9rem' }}>Supplier</label>
-              <select name="supplierId" style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #D6CFE6' }}>
-                <option value="">No Supplier Selected</option>
-                {suppliers?.map(sup => (
-                  <option key={sup.id} value={sup.id}>{sup.name}</option>
-                ))}
-              </select>
+              <CustomSelect
+                name="supplierId"
+                value={supplierId}
+                onChange={setSupplierId}
+                options={[
+                  { value: '', label: 'No Supplier Selected' },
+                  ...(suppliers?.map(sup => ({ value: sup.id, label: sup.name })) || [])
+                ]}
+              />
             </div>
 
             <div>

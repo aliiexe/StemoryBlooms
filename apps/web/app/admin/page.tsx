@@ -1,9 +1,15 @@
 import { db } from '@stemory/database';
-import { order, material, adminInboxEvent, orderItem } from '@stemory/database/schema';
-import { count, sum, eq, gte, lt, desc, inArray } from 'drizzle-orm';
+import { order, material, adminInboxEvent, orderItem, customer } from '@stemory/database/schema';
+import { count, sum, eq, gte, lt, desc, inArray, sql } from 'drizzle-orm';
 import DashboardClient from './DashboardClient';
 
-
+const formatMoney = (amount: number) => {
+  return new Intl.NumberFormat('en-MA', {
+    style: 'currency',
+    currency: 'MAD',
+    maximumFractionDigits: 0
+  }).format(amount);
+};
 
 export default async function AdminDashboardPage() {
   const today = new Date();
@@ -13,31 +19,39 @@ export default async function AdminDashboardPage() {
   const ordersTodayResult = await db.select({ count: count() }).from(order).where(gte(order.createdAt, today));
   const ordersTodayCount = ordersTodayResult[0].count;
 
-  const [awaitingResult, productionResult, readyResult, completedResult] = await Promise.all([
+  const [awaitingResult, productionResult, readyResult, completedResult, customersResult, allOrdersResult] = await Promise.all([
     db.select({ count: count() }).from(order).where(eq(order.status, 'NEW')),
     db.select({ count: count() }).from(order).where(eq(order.status, 'IN_PRODUCTION')),
     db.select({ count: count() }).from(order).where(eq(order.status, 'READY')),
-    db.select({ count: count() }).from(order).where(inArray(order.status, ['COMPLETED', 'DELIVERED']))
+    db.select({ count: count() }).from(order).where(inArray(order.status, ['COMPLETED', 'DELIVERED'])),
+    db.select({ count: count() }).from(customer),
+    db.select({ count: count(), totalRevenue: sql<number>`SUM(GREATEST(0, ${order.total} - ${order.deliveryFee}))` }).from(order)
   ]);
   const awaitingCount = awaitingResult[0].count;
   const productionCount = productionResult[0].count;
   const readyCount = readyResult[0].count;
   const completedCount = completedResult[0].count;
+  const totalCustomers = customersResult[0].count;
+  const allTimeRevenue = Number(allOrdersResult[0].totalRevenue) || 0;
+  const allTimeCount = allOrdersResult[0].count;
+  const aov = allTimeCount > 0 ? allTimeRevenue / allTimeCount : 0;
 
   const ordersToday = await db.query.order.findMany({
     where: (table, { gte }) => gte(table.createdAt, today),
-    columns: { total: true }
+    columns: { total: true, deliveryFee: true }
   });
 
-  const revenueToday = ordersToday.reduce((sum, order) => sum + order.total, 0);
+  const revenueToday = ordersToday.reduce((sum, order) => sum + Math.max(0, order.total - order.deliveryFee), 0);
 
   const metrics = [
+    { label: 'Revenue Today', value: formatMoney(revenueToday), sub: 'Live', positive: true },
     { label: 'Orders Today', value: ordersTodayCount.toString(), sub: 'Live', positive: true },
+    { label: 'AOV', value: formatMoney(aov) },
+    { label: 'Customers', value: totalCustomers.toString() },
     { label: 'Awaiting', value: awaitingCount.toString() },
     { label: 'In Production', value: productionCount.toString() },
     { label: 'Ready', value: readyCount.toString() },
     { label: 'Completed', value: completedCount.toString() },
-    { label: 'Revenue', value: `${revenueToday} MAD`, sub: 'Live', positive: true },
   ];
 
   const recentDbOrders = await db.query.order.findMany({
@@ -56,7 +70,7 @@ export default async function AdminDashboardPage() {
   const recentOrders = recentDbOrders.map(o => ({
     id: o.orderNumber,
     name: `${o.customer.firstName} ${o.customer.lastName}`,
-    total: `${o.total} MAD`,
+    total: formatMoney(Math.max(0, o.total - o.deliveryFee)),
     status: o.status,
     bg: statusColors[o.status]?.bg || '#E0F7FA',
     fg: statusColors[o.status]?.fg || '#006064'
@@ -70,7 +84,7 @@ export default async function AdminDashboardPage() {
 
   const recentSales = await db.query.order.findMany({
     where: (table, { gte }) => gte(table.createdAt, sevenDaysAgo),
-    columns: { createdAt: true, total: true }
+    columns: { createdAt: true, total: true, deliveryFee: true }
   });
 
   // Group by day
@@ -82,7 +96,7 @@ export default async function AdminDashboardPage() {
     // Find all orders that fall on this day
     const daySales = recentSales.filter(o => 
       new Date(o.createdAt).toDateString() === d.toDateString()
-    ).reduce((sum, o) => sum + o.total, 0);
+    ).reduce((sum, o) => sum + Math.max(0, o.total - o.deliveryFee), 0);
 
     salesData.push({ name: dayStr, sales: daySales });
   }

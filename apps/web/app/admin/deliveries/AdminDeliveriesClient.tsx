@@ -4,6 +4,7 @@ import React, { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { updateOrderStatus, createDeliveryHandoff } from './actions';
 import styles from '../dashboard.module.css';
+import { CustomSelect } from '../../../components/ui/CustomSelect';
 
 interface OrderDeliveryItem {
   id: string;
@@ -126,19 +127,19 @@ export function AdminDeliveriesClient({ initialOrders, deliveryCompany }: { init
                   >
                     🚚 Dispatch
                   </button>
-                  <select
-                    value={o.status}
-                    onChange={(e) => {
-                      const newSt = e.target.value;
-                      startTransition(async () => {
-                        await updateOrderStatus(o.id, newSt);
-                        setOrders(prev => prev.map(item => item.id === o.id ? { ...item, status: newSt } : item));
-                      });
-                    }}
-                    style={{ padding: '0.5rem 0.6rem', borderRadius: '8px', border: '1px solid #D6CFE6', fontSize: '0.82rem', backgroundColor: '#fff', cursor: 'pointer' }}
-                  >
-                    {ALL_STATUSES.slice(1).map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
+                  <div style={{ width: '130px' }}>
+                    <CustomSelect
+                      value={o.status}
+                      onChange={(newSt) => {
+                        startTransition(async () => {
+                          await updateOrderStatus(o.id, newSt);
+                          setOrders(prev => prev.map(item => item.id === o.id ? { ...item, status: newSt } : item));
+                        });
+                      }}
+                      options={ALL_STATUSES.slice(1).map(s => ({ value: s, label: s }))}
+                      style={{ minWidth: '100px' }}
+                    />
+                  </div>
                 </div>
               </div>
             );

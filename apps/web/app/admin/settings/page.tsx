@@ -21,7 +21,7 @@ export default async function AdminSettingsPage() {
   return (
     <div className={styles.dashboard}>
       <header style={{ padding: '0', marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '1.75rem', fontFamily: 'var(--font-editorial)', fontWeight: 500 }}>Store Settings</h1>
+        <h1 style={{ fontSize: '1.75rem', fontWeight: 500 }}>Store Settings</h1>
       </header>
 
       {/* Site Mode */}

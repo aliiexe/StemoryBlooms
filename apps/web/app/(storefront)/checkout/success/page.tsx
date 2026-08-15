@@ -49,7 +49,11 @@ function SuccessContent() {
           Track Your Order
         </button>
         
-        <button onClick={() => router.push('/shop')} className={styles.secondaryBtn}>
+        <button onClick={() => router.push(`/receipt/${orderNumber}`)} className={styles.secondaryBtn} style={{ marginTop: '0.5rem' }}>
+          View / Print Receipt
+        </button>
+        
+        <button onClick={() => router.push('/shop')} className={styles.secondaryBtn} style={{ marginTop: '0.5rem', background: 'transparent', border: 'none', color: '#6B7280' }}>
           Continue Shopping
         </button>
       </div>

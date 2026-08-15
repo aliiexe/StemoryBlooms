@@ -1,11 +1,15 @@
 import React from 'react';
-import { db, eq, product, deliveryZone } from '@stemory/database';
+import { db, eq, product, deliveryZone, builderComponent } from '@stemory/database';
 import styles from '../../dashboard.module.css';
 import NewAssistedOrderForm from './NewAssistedOrderForm';
 
 export default async function NewAssistedOrderPage() {
   const products = await db.query.product.findMany({
     where: eq(product.isAvailable, true)
+  });
+
+  const components = await db.query.builderComponent.findMany({
+    where: eq(builderComponent.isAvailable, true)
   });
 
   const deliveryZones = await db.query.deliveryZone.findMany({
@@ -17,7 +21,16 @@ export default async function NewAssistedOrderPage() {
     id: p.id,
     name: p.name,
     basePrice: p.basePrice,
-    salePrice: p.salePrice
+    salePrice: p.salePrice,
+    image: p.images?.[0] || null
+  }));
+
+  const serializedComponents = components.map(c => ({
+    id: c.id,
+    name: c.name,
+    price: c.unitPrice,
+    type: c.type,
+    image: c.imageUrl || null
   }));
 
   const serializedDeliveryZones = deliveryZones.map(z => ({
@@ -37,6 +50,7 @@ export default async function NewAssistedOrderPage() {
 
       <NewAssistedOrderForm 
         products={serializedProducts} 
+        components={serializedComponents}
         deliveryZones={serializedDeliveryZones} 
       />
     </div>

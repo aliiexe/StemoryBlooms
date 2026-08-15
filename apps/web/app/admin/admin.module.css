@@ -1,8 +1,14 @@
 .wrapper {
   display: flex;
   height: 100vh;
+  width: 100vw;
   overflow: hidden;
   background: linear-gradient(135deg, #f7f3ea 0%, #f2efe7 100%);
+}
+
+/* Force sans-serif on all headings in admin, overriding typography.css */
+.wrapper h1, .wrapper h2, .wrapper h3, .wrapper h4, .wrapper h5, .wrapper h6 {
+  font-family: var(--font-sans) !important;
 }
 
 /* ---- Sidebar ---- */

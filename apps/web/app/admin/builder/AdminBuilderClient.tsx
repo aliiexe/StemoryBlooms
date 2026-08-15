@@ -8,6 +8,7 @@ import styles from '../dashboard.module.css';
 import { ImageUploader } from '../../../components/ui/ImageUploader';
 import { ToggleSwitch } from '../../../components/ui/ToggleSwitch';
 import { CustomSelect } from '../../../components/ui/CustomSelect';
+import ConfirmModal from '../components/ConfirmModal';
 
 interface BuilderComponent {
   id: string;
@@ -59,6 +60,7 @@ function ComponentForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isAvailable, setIsAvailable] = useState(item?.isAvailable ?? true);
+  const [type, setType] = useState(item?.type || 'FLOWER');
 
   // BOM state
   const [bom, setBom] = useState<{ materialId: string; quantity: number }[]>(
@@ -103,17 +105,18 @@ function ComponentForm({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#5A5551', fontSize: '0.95rem' }}>Component Type</label>
-                <select
+                <CustomSelect
                   name="type"
-                  defaultValue={item?.type || 'FLOWER'}
-                  style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #D6CFE6', fontSize: '1rem', backgroundColor: '#fff' }}
-                >
-                  <option value="FLOWER">Flower</option>
-                  <option value="LEAF">Leaf</option>
-                  <option value="ANIMAL_BUG">Animal or Bug</option>
-                  <option value="WRAPPING">Wrapping</option>
-                  <option value="CARD">Card</option>
-                </select>
+                  value={type}
+                  onChange={setType}
+                  options={[
+                    { value: 'FLOWER', label: 'Flower' },
+                    { value: 'LEAF', label: 'Leaf' },
+                    { value: 'ANIMAL_BUG', label: 'Animal or Bug' },
+                    { value: 'WRAPPING', label: 'Wrapping' },
+                    { value: 'CARD', label: 'Card' }
+                  ]}
+                />
               </div>
 
               <div>
@@ -373,6 +376,7 @@ export function AdminBuilderClient({
   const [components, setComponents] = useState<BuilderComponent[]>(initialComponents);
   const [isPending, startTransition] = useTransition();
   const [editingItem, setEditingItem] = useState<BuilderComponent | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<BuilderComponent | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<string>('ALL');
   const [activeTab, setActiveTab] = useState<'components' | 'sections'>('components');
@@ -391,7 +395,7 @@ export function AdminBuilderClient({
           >
             ← Back to components
           </button>
-          <h1 style={{ fontSize: '1.75rem', fontFamily: 'var(--font-editorial)', fontWeight: 500, margin: '0.75rem 0 0' }}>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 500, margin: '0.75rem 0 0' }}>
             {editingItem ? 'Edit Component' : 'New Builder Component'}
           </h1>
         </div>
@@ -409,7 +413,7 @@ export function AdminBuilderClient({
     <div className={styles.dashboard}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.75rem', fontFamily: 'var(--font-editorial)', fontWeight: 500, margin: 0 }}>Bouquet Builder</h1>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 500, margin: 0 }}>Bouquet Builder</h1>
           <p style={{ color: '#7A7571', fontSize: '0.9rem', marginTop: '0.25rem' }}>Manage components and builder sections for the custom bouquet builder</p>
         </div>
         {activeTab === 'components' && (
@@ -588,12 +592,7 @@ export function AdminBuilderClient({
                         </button>
                         <button
                           onClick={() => {
-                            if (confirm(`Delete component "${item.name}"?`)) {
-                              startTransition(async () => {
-                                await deleteBuilderComponent(item.id);
-                                setComponents(prev => prev.filter(c => c.id !== item.id));
-                              });
-                            }
+                            setItemToDelete(item);
                           }}
                           style={{ padding: '0.4rem 0.75rem', borderRadius: '6px', border: '1px solid #FFEBEE', background: '#FFEBEE', color: '#C62828', cursor: 'pointer', fontSize: '0.85rem' }}
                         >
@@ -615,6 +614,23 @@ export function AdminBuilderClient({
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={!!itemToDelete}
+        title="Delete Component"
+        message={`Are you sure you want to delete "${itemToDelete?.name}"? This action cannot be undone.`}
+        confirmText="Delete"
+        onConfirm={async () => {
+          if (itemToDelete) {
+            startTransition(async () => {
+              await deleteBuilderComponent(itemToDelete.id);
+              setComponents(prev => prev.filter(c => c.id !== itemToDelete.id));
+              setItemToDelete(null);
+            });
+          }
+        }}
+        onCancel={() => setItemToDelete(null)}
+      />
     </div>
   );
 }

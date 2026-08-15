@@ -8,6 +8,7 @@ import styles from '../dashboard.module.css';
 import { MaterialModal } from './MaterialModal';
 import { usePagination } from '../components/usePagination';
 import { TablePagination } from '../components/TablePagination';
+import ConfirmModal from '../components/ConfirmModal';
 
 interface Material {
   id: string;
@@ -31,6 +32,8 @@ export function InventoryTableClient({ initialMaterials, suppliers }: Props) {
   const [isPending, startTransition] = useTransition();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [backfilling, setBackfilling] = useState(false);
+  const [showBackfillConfirm, setShowBackfillConfirm] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [restockingId, setRestockingId] = useState<string | null>(null);
   const [restockQty, setRestockQty] = useState(1);
 
@@ -45,8 +48,8 @@ export function InventoryTableClient({ initialMaterials, suppliers }: Props) {
     await restockMaterial(m.id, restockQty);
   }
 
-  async function handleBackfill() {
-    if (!confirm('This will deduct raw material stock for all existing products based on their current stock × materials. Run only once. Continue?')) return;
+  async function executeBackfill() {
+    setShowBackfillConfirm(false);
     setBackfilling(true);
     const result = await backfillProductMaterialDeductions();
     setBackfilling(false);
@@ -62,8 +65,8 @@ export function InventoryTableClient({ initialMaterials, suppliers }: Props) {
     });
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this material?')) return;
+  const confirmDelete = async (id: string) => {
+    setItemToDelete(null);
     setMaterials(current => current.filter(m => m.id !== id));
     startTransition(() => {
       deleteMaterial(id);
@@ -74,11 +77,11 @@ export function InventoryTableClient({ initialMaterials, suppliers }: Props) {
     <>
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginBottom: '1rem' }}>
         <button
-          onClick={handleBackfill}
+          onClick={() => setShowBackfillConfirm(true)}
           disabled={backfilling}
-          style={{ padding: '0.75rem 1.25rem', borderRadius: '8px', border: '1px solid #FFE082', backgroundColor: '#FFF8E1', color: '#F57F17', cursor: 'pointer', fontWeight: 500 }}
+          style={{ padding: '0.6rem 1.25rem', borderRadius: '8px', border: 'none', backgroundColor: '#F0F4FF', color: '#3451B2', fontWeight: 600, cursor: backfilling ? 'not-allowed' : 'pointer', fontSize: '0.9rem' }}
         >
-          {backfilling ? 'Backfilling…' : '⚡ Sync product deductions'}
+          {backfilling ? 'Running...' : '🔄 Run Auto-Deduct (Backfill)'}
         </button>
         <button
           onClick={() => setIsModalOpen(true)}
@@ -186,7 +189,7 @@ export function InventoryTableClient({ initialMaterials, suppliers }: Props) {
                   </td>
                   <td>
                     <button
-                      onClick={() => handleDelete(m.id)}
+                      onClick={() => setItemToDelete(m.id)}
                       style={{ color: '#C62828', background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem' }}
                       title="Delete"
                     >

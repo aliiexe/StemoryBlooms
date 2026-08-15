@@ -28,6 +28,8 @@ const TARGET_MODES = ['ALL', 'HOMEPAGE', 'SHOP', 'CHECKOUT', 'CUSTOM'];
 const DISMISSAL_DURATIONS = ['SESSION', '24H', 'CAMPAIGN'];
 const COUNTDOWN_END = ['HIDE', 'KEEP', 'REPLACE'];
 
+import CustomDropdown from '../components/CustomDropdown';
+
 export default function AnnouncementEditorForm({ action, templates, existing, preselectedTemplateId }: Props) {
   // Find default template config if we have a preselected ID and no existing announcement
   const presetTemplate = !existing && preselectedTemplateId ? templates.find(t => t.id === preselectedTemplateId) : null;
@@ -48,6 +50,12 @@ export default function AnnouncementEditorForm({ action, templates, existing, pr
   const [noEndDate, setNoEndDate] = useState(existing?.noEndDate ?? true);
   const [countdownEnabled, setCountdownEnabled] = useState(existing?.countdownEnabled ?? false);
   const [selectedTemplate, setSelectedTemplate] = useState<string>(presetTemplate?.slug ?? '');
+  
+  // Custom dropdown states
+  const [animationType, setAnimationType] = useState(existing?.animationType ?? presetCfg?.animationType ?? 'FADE');
+  const [targetMode, setTargetMode] = useState(existing?.targetMode ?? presetCfg?.targetMode ?? 'ALL');
+  const [dismissalDuration, setDismissalDuration] = useState(existing?.dismissalDuration ?? presetCfg?.dismissalDuration ?? 'SESSION');
+  const [countdownEndBehavior, setCountdownEndBehavior] = useState(existing?.countdownEndBehavior ?? presetCfg?.countdownEndBehavior ?? 'HIDE');
 
   const applyTemplate = (slug: string) => {
     const t = templates.find(t => t.slug === slug);
@@ -60,8 +68,16 @@ export default function AnnouncementEditorForm({ action, templates, existing, pr
       textColor: cfg.textColor ?? prev.textColor,
       accentColor: cfg.accentColor ?? prev.accentColor,
       linkColor: cfg.linkColor ?? prev.linkColor,
+      textAlignment: cfg.textAlignment ?? prev.textAlignment,
       decorativeAsset: cfg.decorativeAsset ?? prev.decorativeAsset,
     }));
+    
+    // Also update separate dropdown states if present in config
+    if (cfg.animationType) setAnimationType(cfg.animationType);
+    if (cfg.targetMode) setTargetMode(cfg.targetMode);
+    if (cfg.dismissalDuration) setDismissalDuration(cfg.dismissalDuration);
+    if (cfg.countdownEndBehavior) setCountdownEndBehavior(cfg.countdownEndBehavior);
+    
     setSelectedTemplate(slug);
   };
 
@@ -140,19 +156,21 @@ export default function AnnouncementEditorForm({ action, templates, existing, pr
             </div>
             <div>
               <label style={labelStyle}>Decorative Asset</label>
-              <select name="decorativeAsset" className={styles.input}
-                defaultValue={existing?.decorativeAsset ?? ''}
-                onChange={e => setPreview(p => ({ ...p, decorativeAsset: e.target.value }))}
-              >
-                <option value="">None</option>
-                <option value="valentines">💜 Valentine's Day</option>
-                <option value="mothers">🌸 Mother's Day</option>
-                <option value="graduation">🎓 Graduation</option>
-                <option value="ramadan">🌙 Ramadan</option>
-                <option value="eid">✨ Eid</option>
-                <option value="blackfriday">🏷️ Black Friday</option>
-                <option value="default">🌿 Botanical</option>
-              </select>
+              <CustomDropdown
+                name="decorativeAsset"
+                value={preview.decorativeAsset}
+                onChange={val => setPreview(p => ({ ...p, decorativeAsset: val }))}
+                options={[
+                  { value: '', label: 'None' },
+                  { value: 'valentines', label: '💜 Valentine\'s Day' },
+                  { value: 'mothers', label: '🌸 Mother\'s Day' },
+                  { value: 'graduation', label: '🎓 Graduation' },
+                  { value: 'ramadan', label: '🌙 Ramadan' },
+                  { value: 'eid', label: '✨ Eid' },
+                  { value: 'blackfriday', label: '🏷️ Black Friday' },
+                  { value: 'default', label: '🌿 Botanical' }
+                ]}
+              />
             </div>
             <div>
               <label style={labelStyle}>Priority Order</label>
@@ -186,16 +204,25 @@ export default function AnnouncementEditorForm({ action, templates, existing, pr
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
               <div>
                 <label style={labelStyle}>Text Alignment</label>
-                <select name="textAlignment" className={styles.input} defaultValue={existing?.textAlignment ?? 'CENTER'}
-                  onChange={e => setPreview(p => ({ ...p, textAlignment: e.target.value }))}>
-                  {ALIGNMENTS.map(a => <option key={a}>{a}</option>)}
-                </select>
+                <CustomDropdown
+                  name="textAlignment"
+                  value={preview.textAlignment}
+                  onChange={val => setPreview(p => ({ ...p, textAlignment: val }))}
+                  options={[
+                    { value: 'LEFT', label: 'Left' },
+                    { value: 'CENTER', label: 'Center' },
+                    { value: 'RIGHT', label: 'Right' }
+                  ]}
+                />
               </div>
               <div>
                 <label style={labelStyle}>Animation</label>
-                <select name="animationType" className={styles.input} defaultValue={existing?.animationType ?? 'FADE'}>
-                  {ANIM_TYPES.map(a => <option key={a}>{a}</option>)}
-                </select>
+                <CustomDropdown
+                  name="animationType"
+                  value={animationType}
+                  onChange={setAnimationType}
+                  options={ANIM_TYPES.map(a => ({ value: a, label: a }))}
+                />
               </div>
               <div>
                 <label style={labelStyle}>Bar Height</label>
@@ -213,9 +240,12 @@ export default function AnnouncementEditorForm({ action, templates, existing, pr
             </div>
             <div>
               <label style={labelStyle}>Page Targeting</label>
-              <select name="targetMode" className={styles.input} defaultValue={existing?.targetMode ?? 'ALL'}>
-                {TARGET_MODES.map(m => <option key={m}>{m}</option>)}
-              </select>
+              <CustomDropdown
+                name="targetMode"
+                value={targetMode}
+                onChange={setTargetMode}
+                options={TARGET_MODES.map(m => ({ value: m, label: m }))}
+              />
             </div>
           </div>
         </div>
@@ -245,9 +275,12 @@ export default function AnnouncementEditorForm({ action, templates, existing, pr
                   <input type="checkbox" name="isDismissible" defaultChecked={existing?.isDismissible} />
                   Allow users to dismiss
                 </label>
-                <select name="dismissalDuration" className={styles.input} style={{ width: 'auto' }} defaultValue={existing?.dismissalDuration ?? 'SESSION'}>
-                  {DISMISSAL_DURATIONS.map(d => <option key={d}>{d}</option>)}
-                </select>
+                <CustomDropdown
+                  name="dismissalDuration"
+                  value={dismissalDuration}
+                  onChange={setDismissalDuration}
+                  options={DISMISSAL_DURATIONS.map(d => ({ value: d, label: d }))}
+                />
               </div>
             </div>
           </div>
@@ -269,9 +302,12 @@ export default function AnnouncementEditorForm({ action, templates, existing, pr
                 </div>
                 <div>
                   <label style={labelStyle}>When countdown ends</label>
-                  <select name="countdownEndBehavior" className={styles.input} defaultValue={existing?.countdownEndBehavior ?? 'HIDE'}>
-                    {COUNTDOWN_END.map(b => <option key={b}>{b}</option>)}
-                  </select>
+                  <CustomDropdown
+                    name="countdownEndBehavior"
+                    value={countdownEndBehavior}
+                    onChange={setCountdownEndBehavior}
+                    options={COUNTDOWN_END.map(b => ({ value: b, label: b }))}
+                  />
                 </div>
                 <div>
                   <label style={labelStyle}>Replacement text (if REPLACE)</label>

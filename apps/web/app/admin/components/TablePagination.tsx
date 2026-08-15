@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { CustomSelect } from '../../../components/ui/CustomSelect';
 
 interface Props {
   page: number;
@@ -51,18 +52,22 @@ export function TablePagination({
       <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <span style={{ color: '#7A7571', fontSize: '0.9rem' }}>Rows per page:</span>
-          <select
-            value={rowsPerPage}
-            onChange={(e) => {
-              onRowsPerPageChange(Number(e.target.value));
-              onPageChange(1);
-            }}
-            style={{ padding: '0.25rem 0.5rem', borderRadius: '4px', border: '1px solid #D6CFE6', backgroundColor: '#fff', fontSize: '0.9rem', cursor: 'pointer' }}
-          >
-            {[10, 20, 30, 50].map((size) => (
-              <option key={size} value={size}>{size}</option>
-            ))}
-          </select>
+          <div style={{ width: '80px' }}>
+            <CustomSelect
+              value={rowsPerPage.toString()}
+              onChange={(val) => {
+                onRowsPerPageChange(Number(val));
+                onPageChange(1);
+              }}
+              options={[
+                { value: '10', label: '10' },
+                { value: '25', label: '25' },
+                { value: '50', label: '50' },
+                { value: '100', label: '100' }
+              ]}
+              style={{ minWidth: '70px' }}
+            />
+          </div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>

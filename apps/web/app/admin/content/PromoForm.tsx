@@ -3,6 +3,7 @@
 import React, { useRef, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { createPromoCode } from './actions';
+import CustomDropdown from '../components/CustomDropdown';
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -24,44 +25,43 @@ function SubmitButton() {
 export default function PromoForm() {
   const formRef = useRef<HTMLFormElement>(null);
   const [error, setError] = useState<string | null>(null);
+  const [type, setType] = useState('PERCENTAGE');
 
-  const handleSubmit = async (formData: FormData) => {
-    setError(null);
+  const labelStyle = { display: 'block', marginBottom: '0.5rem', color: '#5A5551', fontSize: '0.85rem', fontWeight: 500 };
+  const inputStyle = { width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #D6CFE6', backgroundColor: '#fff', fontSize: '1rem', color: '#3A3531' };
+
+  async function handleSubmit(formData: FormData) {
     const res = await createPromoCode(formData);
-    if (res.error) {
+    if (res?.error) {
       setError(res.error);
     } else {
+      setError(null);
       formRef.current?.reset();
+      setType('PERCENTAGE');
     }
-  };
-
-  const inputStyle = {
-    padding: '0.75rem', borderRadius: '8px', border: '1px solid #EAE6DF',
-    fontFamily: 'var(--font-sans)', fontSize: '0.9rem', width: '100%', outline: 'none'
-  };
-
-  const labelStyle = {
-    display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem', fontWeight: 500, color: '#4A4A4A'
-  };
+  }
 
   return (
-    <div style={{ backgroundColor: 'var(--surface-primary)', padding: '2rem', borderRadius: '12px', border: '1px solid #EAE6DF', marginBottom: '2rem' }}>
-      <h3 style={{ fontSize: '1.25rem', marginBottom: '1.5rem', color: '#3A3531' }}>Create New Promo Code</h3>
-      
-      <form ref={formRef} action={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-        {error && <div style={{ color: '#C62828', backgroundColor: '#FFEBEE', padding: '0.75rem', borderRadius: '8px', fontSize: '0.9rem' }}>{error}</div>}
-        
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+    <div style={{ backgroundColor: '#FDFBF7', padding: '2rem', borderRadius: '16px', border: '1px solid #EAE6DF', marginBottom: '2rem' }}>
+      <h2 style={{ margin: '0 0 1.5rem 0', color: '#3A3531', fontSize: '1.25rem' }}>Create Promo Code</h2>
+      {error && <div style={{ color: '#D32F2F', backgroundColor: '#FFEBEE', padding: '0.75rem', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.9rem' }}>{error}</div>}
+      <form ref={formRef} action={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
           <div>
             <label style={labelStyle}>Code (e.g. SUMMER20)</label>
             <input type="text" name="code" required style={inputStyle} />
           </div>
           <div>
             <label style={labelStyle}>Discount Type</label>
-            <select name="type" required style={inputStyle}>
-              <option value="PERCENTAGE">Percentage (%)</option>
-              <option value="FIXED">Fixed Amount (MAD)</option>
-            </select>
+            <CustomDropdown
+              name="type"
+              value={type}
+              onChange={setType}
+              options={[
+                { value: 'PERCENTAGE', label: 'Percentage (%)' },
+                { value: 'FIXED', label: 'Fixed Amount (MAD)' }
+              ]}
+            />
           </div>
           <div>
             <label style={labelStyle}>Value</label>

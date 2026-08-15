@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { quickUpdateProduct, deleteProduct } from './actions';
 import styles from '../dashboard.module.css';
+import ConfirmModal from '../components/ConfirmModal';
 
 interface Product {
   id: string;
@@ -22,6 +23,7 @@ export function AdminProductsClient({ initialProducts }: { initialProducts: Prod
 
   const [products, setProducts] = useState(initialProducts);
   const [isPending, startTransition] = useTransition();
+  const [itemToDelete, setItemToDelete] = useState<string | null>(null);
 
   const handleUpdate = (id: string, updates: Partial<Product>) => {
     // Optimistic UI update
@@ -33,8 +35,8 @@ export function AdminProductsClient({ initialProducts }: { initialProducts: Prod
     });
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this product? This action cannot be undone.')) return;
+  const confirmDelete = async (id: string) => {
+    setItemToDelete(null);
     setProducts(current => current.filter(p => p.id !== id));
     startTransition(() => {
       deleteProduct(id);
@@ -176,7 +178,7 @@ export function AdminProductsClient({ initialProducts }: { initialProducts: Prod
                   Edit all
                 </Link>
                 <button 
-                  onClick={() => handleDelete(p.id)}
+                  onClick={() => setItemToDelete(p.id)}
                   style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid #FFCDD2', backgroundColor: '#FFEBEE', color: '#C62828', cursor: 'pointer' }}
                   title="Delete Product"
                 >
@@ -187,6 +189,15 @@ export function AdminProductsClient({ initialProducts }: { initialProducts: Prod
           </div>
         );
       })}
+
+      <ConfirmModal
+        isOpen={!!itemToDelete}
+        title="Delete Product"
+        message="Are you sure you want to delete this product? This action cannot be undone."
+        confirmText="Delete"
+        onConfirm={() => itemToDelete && confirmDelete(itemToDelete)}
+        onCancel={() => setItemToDelete(null)}
+      />
     </div>
   );
 }

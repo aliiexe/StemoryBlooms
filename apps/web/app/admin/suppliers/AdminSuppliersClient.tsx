@@ -6,6 +6,7 @@ import { saveSupplier, deleteSupplier } from './actions';
 import { usePagination } from '../components/usePagination';
 import { TablePagination } from '../components/TablePagination';
 import styles from '../dashboard.module.css';
+import ConfirmModal from '../components/ConfirmModal';
 
 interface Supplier {
   id: string;
@@ -26,6 +27,7 @@ export function AdminSuppliersClient({ initialSuppliers }: { initialSuppliers: S
   const [isPending, startTransition] = useTransition();
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [isAdding, setIsAdding] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<Supplier | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   const { page: currentPage, setPage, rowsPerPage, setRowsPerPage, totalPages, paginatedItems, totalItems } = usePagination(
@@ -41,7 +43,7 @@ export function AdminSuppliersClient({ initialSuppliers }: { initialSuppliers: S
     <div className={styles.dashboard}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.75rem', fontFamily: 'var(--font-editorial)', fontWeight: 500, margin: 0 }}>Supplier Management</h1>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 500, margin: 0 }}>Supplier Management</h1>
           <p style={{ color: '#7A7571', fontSize: '0.9rem', marginTop: '0.25rem' }}>Manage raw material vendors and suppliers</p>
         </div>
         <button
@@ -144,14 +146,7 @@ export function AdminSuppliersClient({ initialSuppliers }: { initialSuppliers: S
                         Edit
                       </button>
                       <button
-                        onClick={async () => {
-                          if (confirm(`Delete supplier "${sup.name}"?`)) {
-                            startTransition(async () => {
-                              await deleteSupplier(sup.id);
-                              setSuppliers(prev => prev.filter(s => s.id !== sup.id));
-                            });
-                          }
-                        }}
+                        onClick={() => setItemToDelete(sup)}
                         style={{ padding: '0.4rem 0.75rem', borderRadius: '6px', border: '1px solid #FFEBEE', background: '#FFEBEE', color: '#C62828', cursor: 'pointer', fontSize: '0.85rem' }}
                       >
                         Delete
@@ -179,6 +174,23 @@ export function AdminSuppliersClient({ initialSuppliers }: { initialSuppliers: S
           />
         </div>
       </div>
+      
+      <ConfirmModal
+        isOpen={!!itemToDelete}
+        title="Delete Supplier"
+        message={`Are you sure you want to delete supplier "${itemToDelete?.name}"? This action cannot be undone.`}
+        confirmText="Delete"
+        onConfirm={async () => {
+          if (itemToDelete) {
+            startTransition(async () => {
+              await deleteSupplier(itemToDelete.id);
+              setSuppliers(prev => prev.filter(s => s.id !== itemToDelete.id));
+              setItemToDelete(null);
+            });
+          }
+        }}
+        onCancel={() => setItemToDelete(null)}
+      />
     </div>
   );
 }
