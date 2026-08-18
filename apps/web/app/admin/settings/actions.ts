@@ -103,3 +103,28 @@ export async function saveBuilderSections(sections: Record<string, boolean>) {
   revalidatePath('/custom-bouquet');
   return { success: true };
 }
+
+export async function saveCustomBuilderSettings(formData: FormData) {
+  await assertAdmin();
+  const customBouquetBaseFee = parseIntegerInput(formData.get('customBouquetBaseFee') as string | null) ?? 19;
+
+  const existing = await db.query.siteSettings.findFirst();
+  
+  const config = (existing?.config as any) || {};
+  config.customBouquetBaseFee = customBouquetBaseFee;
+
+  if (existing) {
+    await db.update(siteSettings).set({ config, updatedAt: new Date() }).where(eq(siteSettings.id, existing.id));
+  } else {
+    await db.insert(siteSettings).values({ 
+      id: crypto.randomUUID(), 
+      mode: 'WAITLIST',
+      config,
+      updatedAt: new Date() 
+    });
+  }
+
+  revalidatePath('/admin/settings');
+  revalidatePath('/custom-bouquet');
+  return { success: true };
+}

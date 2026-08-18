@@ -43,8 +43,16 @@ export default async function CustomBouquetPage() {
   const itemsData: Record<string, ReturnType<typeof mapItem>[]> = {};
   for (const section of enabledSections) {
     const type = SECTION_TO_TYPE[section];
-    itemsData[section] = components.filter((c: Component) => c.type === type).map(mapItem);
+    itemsData[section] = components.filter((c: Component) => c.type === type).map((c: Component) => {
+      const item = mapItem(c);
+      if (section === 'Wrapping' || section === 'Cards') {
+        item.price = 0;
+      }
+      return item;
+    });
   }
+
+  const baseFee = (config?.customBouquetBaseFee as number) ?? 19;
 
   return (
     <main className={styles.container}>
@@ -64,7 +72,7 @@ export default async function CustomBouquetPage() {
           </p>
         </div>
       ) : (
-        <BuilderFlow initialData={itemsData} enabledSteps={enabledSections} />
+        <BuilderFlow initialData={itemsData} enabledSteps={enabledSections} baseFee={baseFee} />
       )}
     </main>
   );

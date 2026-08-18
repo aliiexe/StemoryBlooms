@@ -17,17 +17,19 @@ type BuilderItem = {
 export default function BuilderFlow({
   initialData,
   enabledSteps,
+  baseFee = 19
 }: {
   initialData: Record<string, BuilderItem[]>;
   enabledSteps: string[];
+  baseFee?: number;
 }) {
   // Build the actual step sequence: enabled content steps + Review at end
   const STEPS = [...enabledSteps, 'Review'];
 
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [cart, setCart] = useState<Record<string, number>>({});
-
   const addItem = useCartStore((state) => state.addItem);
+  const isCartOpen = useCartStore((state) => state.isCartOpen);
   const currentStep = STEPS[currentStepIndex];
 
   const updateQuantity = (item: BuilderItem, delta: number, currentQty: number) => {
@@ -69,6 +71,22 @@ export default function BuilderFlow({
     Object.values(initialData).flat().forEach((item: BuilderItem) => {
       total += (cart[item.id] || 0) * item.price;
     });
+
+    const hasItems = Object.keys(cart).length > 0;
+    
+    // Determine when to show the base fee
+    const wrappingIndex = STEPS.indexOf('Wrapping');
+    const cardsIndex = STEPS.indexOf('Cards');
+    
+    const showFee = hasItems && (
+      currentStep === 'Review' ||
+      (wrappingIndex !== -1 && currentStepIndex >= wrappingIndex) ||
+      (wrappingIndex === -1 && cardsIndex !== -1 && currentStepIndex >= cardsIndex)
+    );
+
+    if (showFee) {
+      total += baseFee;
+    }
     return total;
   };
 
@@ -128,7 +146,7 @@ export default function BuilderFlow({
                 </div>
                 <div className={styles.itemDetails}>
                   <h3 className={styles.itemName}>{item.name}</h3>
-                  <p className={styles.itemPrice}>{item.price === 0 ? 'Free' : `${item.price} MAD`}</p>
+                  <p className={styles.itemPrice}>{item.price === 0 ? 'Included' : `${item.price} MAD`}</p>
                   {item.minQuantity && item.minQuantity > 1 && (
                     <p style={{ fontSize: '0.8rem', color: '#9A9591', margin: '0.25rem 0 0 0' }}>
                       Min. {item.minQuantity} required
@@ -159,10 +177,14 @@ export default function BuilderFlow({
     return (
       <div className={styles.reviewList}>
         <h2 className={styles.stepTitle}>Order Summary</h2>
+        <div className={styles.reviewItem}>
+          <span>Packaging & Base Materials</span>
+          <span>{baseFee} MAD</span>
+        </div>
         {cartItems.map(item => (
           <div key={item.id} className={styles.reviewItem}>
             <span>{cart[item.id]}x {item.name}</span>
-            <span>{item.price === 0 ? 'Free' : `${(cart[item.id] * item.price)} MAD`}</span>
+            <span>{item.price === 0 ? 'Included' : `${(cart[item.id] * item.price)} MAD`}</span>
           </div>
         ))}
       </div>
@@ -201,26 +223,28 @@ export default function BuilderFlow({
         </AnimatePresence>
       </div>
 
-      <div className={styles.stickyFooter}>
-        <div className={styles.footerContent}>
-          {currentStepIndex > 0 && (
-            <button
-              className={styles.nextBtn}
-              onClick={() => setCurrentStepIndex(i => i - 1)}
-              style={{ background: 'transparent', color: 'var(--brand-primary)', border: '1px solid var(--brand-primary)' }}
-            >
-              ← Back
+      {!isCartOpen && (
+        <div className={styles.stickyFooter}>
+          <div className={styles.footerContent}>
+            {currentStepIndex > 0 && (
+              <button
+                className={styles.nextBtn}
+                onClick={() => setCurrentStepIndex(i => i - 1)}
+                style={{ background: 'transparent', color: 'var(--brand-primary)', border: '1px solid var(--brand-primary)' }}
+              >
+                ← Back
+              </button>
+            )}
+            <div className={styles.subtotal}>
+              <span>Subtotal</span>
+              <span className={styles.subtotalValue}>{getSubtotal()} MAD</span>
+            </div>
+            <button className={styles.nextBtn} onClick={handleNext}>
+              {currentStepIndex < STEPS.length - 1 ? `Next: ${STEPS[currentStepIndex + 1]}` : 'Add to Cart'}
             </button>
-          )}
-          <div className={styles.subtotal}>
-            <span>Subtotal</span>
-            <span className={styles.subtotalValue}>{getSubtotal()} MAD</span>
           </div>
-          <button className={styles.nextBtn} onClick={handleNext}>
-            {currentStepIndex < STEPS.length - 1 ? `Next: ${STEPS[currentStepIndex + 1]}` : 'Add to Cart'}
-          </button>
         </div>
-      </div>
+      )}
     </div>
   );
 }

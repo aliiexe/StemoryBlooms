@@ -140,15 +140,14 @@ function DeliveryZoneSelect({
   );
 }
 
-export default function NewAssistedOrderForm({ 
-  products, 
-  components,
-  deliveryZones 
-}: { 
-  products: Product[]; 
-  components: BuilderComponent[];
-  deliveryZones: DeliveryZone[]; 
-}) {
+interface Props {
+  products: { id: string; name: string; basePrice: number; salePrice: number | null; image: string | null }[];
+  components: { id: string; name: string; price: number; type: string; image: string | null }[];
+  deliveryZones: { id: string; name: string; fee: number }[];
+  baseFee?: number;
+}
+
+export default function NewAssistedOrderForm({ products, components, deliveryZones, baseFee = 19 }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -205,6 +204,7 @@ export default function NewAssistedOrderForm({
   const deliveryFee = (source === 'IN_PERSON' && isHandDelivered) ? 0 : (activeZone?.fee || 0);
 
   let subtotal = 0;
+  const hasComponents = items.some(item => item.productId.startsWith('COMPONENT_'));
   items.forEach(item => {
     if (item.productId === 'CUSTOM') {
       subtotal += (item.customPrice || 0) * item.quantity;
@@ -219,6 +219,10 @@ export default function NewAssistedOrderForm({
       }
     }
   });
+
+  if (hasComponents) {
+    subtotal += baseFee;
+  }
 
   const finalTotal = Math.max(0, subtotal - manualDiscount) + deliveryFee;
 
@@ -455,6 +459,12 @@ export default function NewAssistedOrderForm({
           <h3 style={{ fontSize: '1.1rem', marginBottom: '1.5rem', borderBottom: '1px solid #EFEBE8', paddingBottom: '0.5rem', color: '#111827' }}>Pricing</h3>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
+            {hasComponents && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1rem', color: '#4B5563' }}>
+                <span>Packaging & Base Materials:</span>
+                <span style={{ fontWeight: 600 }}>{baseFee} MAD</span>
+              </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1rem', color: '#4B5563' }}>
               <span>Subtotal:</span>
               <span style={{ fontWeight: 600 }}>{subtotal} MAD</span>

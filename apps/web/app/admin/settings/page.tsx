@@ -4,6 +4,7 @@ import { asc } from 'drizzle-orm';
 import styles from '../dashboard.module.css';
 import { deleteDeliveryCompany, saveDeliveryCompany, setSiteMode } from './actions';
 import { HeroSettingsForm } from './HeroSettingsForm';
+import { CustomBuilderSettingsForm } from './CustomBuilderSettingsForm';
 
 const MODE_CONFIG = {
   LIVE:        { label: 'Live',        bg: '#E8F5E9', color: '#1B5E20', desc: 'Store is fully open. All pages accessible.' },
@@ -80,6 +81,10 @@ export default async function AdminSettingsPage() {
       <HeroSettingsForm 
         initialImages={((settings?.config as any)?.heroImages as string[]) || ['/hero-bouquet.png']} 
         initialFadeSpeed={((settings?.config as any)?.heroFadeSpeed as number) || 5} 
+      />
+
+      <CustomBuilderSettingsForm 
+        initialBaseFee={((settings?.config as any)?.customBouquetBaseFee as number) ?? 19}
       />
 
       <div className={styles.card}>
