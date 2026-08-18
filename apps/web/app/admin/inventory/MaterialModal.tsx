@@ -17,6 +17,17 @@ export function MaterialModal({ isOpen, onClose, suppliers }: MaterialModalProps
   const [error, setError] = useState<string | null>(null);
   const [supplierId, setSupplierId] = useState('');
 
+  React.useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (

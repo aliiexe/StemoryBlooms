@@ -22,6 +22,17 @@ export const Header: React.FC<HeaderProps> = ({ authSlot }) => {
   // Zustand Cart Store
   const { items, isCartOpen, toggleCart, removeItem, updateQuantity } = useCartStore();
   
+  useEffect(() => {
+    if (isCartOpen || isMobileNavOpen || isSearchOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isCartOpen, isMobileNavOpen, isSearchOpen]);
+
   const itemCount = items.reduce((total, item) => total + item.quantity, 0);
   const subtotal = items.reduce((total, item) => total + item.price * item.quantity, 0);
 

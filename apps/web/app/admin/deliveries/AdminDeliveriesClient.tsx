@@ -41,6 +41,17 @@ export function AdminDeliveriesClient({ initialOrders, deliveryCompany }: { init
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [handoffOrder, setHandoffOrder] = useState<OrderDeliveryItem | null>(null);
 
+  React.useEffect(() => {
+    if (handoffOrder) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [handoffOrder]);
+
   const filtered = orders.filter(o => statusFilter === 'ALL' || o.status === statusFilter);
   const counts = ALL_STATUSES.slice(1).reduce((acc, s) => ({ ...acc, [s]: orders.filter(o => o.status === s).length }), {} as Record<string, number>);
 
