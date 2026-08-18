@@ -68,11 +68,11 @@ export function MaterialModal({ isOpen, onClose, suppliers }: MaterialModalProps
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#5A5551', fontSize: '0.9rem' }}>Quantity</label>
-                <input type="number" name="quantity" defaultValue={0} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #D6CFE6' }} />
+                <input type="number" name="quantity" defaultValue={0} required className="no-spinners" style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #D6CFE6' }} />
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#5A5551', fontSize: '0.9rem' }}>Cost (MAD)</label>
-                <input type="number" step="0.01" name="cost" required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #D6CFE6' }} />
+                <input type="number" step="0.01" name="cost" required className="no-spinners" style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #D6CFE6' }} />
               </div>
             </div>
 
@@ -91,7 +91,7 @@ export function MaterialModal({ isOpen, onClose, suppliers }: MaterialModalProps
 
             <div>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#5A5551', fontSize: '0.9rem' }}>Low Stock Alert Threshold</label>
-              <input type="number" name="lowStockThreshold" placeholder="e.g. 10" style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #D6CFE6' }} />
+              <input type="number" name="lowStockThreshold" placeholder="e.g. 10" className="no-spinners" style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #D6CFE6' }} />
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>

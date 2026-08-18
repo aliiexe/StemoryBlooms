@@ -6,6 +6,8 @@ import { Plus, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, DollarSign, 
 import { useRouter } from 'next/navigation';
 import styles from '../dashboard.module.css';
 import { ExpenseForm } from './ExpenseForm';
+import { ExpenseModal } from './ExpenseModal';
+import { deleteExpense } from './actions';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -262,34 +264,12 @@ export function AdminFinancesClient({
       </motion.div>
 
       {/* Modal logic omitted for brevity, assuming it renders properly as a controlled overlay */}
-      <AnimatePresence>
-        {isModalOpen && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            style={{ 
-              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
-              backgroundColor: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              zIndex: 100 
-            }}
-          >
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className={styles.modal} 
-              style={{ width: '400px', maxWidth: '90vw', background: 'white', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' }}
-            >
-              <ExpenseForm 
-                expense={editingExpense} 
-                onSaved={handleSaved} 
-              />
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Modal rendered with proper styling */}
+      <ExpenseModal 
+        isOpen={isModalOpen} 
+        onClose={handleSaved} 
+        expense={editingExpense} 
+      />
     </motion.div>
   );
 }

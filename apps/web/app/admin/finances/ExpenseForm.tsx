@@ -70,6 +70,7 @@ export function ExpenseForm({ expense, onSaved }: { expense?: any, onSaved?: () 
               name="amount" 
               defaultValue={expense?.amount || ''} 
               required 
+              className="no-spinners"
               style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #D6CFE6' }} 
             />
           </div>
