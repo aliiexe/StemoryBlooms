@@ -37,10 +37,12 @@ export function AdminProductsClient({ initialProducts }: { initialProducts: Prod
 
   const confirmDelete = async (id: string) => {
     setItemToDelete(null);
-    setProducts(current => current.filter(p => p.id !== id));
-    startTransition(() => {
-      deleteProduct(id);
-    });
+    const res = await deleteProduct(id);
+    if (res?.error) {
+      alert(res.error);
+    } else {
+      setProducts(current => current.filter(p => p.id !== id));
+    }
   };
 
   const formatCurrency = (amount: number) => {

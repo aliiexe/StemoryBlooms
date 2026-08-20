@@ -21,8 +21,12 @@ export function MaterialForm({ material, onSaved }: { material?: MaterialFormVal
   const confirmDelete = async () => {
     setShowConfirm(false);
     if (!material?.id) return;
-    await deleteMaterial(material.id);
-    if (onSaved) onSaved();
+    const res = await deleteMaterial(material.id);
+    if (res?.error) {
+      setError(res.error);
+    } else if (onSaved) {
+      onSaved();
+    }
   };
 
   return (

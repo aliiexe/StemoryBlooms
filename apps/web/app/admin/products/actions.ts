@@ -218,7 +218,12 @@ export async function saveProduct(formData: FormData) {
 export async function deleteProduct(id: string) {
   await assertAdmin();
   try {
-    await db.delete(product).where(eq(product.id, id));
+    await db.transaction(async (tx) => {
+      await tx.delete(productMaterial).where(eq(productMaterial.productId, id));
+      await tx.delete(productBuilderComponent).where(eq(productBuilderComponent.productId, id));
+      await tx.delete(categoryToProduct).where(eq(categoryToProduct.b, id));
+      await tx.delete(product).where(eq(product.id, id));
+    });
     revalidatePath('/admin/products');
     revalidatePath('/shop');
     return { success: true };

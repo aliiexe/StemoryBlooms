@@ -56,9 +56,12 @@ export function InventoryTableClient({ initialMaterials, suppliers }: Props) {
     alert(`Done. Deducted materials for ${result.deducted} product-material link(s).`);
   }
 
+  const [error, setError] = useState<string | null>(null);
+
   const handleUpdate = (id: string, updates: Partial<Material>) => {
+    // Optimistic UI update
     setMaterials(current =>
-      current.map(m => m.id === id ? { ...m, ...updates } : m)
+      current.map(m => (m.id === id ? { ...m, ...updates } : m))
     );
     startTransition(() => {
       updateMaterialInline(id, updates);
@@ -67,14 +70,21 @@ export function InventoryTableClient({ initialMaterials, suppliers }: Props) {
 
   const confirmDelete = async (id: string) => {
     setItemToDelete(null);
-    setMaterials(current => current.filter(m => m.id !== id));
-    startTransition(() => {
-      deleteMaterial(id);
-    });
+    const res = await deleteMaterial(id);
+    if (res?.error) {
+      setError(res.error);
+    } else {
+      setMaterials(current => current.filter(m => m.id !== id));
+    }
   };
 
   return (
     <>
+      {error && <div style={{ color: '#C62828', backgroundColor: '#FFEBEE', padding: '1rem', borderRadius: '12px', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between' }}>
+        <span>{error}</span>
+        <button onClick={() => setError(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#C62828' }}>✕</button>
+      </div>}
+      
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginBottom: '1rem' }}>
         <button
           onClick={() => setShowBackfillConfirm(true)}
@@ -217,6 +227,18 @@ export function InventoryTableClient({ initialMaterials, suppliers }: Props) {
       </div>
 
       <MaterialModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} suppliers={suppliers} />
+      
+      <ConfirmModal
+        isOpen={!!itemToDelete}
+        title="Delete Material"
+        message="Are you sure you want to delete this material? This action cannot be undone."
+        confirmText="Delete Material"
+        cancelText="Cancel"
+        onConfirm={() => {
+          if (itemToDelete) confirmDelete(itemToDelete);
+        }}
+        onCancel={() => setItemToDelete(null)}
+      />
     </>
   );
 }

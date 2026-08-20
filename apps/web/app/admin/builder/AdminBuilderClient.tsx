@@ -622,11 +622,13 @@ export function AdminBuilderClient({
         confirmText="Delete"
         onConfirm={async () => {
           if (itemToDelete) {
-            startTransition(async () => {
-              await deleteBuilderComponent(itemToDelete.id);
+            const res = await deleteBuilderComponent(itemToDelete.id);
+            if (res?.error) {
+              alert(res.error);
+            } else {
               setComponents(prev => prev.filter(c => c.id !== itemToDelete.id));
-              setItemToDelete(null);
-            });
+            }
+            setItemToDelete(null);
           }
         }}
         onCancel={() => setItemToDelete(null)}
