@@ -124,6 +124,7 @@ export function ProductForm({
         {error && <div style={{ color: '#C62828', backgroundColor: '#FFEBEE', padding: '1rem', borderRadius: '12px', marginBottom: '2rem' }}>{error}</div>}
         
         {product?.id && <input type="hidden" name="id" value={product.id} />}
+        <input type="hidden" name="isSaleEnabled" value={isOnSale ? 'true' : 'false'} />
         {/* Hidden inputs to submit the BOM arrays */}
         <input type="hidden" name="productMaterials" value={JSON.stringify(bom.filter(b => b.materialId))} />
         <input type="hidden" name="productBuilderComponents" value={JSON.stringify(customBom.filter(b => b.builderComponentId))} />

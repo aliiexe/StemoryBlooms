@@ -29,7 +29,11 @@ export async function saveProduct(formData: FormData) {
   const status = formData.get('status') as string;
   const isAvailable = formData.get('isAvailable') === 'on';
   const isFeatured = formData.get('isFeatured') === 'on';
+  const isSaleEnabled = formData.get('isSaleEnabled') === 'true';
   const stock = parseIntegerInput(formData.get('stock') as string | null) ?? 1;
+
+  let finalSalePrice = salePrice;
+  if (!isSaleEnabled) finalSalePrice = null;
 
   const productMaterialsStr = formData.get('productMaterials') as string;
   let productMaterialsList: { materialId: string, quantity: number }[] = [];
@@ -142,12 +146,12 @@ export async function saveProduct(formData: FormData) {
         await tx.delete(categoryToProduct).where(eq(categoryToProduct.b, id));
 
         await tx.update(product).set({
-          name, description, basePrice, salePrice, images: allImages, status, isAvailable, isFeatured, stock, updatedAt: new Date()
+          name, description, basePrice, salePrice: finalSalePrice, isSaleEnabled, images: allImages, status, isAvailable, isFeatured, stock, updatedAt: new Date()
         }).where(eq(product.id, id));
       } else {
         const [newProduct] = await tx.insert(product).values({
           id: crypto.randomUUID(),
-          name, description, basePrice, salePrice, images: allImages, status, isAvailable, isFeatured, stock, updatedAt: new Date()
+          name, description, basePrice, salePrice: finalSalePrice, isSaleEnabled, images: allImages, status, isAvailable, isFeatured, stock, updatedAt: new Date()
         }).returning({ id: product.id });
         currentProductId = newProduct.id;
 
@@ -261,11 +265,12 @@ export async function backfillProductMaterialDeductions() {
   }
 }
 
-export async function quickUpdateProduct(id: string, updates: { stock?: number, salePrice?: number | null, isOnSale?: boolean }) {
+export async function quickUpdateProduct(id: string, updates: { stock?: number, salePrice?: number | null, isSaleEnabled?: boolean }) {
   try {
     const payload: any = {};
-    if (updates.isOnSale !== undefined) {
-      if (!updates.isOnSale) {
+    if (updates.isSaleEnabled !== undefined) {
+      payload.isSaleEnabled = updates.isSaleEnabled;
+      if (!updates.isSaleEnabled) {
         payload.salePrice = null;
       } else if (updates.salePrice !== undefined) {
         payload.salePrice = updates.salePrice;
