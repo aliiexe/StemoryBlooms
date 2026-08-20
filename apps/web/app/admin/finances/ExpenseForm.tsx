@@ -5,6 +5,7 @@ import { saveExpense, deleteExpense } from './actions';
 import styles from '../dashboard.module.css';
 import { CustomSelect } from '../../../components/ui/CustomSelect';
 import ConfirmModal from '../components/ConfirmModal';
+import { toast } from 'sonner';
 
 const EXPENSE_CATEGORIES = [
   { label: 'Raw Materials / Supplies', value: 'SUPPLIES' },
@@ -29,8 +30,13 @@ export function ExpenseForm({ expense, onSaved }: { expense?: any, onSaved?: () 
   const confirmDelete = async () => {
     setShowConfirm(false);
     if (!expense?.id) return;
-    await deleteExpense(expense.id);
-    if (onSaved) onSaved();
+    const res = await deleteExpense(expense.id);
+    if (res?.error) {
+      toast.error(res.error);
+    } else {
+      toast.success('Expense deleted');
+      if (onSaved) onSaved();
+    }
   };
 
   return (
@@ -39,8 +45,13 @@ export function ExpenseForm({ expense, onSaved }: { expense?: any, onSaved?: () 
         action={async (formData) => {
           setIsSubmitting(true);
           const res = await saveExpense(formData);
-          if (res?.error) setError(res.error);
-          else if (onSaved) onSaved();
+          if (res?.error) {
+            setError(res.error);
+            toast.error(res.error);
+          } else {
+            toast.success(expense?.id ? 'Expense updated' : 'Expense created');
+            if (onSaved) onSaved();
+          }
           setIsSubmitting(false);
         }}
         style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}

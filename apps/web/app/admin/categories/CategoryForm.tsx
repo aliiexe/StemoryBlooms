@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { saveCategory, deleteCategory } from './actions';
 import styles from '../dashboard.module.css';
 import ConfirmModal from '../components/ConfirmModal';
+import { toast } from 'sonner';
 
 export function CategoryForm({ category, onSaved }: { category?: any, onSaved?: () => void }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -13,8 +14,13 @@ export function CategoryForm({ category, onSaved }: { category?: any, onSaved?: 
   const confirmDelete = async () => {
     setShowConfirm(false);
     if (!category?.id) return;
-    await deleteCategory(category.id);
-    if (onSaved) onSaved();
+    const res = await deleteCategory(category.id);
+    if (res?.error) {
+      toast.error(res.error);
+    } else {
+      toast.success('Category deleted');
+      if (onSaved) onSaved();
+    }
   };
 
   return (
@@ -23,8 +29,13 @@ export function CategoryForm({ category, onSaved }: { category?: any, onSaved?: 
         action={async (formData) => {
           setIsSubmitting(true);
           const res = await saveCategory(formData);
-          if (res?.error) setError(res.error);
-          else if (onSaved) onSaved();
+          if (res?.error) {
+            setError(res.error);
+            toast.error(res.error);
+          } else {
+            toast.success(category?.id ? 'Category updated' : 'Category created');
+            if (onSaved) onSaved();
+          }
           setIsSubmitting(false);
         }}
         style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}

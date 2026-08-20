@@ -5,6 +5,7 @@ import { db, eq, builderComponent, material } from '@stemory/database';
 import crypto from 'crypto';
 import { parseIntegerInput } from '../../../lib/form-values';
 import { assertAdmin } from '../../../lib/user-sync';
+import { recordAuditLog } from '@/lib/audit';
 
 
 export async function saveBuilderComponent(formData: FormData) {
@@ -98,6 +99,13 @@ export async function saveBuilderComponent(formData: FormData) {
 
     revalidatePath('/admin/builder');
     revalidatePath('/custom-bouquet');
+    
+    await recordAuditLog({
+      action: id ? 'UPDATE' : 'CREATE',
+      target: 'BUILDER_COMPONENT',
+      summary: `${id ? 'Updated' : 'Created'} builder component "${name}"`,
+      details: { componentId: id, name, type },
+    });
     return { success: true };
   } catch (error) {
     console.error(error);
@@ -112,6 +120,13 @@ export async function deleteBuilderComponent(id: string) {
     await db.delete(builderComponent).where(eq(builderComponent.id, id));
     revalidatePath('/admin/builder');
     revalidatePath('/custom-bouquet');
+    
+    await recordAuditLog({
+      action: 'DELETE',
+      target: 'BUILDER_COMPONENT',
+      summary: `Deleted builder component`,
+      details: { componentId: id },
+    });
     return { success: true };
   } catch (error) {
     console.error(error);
@@ -125,6 +140,13 @@ export async function toggleBuilderComponentAvailable(id: string, isAvailable: b
     await db.update(builderComponent).set({ isAvailable, updatedAt: new Date() }).where(eq(builderComponent.id, id));
     revalidatePath('/admin/builder');
     revalidatePath('/custom-bouquet');
+    
+    await recordAuditLog({
+      action: 'UPDATE',
+      target: 'BUILDER_COMPONENT',
+      summary: `Toggled availability`,
+      details: { componentId: id, isAvailable },
+    });
     return { success: true };
   } catch (error) {
     console.error(error);
@@ -176,6 +198,13 @@ export async function updateBuilderComponentStock(id: string, newStock: number) 
 
     revalidatePath('/admin/builder');
     revalidatePath('/custom-bouquet');
+    
+    await recordAuditLog({
+      action: 'UPDATE',
+      target: 'BUILDER_COMPONENT',
+      summary: `Updated stock`,
+      details: { componentId: id, newStock },
+    });
     return { success: true };
   } catch (error) {
     console.error(error);

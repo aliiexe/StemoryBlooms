@@ -6,6 +6,7 @@ import styles from '../dashboard.module.css';
 import { CustomSelect } from '../../../components/ui/CustomSelect';
 import { ToggleSwitch } from '../../../components/ui/ToggleSwitch';
 import ConfirmModal from '../components/ConfirmModal';
+import { toast } from 'sonner';
 
 const TYPE_OPTIONS = [
   { label: 'Percentage (%)', value: 'PERCENTAGE' },
@@ -22,8 +23,13 @@ export function PromoForm({ promo, onSaved }: { promo?: any, onSaved?: () => voi
   const confirmDelete = async () => {
     setShowConfirm(false);
     if (!promo?.id) return;
-    await deletePromoCode(promo.id);
-    if (onSaved) onSaved();
+    const res = await deletePromoCode(promo.id);
+    if (res?.error) {
+      toast.error(res.error);
+    } else {
+      toast.success('Promo code deleted');
+      if (onSaved) onSaved();
+    }
   };
 
   return (
@@ -32,8 +38,13 @@ export function PromoForm({ promo, onSaved }: { promo?: any, onSaved?: () => voi
         action={async (formData) => {
           setIsSubmitting(true);
           const res = await savePromoCode(formData);
-          if (res?.error) setError(res.error);
-          else if (onSaved) onSaved();
+          if (res?.error) {
+            setError(res.error);
+            toast.error(res.error);
+          } else {
+            toast.success(promo?.id ? 'Promo code updated' : 'Promo code created');
+            if (onSaved) onSaved();
+          }
           setIsSubmitting(false);
         }}
         style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}

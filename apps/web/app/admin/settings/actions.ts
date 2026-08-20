@@ -5,6 +5,7 @@ import { db, eq, siteSettings, deliveryCompany } from '@stemory/database';
 import crypto from 'crypto';
 import { parseIntegerInput } from '../../../lib/form-values';
 import { assertAdmin } from '../../../lib/user-sync';
+import { recordAuditLog } from '@/lib/audit';
 
 export async function setSiteMode(mode: 'WAITLIST' | 'LIVE' | 'MAINTENANCE' | 'DRAFT') {
   await assertAdmin();
@@ -16,6 +17,12 @@ export async function setSiteMode(mode: 'WAITLIST' | 'LIVE' | 'MAINTENANCE' | 'D
   }
   revalidatePath('/admin/settings');
   revalidatePath('/');
+  await recordAuditLog({
+    action: 'UPDATE',
+    target: 'SETTINGS',
+    summary: `Changed site mode to ${mode}`,
+    details: { mode },
+  });
   return { success: true };
 }
 
@@ -40,6 +47,12 @@ export async function saveDeliveryCompany(formData: FormData) {
     }
 
     revalidatePath('/admin/settings');
+    await recordAuditLog({
+      action: id ? 'UPDATE' : 'CREATE',
+      target: 'SETTINGS',
+      summary: `${id ? 'Updated' : 'Created'} delivery company "${name}"`,
+      details: { deliveryCompanyId: id, name, fee },
+    });
     return { success: true };
   } catch (error) {
     console.error(error);
@@ -52,6 +65,12 @@ export async function deleteDeliveryCompany(id: string) {
   try {
     await db.delete(deliveryCompany).where(eq(deliveryCompany.id, id));
     revalidatePath('/admin/settings');
+    await recordAuditLog({
+      action: 'DELETE',
+      target: 'SETTINGS',
+      summary: `Deleted delivery company`,
+      details: { deliveryCompanyId: id },
+    });
     return { success: true };
   } catch (error) {
     console.error(error);
@@ -84,6 +103,12 @@ export async function saveHeroSettings(formData: FormData) {
 
   revalidatePath('/admin/settings');
   revalidatePath('/');
+  await recordAuditLog({
+    action: 'UPDATE',
+    target: 'SETTINGS',
+    summary: `Updated hero settings`,
+    details: { fadeSpeed },
+  });
   return { success: true };
 }
 

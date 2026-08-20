@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { quickUpdateProduct, deleteProduct } from './actions';
 import styles from '../dashboard.module.css';
 import ConfirmModal from '../components/ConfirmModal';
+import { toast } from 'sonner';
 
 interface Product {
   id: string;
@@ -30,8 +31,13 @@ export function AdminProductsClient({ initialProducts }: { initialProducts: Prod
     setProducts(current =>
       current.map(p => (p.id === id ? { ...p, ...updates } : p))
     );
-    startTransition(() => {
-      quickUpdateProduct(id, updates);
+    startTransition(async () => {
+      const res = await quickUpdateProduct(id, updates);
+      if (res?.error) {
+        toast.error(res.error);
+      } else {
+        toast.success('Product updated');
+      }
     });
   };
 
@@ -39,9 +45,10 @@ export function AdminProductsClient({ initialProducts }: { initialProducts: Prod
     setItemToDelete(null);
     const res = await deleteProduct(id);
     if (res?.error) {
-      alert(res.error);
+      toast.error(res.error);
     } else {
       setProducts(current => current.filter(p => p.id !== id));
+      toast.success('Product deleted');
     }
   };
 

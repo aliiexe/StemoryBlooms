@@ -10,6 +10,9 @@ export const auditLog = pgTable("AuditLog", {
 	target: text().notNull(),
 	requestId: text(),
 	summary: text(),
+	details: jsonb(),
+	ipAddress: text(),
+	userAgent: text(),
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 }, (table) => [
 	foreignKey({

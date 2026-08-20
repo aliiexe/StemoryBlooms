@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { saveMaterial, deleteMaterial } from './actions';
 import styles from '../dashboard.module.css';
 import ConfirmModal from '../components/ConfirmModal';
+import { toast } from 'sonner';
 
 type MaterialFormValue = {
   id?: string;
@@ -24,8 +25,10 @@ export function MaterialForm({ material, onSaved }: { material?: MaterialFormVal
     const res = await deleteMaterial(material.id);
     if (res?.error) {
       setError(res.error);
-    } else if (onSaved) {
-      onSaved();
+      toast.error(res.error);
+    } else {
+      toast.success('Material deleted');
+      if (onSaved) onSaved();
     }
   };
 
@@ -35,8 +38,13 @@ export function MaterialForm({ material, onSaved }: { material?: MaterialFormVal
         action={async (formData) => {
           setIsSubmitting(true);
           const res = await saveMaterial(formData);
-          if (res?.error) setError(res.error);
-          else if (onSaved) onSaved();
+          if (res?.error) {
+            setError(res.error);
+            toast.error(res.error);
+          } else {
+            toast.success(material?.id ? 'Material updated' : 'Material created');
+            if (onSaved) onSaved();
+          }
           setIsSubmitting(false);
         }}
         style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}

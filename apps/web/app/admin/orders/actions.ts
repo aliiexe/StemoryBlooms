@@ -3,6 +3,7 @@
 import { db, eq, sql, promoCode as promoCodeTable, giftCard as giftCardTable, customer, order, orderItem, socialOrderMetadata, deliveryZone } from '@stemory/database';
 import { revalidatePath } from 'next/cache';
 import { assertAdmin } from '../../../lib/user-sync';
+import { recordAuditLog } from '@/lib/audit';
 import crypto from 'crypto';
 import { Resend } from 'resend';
 import { render } from '@react-email/render';
@@ -56,6 +57,13 @@ export async function updateOrderStatus(orderId: string, status: string) {
   await db.update(order).set({ status, updatedAt: new Date() }).where(eq(order.id, orderId));
   revalidatePath('/admin/orders');
   revalidatePath('/admin');
+  
+  await recordAuditLog({
+    action: 'UPDATE',
+    target: 'ORDER',
+    summary: `Updated order status to ${status}`,
+    details: { orderId, status },
+  });
 }
 
 export type AssistedOrderPayload = {
@@ -296,6 +304,13 @@ export async function createAssistedOrder(payload: AssistedOrderPayload) {
   revalidatePath('/admin');
   revalidatePath('/admin/orders');
   
+  await recordAuditLog({
+    action: 'CREATE',
+    target: 'ORDER',
+    summary: `Created assisted order ${createdOrder.orderNumber}`,
+    details: { orderId: createdOrder.id, orderNumber: createdOrder.orderNumber, total },
+  });
+  
   // Returning the orderNumber to redirect to receipt page
   return { success: true, orderId: createdOrder.id, orderNumber: createdOrder.orderNumber };
 }
@@ -332,6 +347,13 @@ export async function deleteOrder(orderId: string) {
 
   revalidatePath('/admin/orders');
   revalidatePath('/admin');
+  
+  await recordAuditLog({
+    action: 'DELETE',
+    target: 'ORDER',
+    summary: `Deleted order`,
+    details: { orderId },
+  });
   
   return { success: true };
 }

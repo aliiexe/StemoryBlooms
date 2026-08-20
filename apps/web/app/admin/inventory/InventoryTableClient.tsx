@@ -9,6 +9,7 @@ import { MaterialModal } from './MaterialModal';
 import { usePagination } from '../components/usePagination';
 import { TablePagination } from '../components/TablePagination';
 import ConfirmModal from '../components/ConfirmModal';
+import { toast } from 'sonner';
 
 interface Material {
   id: string;
@@ -45,7 +46,9 @@ export function InventoryTableClient({ initialMaterials, suppliers }: Props) {
     setMaterials(current => current.map(x => x.id === m.id ? { ...x, quantity: newQty } : x));
     setRestockingId(null);
     setRestockQty(1);
-    await restockMaterial(m.id, restockQty);
+    const res = await restockMaterial(m.id, restockQty);
+    if (res?.error) toast.error(res.error);
+    else toast.success(`Restocked ${restockQty}x ${m.name}`);
   }
 
   async function executeBackfill() {
@@ -53,7 +56,7 @@ export function InventoryTableClient({ initialMaterials, suppliers }: Props) {
     setBackfilling(true);
     const result = await backfillProductMaterialDeductions();
     setBackfilling(false);
-    alert(`Done. Deducted materials for ${result.deducted} product-material link(s).`);
+    toast.success(`Done. Deducted materials for ${result.deducted} product-material link(s).`);
   }
 
   const [error, setError] = useState<string | null>(null);
@@ -63,8 +66,10 @@ export function InventoryTableClient({ initialMaterials, suppliers }: Props) {
     setMaterials(current =>
       current.map(m => (m.id === id ? { ...m, ...updates } : m))
     );
-    startTransition(() => {
-      updateMaterialInline(id, updates);
+    startTransition(async () => {
+      const res = await updateMaterialInline(id, updates);
+      if (res?.error) toast.error(res.error);
+      else toast.success('Material updated');
     });
   };
 
@@ -73,8 +78,10 @@ export function InventoryTableClient({ initialMaterials, suppliers }: Props) {
     const res = await deleteMaterial(id);
     if (res?.error) {
       setError(res.error);
+      toast.error(res.error);
     } else {
       setMaterials(current => current.filter(m => m.id !== id));
+      toast.success('Material deleted');
     }
   };
 

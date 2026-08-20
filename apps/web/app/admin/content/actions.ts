@@ -5,6 +5,7 @@ import { asc, desc } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import crypto from 'crypto';
 import { parseIntegerInput } from '../../../lib/form-values';
+import { recordAuditLog } from '@/lib/audit';
 
 export async function saveContentBlock(formData: FormData) {
   const id = formData.get('id') as string;
@@ -27,6 +28,12 @@ export async function saveContentBlock(formData: FormData) {
     }
     
     revalidatePath('/admin/content');
+    await recordAuditLog({
+      action: id ? 'UPDATE' : 'CREATE',
+      target: 'CONTENT_BLOCK',
+      summary: `${id ? 'Updated' : 'Created'} content block "${identifier}"`,
+      details: { contentBlockId: id, identifier, type },
+    });
     return { success: true };
   } catch (err) {
     console.error(err);
@@ -38,6 +45,12 @@ export async function deleteContentBlock(id: string) {
   try {
     await db.delete(contentBlock).where(eq(contentBlock.id, id));
     revalidatePath('/admin/content');
+    await recordAuditLog({
+      action: 'DELETE',
+      target: 'CONTENT_BLOCK',
+      summary: `Deleted content block`,
+      details: { contentBlockId: id },
+    });
     return { success: true };
   } catch (err) {
     return { error: 'Failed to delete content' };

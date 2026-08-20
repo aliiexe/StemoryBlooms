@@ -2,6 +2,7 @@
 
 import React, { useState, useTransition } from 'react';
 import Image from 'next/image';
+import { toast } from 'sonner';
 import { saveBuilderComponent, deleteBuilderComponent, toggleBuilderComponentAvailable, updateBuilderComponentStock } from './actions';
 import { saveBuilderSections } from '../settings/actions';
 import styles from '../dashboard.module.css';
@@ -83,8 +84,10 @@ function ComponentForm({
           const res = await saveBuilderComponent(formData);
           if (res?.error) {
             setError(res.error);
+            toast.error(res.error);
             setIsSubmitting(false);
           } else {
+            toast.success('Component saved');
             onSaved();
           }
         }}
@@ -521,8 +524,12 @@ export function AdminBuilderClient({
                             const newStock = Math.max(0, item.stock - 1);
                             if (newStock !== item.stock) {
                               startTransition(async () => {
-                                await updateBuilderComponentStock(item.id, newStock);
-                                setComponents(prev => prev.map(c => c.id === item.id ? { ...c, stock: newStock } : c));
+                                const res = await updateBuilderComponentStock(item.id, newStock);
+                                if (res?.error) toast.error(res.error);
+                                else {
+                                  toast.success('Stock updated');
+                                  setComponents(prev => prev.map(c => c.id === item.id ? { ...c, stock: newStock } : c));
+                                }
                               });
                             }
                           }}
@@ -538,8 +545,12 @@ export function AdminBuilderClient({
                             if (isNaN(newStock)) return;
                             if (newStock !== item.stock) {
                               startTransition(async () => {
-                                await updateBuilderComponentStock(item.id, newStock);
-                                setComponents(prev => prev.map(c => c.id === item.id ? { ...c, stock: newStock } : c));
+                                const res = await updateBuilderComponentStock(item.id, newStock);
+                                if (res?.error) toast.error(res.error);
+                                else {
+                                  toast.success('Stock updated');
+                                  setComponents(prev => prev.map(c => c.id === item.id ? { ...c, stock: newStock } : c));
+                                }
                               });
                             }
                           }}
@@ -559,8 +570,12 @@ export function AdminBuilderClient({
                           onClick={() => {
                             const newStock = item.stock + 1;
                             startTransition(async () => {
-                              await updateBuilderComponentStock(item.id, newStock);
-                              setComponents(prev => prev.map(c => c.id === item.id ? { ...c, stock: newStock } : c));
+                              const res = await updateBuilderComponentStock(item.id, newStock);
+                              if (res?.error) toast.error(res.error);
+                              else {
+                                toast.success('Stock updated');
+                                setComponents(prev => prev.map(c => c.id === item.id ? { ...c, stock: newStock } : c));
+                              }
                             });
                           }}
                           style={{ width: '24px', height: '24px', borderRadius: '4px', border: '1px solid #D6CFE6', background: '#fff', cursor: 'pointer' }}
@@ -571,8 +586,13 @@ export function AdminBuilderClient({
                       <button
                         onClick={() => {
                           startTransition(async () => {
-                            await toggleBuilderComponentAvailable(item.id, !item.isAvailable);
-                            setComponents(prev => prev.map(c => c.id === item.id ? { ...c, isAvailable: !item.isAvailable } : c));
+                            const res = await toggleBuilderComponentAvailable(item.id, !item.isAvailable);
+                            if (res?.error) {
+                              toast.error(res.error);
+                            } else {
+                              setComponents(prev => prev.map(c => c.id === item.id ? { ...c, isAvailable: !item.isAvailable } : c));
+                              toast.success('Availability toggled');
+                            }
                           });
                         }}
                         style={{ border: 'none', background: 'transparent', cursor: 'pointer' }}
@@ -624,12 +644,13 @@ export function AdminBuilderClient({
           if (itemToDelete) {
             const res = await deleteBuilderComponent(itemToDelete.id);
             if (res?.error) {
-              alert(res.error);
+              toast.error(res.error);
             } else {
+              toast.success('Component deleted');
               setComponents(prev => prev.filter(c => c.id !== itemToDelete.id));
             }
-            setItemToDelete(null);
           }
+          setItemToDelete(null);
         }}
         onCancel={() => setItemToDelete(null)}
       />

@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Users, Shield, User, Mail } from 'lucide-react';
 import styles from '../dashboard.module.css';
 import { updateUserRole } from './actions';
+import { toast } from 'sonner';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -94,7 +95,10 @@ export default function UsersClient({ users }: { users: any[] }) {
                       </span>
                     </td>
                     <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right' }}>
-                      <form action={updateUserRole}>
+                      <form action={async (formData) => {
+                        await updateUserRole(formData);
+                        toast.success(`User role updated to ${isAdmin ? 'CUSTOMER' : 'ADMIN'}`);
+                      }}>
                         <input type="hidden" name="userId" value={user.id} />
                         <input type="hidden" name="nextRole" value={isAdmin ? 'CUSTOMER' : 'ADMIN'} />
                         <motion.button 

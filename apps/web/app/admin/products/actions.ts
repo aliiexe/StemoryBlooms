@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import crypto from 'crypto';
 import { parseIntegerInput } from '../../../lib/form-values';
 import { assertAdmin } from '../../../lib/user-sync';
+import { recordAuditLog } from '@/lib/audit';
 
 export async function saveProduct(formData: FormData) {
   await assertAdmin();
@@ -207,8 +208,15 @@ export async function saveProduct(formData: FormData) {
     if (currentProductId) {
       revalidatePath(`/shop/${currentProductId}`);
     }
+
+    await recordAuditLog({
+      action: id ? 'UPDATE' : 'CREATE',
+      target: 'PRODUCT',
+      summary: `${id ? 'Updated' : 'Created'} product "${name}"`,
+      details: { productId: currentProductId, name, basePrice, stock },
+    });
   } catch (error) {
-    console.error('Failed to save product:', error);
+    console.error('Save product error:', error);
     return { error: 'Failed to save product. Make sure the database schema is updated.' };
   }
 
@@ -226,6 +234,13 @@ export async function deleteProduct(id: string) {
     });
     revalidatePath('/admin/products');
     revalidatePath('/shop');
+    
+    await recordAuditLog({
+      action: 'DELETE',
+      target: 'PRODUCT',
+      summary: `Deleted product`,
+      details: { productId: id },
+    });
     return { success: true };
   } catch {
     return { error: 'Failed to delete product' };
@@ -334,6 +349,12 @@ export async function quickUpdateProduct(id: string, updates: { stock?: number, 
     }
     revalidatePath('/admin/products');
     revalidatePath('/shop');
+    await recordAuditLog({
+      action: 'UPDATE',
+      target: 'PRODUCT',
+      summary: `Quick updated product`,
+      details: { productId: id, updates },
+    });
     return { success: true };
   } catch {
     return { error: 'Failed to quick update product' };

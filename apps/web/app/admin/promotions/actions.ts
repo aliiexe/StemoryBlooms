@@ -4,6 +4,7 @@ import { db, eq, promoCode, giftCard } from '@stemory/database';
 import { revalidatePath } from 'next/cache';
 import crypto from 'crypto';
 import { parseIntegerInput } from '../../../lib/form-values';
+import { recordAuditLog } from '@/lib/audit';
 
 export async function savePromoCode(formData: FormData) {
   const id = formData.get('id') as string;
@@ -31,6 +32,12 @@ export async function savePromoCode(formData: FormData) {
     }
     
     revalidatePath('/admin/content');
+    await recordAuditLog({
+      action: id ? 'UPDATE' : 'CREATE',
+      target: 'PROMO_CODE',
+      summary: `${id ? 'Updated' : 'Created'} promo code "${code.toUpperCase()}"`,
+      details: { promoCodeId: id, code, type, value },
+    });
     return { success: true };
   } catch (error) {
     console.error(error);
@@ -42,6 +49,12 @@ export async function deletePromoCode(id: string) {
   try {
     await db.delete(promoCode).where(eq(promoCode.id, id));
     revalidatePath('/admin/content');
+    await recordAuditLog({
+      action: 'DELETE',
+      target: 'PROMO_CODE',
+      summary: `Deleted promo code`,
+      details: { promoCodeId: id },
+    });
     return { success: true };
   } catch {
     return { error: 'Failed to delete promo code' };
@@ -73,6 +86,12 @@ export async function saveGiftCard(formData: FormData) {
     }
     
     revalidatePath('/admin/content');
+    await recordAuditLog({
+      action: id ? 'UPDATE' : 'CREATE',
+      target: 'GIFT_CARD',
+      summary: `${id ? 'Updated' : 'Created'} gift card "${code.toUpperCase()}"`,
+      details: { giftCardId: id, code, initialBalance, currentBalance },
+    });
     return { success: true };
   } catch (error) {
     console.error(error);
@@ -84,6 +103,12 @@ export async function deleteGiftCard(id: string) {
   try {
     await db.delete(giftCard).where(eq(giftCard.id, id));
     revalidatePath('/admin/promotions');
+    await recordAuditLog({
+      action: 'DELETE',
+      target: 'GIFT_CARD',
+      summary: `Deleted gift card`,
+      details: { giftCardId: id },
+    });
     return { success: true };
   } catch {
     return { error: 'Failed to delete gift card' };

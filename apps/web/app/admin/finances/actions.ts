@@ -5,6 +5,7 @@ import { asc, desc } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import crypto from 'crypto';
 import { parseOptionalDecimalInput } from '../../../lib/form-values';
+import { recordAuditLog } from '@/lib/audit';
 
 export async function saveExpense(formData: FormData) {
   const id = formData.get('id') as string;
@@ -27,6 +28,12 @@ export async function saveExpense(formData: FormData) {
     }
     
     revalidatePath('/admin/finances');
+    await recordAuditLog({
+      action: id ? 'UPDATE' : 'CREATE',
+      target: 'EXPENSE',
+      summary: `${id ? 'Updated' : 'Created'} expense: ${description}`,
+      details: { expenseId: id, description, amount, category },
+    });
     return { success: true };
   } catch (err) {
     console.error(err);
@@ -38,6 +45,12 @@ export async function deleteExpense(id: string) {
   try {
     await db.delete(expense).where(eq(expense.id, id));
     revalidatePath('/admin/finances');
+    await recordAuditLog({
+      action: 'DELETE',
+      target: 'EXPENSE',
+      summary: `Deleted expense`,
+      details: { expenseId: id },
+    });
     return { success: true };
   } catch (err) {
     return { error: 'Failed to delete expense' };

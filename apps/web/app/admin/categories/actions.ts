@@ -5,6 +5,8 @@ import { eq } from 'drizzle-orm';
 import { category } from '@stemory/database/schema';
 import { revalidatePath } from 'next/cache';
 import { assertAdmin } from '../../../lib/user-sync';
+import { recordAuditLog } from '@/lib/audit';
+import crypto from 'crypto';
 
 export async function saveCategory(formData: FormData) {
   await assertAdmin();
@@ -23,6 +25,12 @@ export async function saveCategory(formData: FormData) {
     }
     
     revalidatePath('/admin/categories');
+    await recordAuditLog({
+      action: id ? 'UPDATE' : 'CREATE',
+      target: 'CATEGORY',
+      summary: `${id ? 'Updated' : 'Created'} category "${name}"`,
+      details: { categoryId: id, name },
+    });
     return { success: true };
   } catch (err) {
     return { error: 'Failed to save category' };
@@ -34,6 +42,12 @@ export async function deleteCategory(id: string) {
   try {
     await db.delete(category).where(eq(category.id, id));
     revalidatePath('/admin/categories');
+    await recordAuditLog({
+      action: 'DELETE',
+      target: 'CATEGORY',
+      summary: `Deleted category`,
+      details: { categoryId: id },
+    });
     return { success: true };
   } catch (err) {
     return { error: 'Failed to delete category' };

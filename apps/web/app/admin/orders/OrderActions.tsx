@@ -3,10 +3,10 @@
 import React, { useState } from 'react';
 import { updateOrderStatus, deleteOrder } from './actions';
 import styles from '../dashboard.module.css';
-
 import CustomDropdown from '../components/CustomDropdown';
 import ConfirmModal from '../components/ConfirmModal';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 export function OrderActions({ orderId, currentStatus }: { orderId: string; currentStatus: string }) {
   // If the status is somehow DELIVERED but we don't have it in our standard list, ensure we handle it
@@ -20,6 +20,7 @@ export function OrderActions({ orderId, currentStatus }: { orderId: string; curr
     setIsSubmitting(true);
     await updateOrderStatus(orderId, nextStatus);
     setStatus(nextStatus);
+    toast.success(`Order status updated to ${nextStatus}`);
     setIsSubmitting(false);
   };
 
@@ -27,6 +28,7 @@ export function OrderActions({ orderId, currentStatus }: { orderId: string; curr
     setShowConfirmDelete(false);
     setIsSubmitting(true);
     await deleteOrder(orderId);
+    toast.success('Order deleted');
     setIsSubmitting(false);
     router.push('/admin/orders');
   };

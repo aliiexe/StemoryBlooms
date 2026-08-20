@@ -6,6 +6,7 @@ import { db, eq, sql, announcement, announcementBarSettings, announcementTemplat
 import { asc, desc } from 'drizzle-orm';
 import crypto from 'crypto';
 import { parseIntegerInput } from '../../../lib/form-values';
+import { recordAuditLog } from '@/lib/audit';
 
 function validateUrl(url: string | null | undefined): string | null {
   if (!url) return null;
@@ -66,6 +67,12 @@ export async function createAnnouncement(formData: FormData) {
       dismissalVersion: crypto.randomUUID()
   });
   revalidatePath('/admin/announcements');
+  await recordAuditLog({
+    action: 'CREATE',
+    target: 'ANNOUNCEMENT',
+    summary: `Created announcement "${raw.internalTitle}"`,
+    details: { internalTitle: raw.internalTitle },
+  });
   redirect('/admin/announcements');
 }
 
@@ -108,6 +115,12 @@ export async function updateAnnouncement(id: string, formData: FormData) {
     .where(eq(announcement.id, id));
   revalidatePath('/admin/announcements');
   revalidatePath('/');
+  await recordAuditLog({
+    action: 'UPDATE',
+    target: 'ANNOUNCEMENT',
+    summary: `Updated announcement "${raw.internalTitle}"`,
+    details: { announcementId: id, internalTitle: raw.internalTitle },
+  });
   redirect('/admin/announcements');
 }
 
@@ -133,6 +146,12 @@ export async function deleteAnnouncement(id: string) {
   await db.delete(announcement).where(eq(announcement.id, id));
   revalidatePath('/admin/announcements');
   revalidatePath('/');
+  await recordAuditLog({
+    action: 'DELETE',
+    target: 'ANNOUNCEMENT',
+    summary: `Deleted announcement`,
+    details: { announcementId: id },
+  });
 }
 
 export async function duplicateAnnouncement(id: string) {

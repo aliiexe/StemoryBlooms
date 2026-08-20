@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import crypto from 'crypto';
 import { parseIntegerInput, parseOptionalDecimalInput } from '../../../lib/form-values';
 import { assertAdmin } from '../../../lib/user-sync';
+import { recordAuditLog } from '@/lib/audit';
 
 export async function saveMaterial(formData: FormData) {
   await assertAdmin();
@@ -52,6 +53,13 @@ export async function saveMaterial(formData: FormData) {
     revalidatePath('/admin/materials');
     revalidatePath('/admin/inventory');
     revalidatePath('/admin/finances');
+    
+    await recordAuditLog({
+      action: id ? 'UPDATE' : 'CREATE',
+      target: 'MATERIAL',
+      summary: `${id ? 'Updated' : 'Created'} material "${name}"`,
+      details: { materialId: id, name, quantity, cost },
+    });
     return { success: true };
   } catch (error) {
     console.error(error);
@@ -64,6 +72,13 @@ export async function deleteMaterial(id: string) {
   try {
     await db.delete(material).where(eq(material.id, id));
     revalidatePath('/admin/materials');
+    
+    await recordAuditLog({
+      action: 'DELETE',
+      target: 'MATERIAL',
+      summary: `Deleted material`,
+      details: { materialId: id },
+    });
     return { success: true };
   } catch {
     return { error: 'Failed to delete material' };
@@ -75,6 +90,13 @@ export async function updateMaterialInline(id: string, updates: Partial<typeof m
   try {
     await db.update(material).set({ ...updates, updatedAt: new Date() }).where(eq(material.id, id));
     revalidatePath('/admin/materials');
+    
+    await recordAuditLog({
+      action: 'UPDATE',
+      target: 'MATERIAL',
+      summary: `Inline updated material`,
+      details: { materialId: id, updates },
+    });
     return { success: true };
   } catch (error) {
     return { error: 'Failed to update material inline' };
@@ -106,6 +128,13 @@ export async function restockMaterial(id: string, restockQty: number) {
 
     revalidatePath('/admin/materials');
     revalidatePath('/admin/finances');
+    
+    await recordAuditLog({
+      action: 'UPDATE',
+      target: 'MATERIAL',
+      summary: `Restocked material by ${restockQty}`,
+      details: { materialId: id, restockQty },
+    });
     return { success: true };
   } catch (error) {
     return { error: 'Failed to restock material' };

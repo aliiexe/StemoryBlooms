@@ -8,6 +8,7 @@ import styles from '../dashboard.module.css';
 import { CustomSelect } from '../../../components/ui/CustomSelect';
 import { ToggleSwitch } from '../../../components/ui/ToggleSwitch';
 import { ImageUploader } from '../../../components/ui/ImageUploader';
+import { toast } from 'sonner';
 
 const STATUS_OPTIONS = [
   { label: 'Published (Visible to everyone)', value: 'PUBLISHED' },
@@ -115,8 +116,10 @@ export function ProductForm({
           const res = await saveProduct(formData);
           if (res?.error) {
             setError(res.error);
+            toast.error(res.error);
             setIsSubmitting(false);
           } else {
+            toast.success(product?.id ? 'Product updated' : 'Product created');
             router.push('/admin/products');
           }
         }}

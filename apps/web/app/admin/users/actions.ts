@@ -2,6 +2,7 @@
 
 import { db, eq, user as userTable, role as roleTable } from '@stemory/database';
 import { revalidatePath } from 'next/cache';
+import { recordAuditLog } from '@/lib/audit';
 
 export async function updateUserRole(formData: FormData) {
   const userId = formData.get('userId')?.toString();
@@ -19,4 +20,10 @@ export async function updateUserRole(formData: FormData) {
   await db.update(userTable).set({ roleId: targetRole.id, updatedAt: new Date() }).where(eq(userTable.id, userId));
 
   revalidatePath('/admin/users');
+  await recordAuditLog({
+    action: 'UPDATE',
+    target: 'USER_ROLE',
+    summary: `Updated user role to ${nextRole}`,
+    details: { userId, nextRole },
+  });
 }

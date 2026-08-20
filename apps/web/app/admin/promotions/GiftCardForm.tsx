@@ -5,6 +5,7 @@ import { saveGiftCard, deleteGiftCard } from './actions';
 import styles from '../dashboard.module.css';
 import { ToggleSwitch } from '../../../components/ui/ToggleSwitch';
 import ConfirmModal from '../components/ConfirmModal';
+import { toast } from 'sonner';
 
 export function GiftCardForm({ card, onSaved }: { card?: any, onSaved?: () => void }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -18,8 +19,13 @@ export function GiftCardForm({ card, onSaved }: { card?: any, onSaved?: () => vo
   const confirmDelete = async () => {
     setShowConfirm(false);
     if (!card?.id) return;
-    await deleteGiftCard(card.id);
-    if (onSaved) onSaved();
+    const res = await deleteGiftCard(card.id);
+    if (res?.error) {
+      toast.error(res.error);
+    } else {
+      toast.success('Gift card deleted');
+      if (onSaved) onSaved();
+    }
   };
 
   return (
@@ -28,8 +34,13 @@ export function GiftCardForm({ card, onSaved }: { card?: any, onSaved?: () => vo
         action={async (formData) => {
           setIsSubmitting(true);
           const res = await saveGiftCard(formData);
-          if (res?.error) setError(res.error);
-          else if (onSaved) onSaved();
+          if (res?.error) {
+            setError(res.error);
+            toast.error(res.error);
+          } else {
+            toast.success(card?.id ? 'Gift card updated' : 'Gift card created');
+            if (onSaved) onSaved();
+          }
           setIsSubmitting(false);
         }}
         style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}

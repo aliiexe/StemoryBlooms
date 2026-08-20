@@ -3,6 +3,7 @@
 import { db, eq, order, deliveryHandoff } from '@stemory/database';
 import { revalidatePath } from 'next/cache';
 import crypto from 'crypto';
+import { recordAuditLog } from '@/lib/audit';
 
 export async function updateOrderStatus(orderId: string, status: string) {
   try {
@@ -12,6 +13,12 @@ export async function updateOrderStatus(orderId: string, status: string) {
 
     revalidatePath('/admin/deliveries');
     revalidatePath('/admin/orders');
+    await recordAuditLog({
+      action: 'UPDATE',
+      target: 'ORDER',
+      summary: `Updated order status to ${status} from deliveries`,
+      details: { orderId, status },
+    });
     return { success: true };
   } catch (error) {
     console.error('Failed to update order status:', error);
@@ -45,6 +52,12 @@ export async function createDeliveryHandoff(orderId: string, companyId: string, 
 
     revalidatePath('/admin/deliveries');
     revalidatePath('/admin/orders');
+    await recordAuditLog({
+      action: 'CREATE',
+      target: 'DELIVERY',
+      summary: `Created delivery handoff for order`,
+      details: { orderId, companyId, reference },
+    });
     return { success: true };
   } catch (error) {
     console.error('Failed to handoff delivery:', error);
