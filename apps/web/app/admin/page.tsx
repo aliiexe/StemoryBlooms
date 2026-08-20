@@ -16,7 +16,9 @@ export default async function AdminDashboardPage() {
   today.setHours(0, 0, 0, 0);
 
   // Fetch actual data
-  const ordersTodayResult = await db.select({ count: count() }).from(order).where(gte(order.createdAt, today));
+  const ordersTodayResult = await db.select({ count: count() }).from(order).where(
+    sql`${order.createdAt} >= ${today} AND ${order.status} != 'CANCELLED'`
+  );
   const ordersTodayCount = ordersTodayResult[0].count;
 
   const [awaitingResult, productionResult, readyResult, completedResult, customersResult, allOrdersResult] = await Promise.all([
@@ -25,7 +27,10 @@ export default async function AdminDashboardPage() {
     db.select({ count: count() }).from(order).where(eq(order.status, 'READY')),
     db.select({ count: count() }).from(order).where(inArray(order.status, ['COMPLETED', 'DELIVERED'])),
     db.select({ count: count() }).from(customer),
-    db.select({ count: count(), totalRevenue: sql<number>`SUM(GREATEST(0, ${order.total} - ${order.deliveryFee}))` }).from(order)
+    db.select({ 
+      count: count(), 
+      totalRevenue: sql<number>`SUM(GREATEST(0, ${order.total} - ${order.deliveryFee}))` 
+    }).from(order).where(sql`${order.status} != 'CANCELLED'`)
   ]);
   const awaitingCount = awaitingResult[0].count;
   const productionCount = productionResult[0].count;
@@ -37,7 +42,10 @@ export default async function AdminDashboardPage() {
   const aov = allTimeCount > 0 ? allTimeRevenue / allTimeCount : 0;
 
   const ordersToday = await db.query.order.findMany({
-    where: (table, { gte }) => gte(table.createdAt, today),
+    where: (table, { and, gte, ne }) => and(
+      gte(table.createdAt, today),
+      ne(table.status, 'CANCELLED')
+    ),
     columns: { total: true, deliveryFee: true }
   });
 

@@ -13,8 +13,49 @@ const resend = new Resend(process.env.RESEND_API_KEY || 're_mock_key');
 
 export async function updateOrderStatus(orderId: string, status: string) {
   await assertAdmin();
+  
+  const currentOrder = await db.query.order.findFirst({ where: eq(order.id, orderId) });
+  
+  // If transitioning to CANCELLED from another status, restock items
+  if (status === 'CANCELLED' && currentOrder?.status !== 'CANCELLED') {
+    const items = await db.query.orderItem.findMany({ where: eq(orderItem.orderId, orderId) });
+    for (const item of items) {
+      if (item.productId) {
+        await db.execute(
+          sql`UPDATE "Product" SET "stock" = "stock" + ${item.quantity}, "isAvailable" = true WHERE "id" = ${item.productId}`
+        );
+      } else if (item.configuration) {
+        for (const [cId, qty] of Object.entries(item.configuration as Record<string, number>)) {
+          const totalRestock = qty * item.quantity;
+          await db.execute(
+            sql`UPDATE "BuilderComponent" SET "stock" = "stock" + ${totalRestock}, "isAvailable" = true WHERE "id" = ${cId}`
+          );
+        }
+      }
+    }
+  } 
+  // If transitioning FROM CANCELLED back to a valid state, deduct stock again
+  else if (currentOrder?.status === 'CANCELLED' && status !== 'CANCELLED') {
+    const items = await db.query.orderItem.findMany({ where: eq(orderItem.orderId, orderId) });
+    for (const item of items) {
+      if (item.productId) {
+        await db.execute(
+          sql`UPDATE "Product" SET "stock" = GREATEST(0, "stock" - ${item.quantity}), "isAvailable" = CASE WHEN ("stock" - ${item.quantity}) > 0 THEN true ELSE false END WHERE "id" = ${item.productId}`
+        );
+      } else if (item.configuration) {
+        for (const [cId, qty] of Object.entries(item.configuration as Record<string, number>)) {
+          const totalDeduct = qty * item.quantity;
+          await db.execute(
+            sql`UPDATE "BuilderComponent" SET "stock" = GREATEST(0, "stock" - ${totalDeduct}), "isAvailable" = CASE WHEN ("stock" - ${totalDeduct}) > 0 THEN true ELSE false END WHERE "id" = ${cId}`
+          );
+        }
+      }
+    }
+  }
+
   await db.update(order).set({ status, updatedAt: new Date() }).where(eq(order.id, orderId));
   revalidatePath('/admin/orders');
+  revalidatePath('/admin');
 }
 
 export type AssistedOrderPayload = {
@@ -88,6 +129,7 @@ export async function createAssistedOrder(payload: AssistedOrderPayload) {
       return {
         productId: null,
         componentId: null,
+        configuration: null,
         name,
         quantity: item.quantity,
         unitPrice: price,
@@ -102,6 +144,7 @@ export async function createAssistedOrder(payload: AssistedOrderPayload) {
       return {
         productId: null,
         componentId: c.id,
+        configuration: { [c.id]: 1 },
         name: `[Element] ${c.name}`,
         quantity: item.quantity,
         unitPrice: price,
@@ -115,6 +158,7 @@ export async function createAssistedOrder(payload: AssistedOrderPayload) {
       return {
         productId: p.id,
         componentId: null,
+        configuration: null,
         name: p.name,
         quantity: item.quantity,
         unitPrice: price,
@@ -186,6 +230,7 @@ export async function createAssistedOrder(payload: AssistedOrderPayload) {
         quantity: item.quantity,
         unitPrice: item.unitPrice,
         totalPrice: item.totalPrice,
+        configuration: item.configuration,
         updatedAt: new Date()
       });
 
@@ -257,6 +302,26 @@ export async function createAssistedOrder(payload: AssistedOrderPayload) {
 
 export async function deleteOrder(orderId: string) {
   await assertAdmin();
+
+  // Restock items if the order wasn't already CANCELLED
+  const currentOrder = await db.query.order.findFirst({ where: eq(order.id, orderId) });
+  if (currentOrder && currentOrder.status !== 'CANCELLED') {
+    const items = await db.query.orderItem.findMany({ where: eq(orderItem.orderId, orderId) });
+    for (const item of items) {
+      if (item.productId) {
+        await db.execute(
+          sql`UPDATE "Product" SET "stock" = "stock" + ${item.quantity}, "isAvailable" = true WHERE "id" = ${item.productId}`
+        );
+      } else if (item.configuration) {
+        for (const [cId, qty] of Object.entries(item.configuration as Record<string, number>)) {
+          const totalRestock = qty * item.quantity;
+          await db.execute(
+            sql`UPDATE "BuilderComponent" SET "stock" = "stock" + ${totalRestock}, "isAvailable" = true WHERE "id" = ${cId}`
+          );
+        }
+      }
+    }
+  }
 
   // Delete related data first
   await db.delete(orderItem).where(eq(orderItem.orderId, orderId));
