@@ -1,6 +1,6 @@
 import React from 'react';
 import { db, order } from '@stemory/database';
-import { desc, eq, gte, sql } from 'drizzle-orm';
+import { gte } from 'drizzle-orm';
 import { ReportsClient } from './ReportsClient';
 import styles from '../dashboard.module.css';
 
@@ -45,13 +45,15 @@ export default async function ReportsPage() {
   const pieChartData = Object.entries(statusCounts).map(([name, value]) => ({ name, value }));
 
   return (
-    <div className={styles.dashboardContainer}>
-      <div className={styles.headerArea}>
-        <h1 className={styles.pageTitle}>Reports & Analytics</h1>
-        <p className={styles.pageSubtitle}>Overview of your store's performance over the last 30 days.</p>
+    <div className={styles.dashboard}>
+      <div className={styles.pageHeader}>
+        <div>
+          <h1 className={styles.pageTitle}>Reports & Analytics</h1>
+          <p className={styles.pageSubtitle}>Overview of your store's performance over the last 30 days.</p>
+        </div>
       </div>
 
-      <div className={styles.statsGrid}>
+      <div className={styles.statsRow}>
         <div className={styles.statCard}>
           <div className={styles.statTitle}>Total Revenue (30d)</div>
           <div className={styles.statValue}>{totalRevenue.toFixed(2)} MAD</div>
@@ -66,7 +68,7 @@ export default async function ReportsPage() {
         </div>
       </div>
 
-      <div style={{ marginTop: '2rem' }}>
+      <div style={{ marginTop: '1rem' }}>
         <ReportsClient lineData={lineChartData} pieData={pieChartData} />
       </div>
     </div>
