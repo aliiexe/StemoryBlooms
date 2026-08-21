@@ -9,6 +9,7 @@ import { Resend } from 'resend';
 import { render } from '@react-email/render';
 import { OrderConfirmationTemplate } from '@/components/emails/OrderConfirmation';
 import { calculateOrderTotals } from '@/app/api/v1/orders/orderUtils';
+import { sendOrderToInfinidis } from '@/lib/infinidis';
 
 const resend = new Resend(process.env.RESEND_API_KEY || 're_mock_key');
 
@@ -311,6 +312,24 @@ export async function createAssistedOrder(payload: AssistedOrderPayload) {
     details: { orderId: createdOrder.id, orderNumber: createdOrder.orderNumber, total },
   });
   
+  // Fire-and-forget submission to Infinidis API
+  const totalQty = finalOrderItems.reduce((acc, item) => acc + item.quantity, 0);
+  const productSummary = finalOrderItems.map(i => `${i.quantity}x ${i.name}`).join(', ');
+
+  Promise.resolve().then(() => {
+    return sendOrderToInfinidis({
+      fullname: customerName,
+      code: createdOrder.orderNumber,
+      product: productSummary,
+      qty: totalQty,
+      phone: phoneNumber,
+      address: fullAddress,
+      city: city,
+      price: total,
+      note: notes || undefined,
+    });
+  }).catch(console.error);
+
   // Returning the orderNumber to redirect to receipt page
   return { success: true, orderId: createdOrder.id, orderNumber: createdOrder.orderNumber };
 }
