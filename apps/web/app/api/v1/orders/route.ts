@@ -212,24 +212,6 @@ export async function POST(request: Request) {
       createdAt: new Date()
     });
 
-    // Fire-and-forget submission to Infinidis API
-    const totalQty = finalOrderItems.reduce((acc, item) => acc + item.quantity, 0);
-    const productSummary = finalOrderItems.map(i => `${i.quantity}x ${i.name}`).join(', ');
-
-    Promise.resolve().then(() => {
-      return sendOrderToInfinidis({
-        fullname: customerName,
-        code: createdOrder.orderNumber,
-        product: productSummary,
-        qty: totalQty,
-        phone: phoneNumber,
-        address: address,
-        city: city,
-        price: finalTotal,
-        note: deliveryInstructions || undefined,
-      });
-    }).catch(console.error);
-
     return NextResponse.json(createdOrder, { status: 201 });
   } catch (error: any) {
     console.error(error);

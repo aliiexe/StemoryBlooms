@@ -80,7 +80,7 @@ export default async function AdminOrdersPage() {
 
               <div className={styles.orderFooter}>
                 <div className={styles.orderMeta}>Fast actions for fulfillment and customer support</div>
-                <OrderActions orderId={o.id} currentStatus={o.status} />
+                <OrderActions orderId={o.id} currentStatus={o.status} sentToInfinidis={o.sentToInfinidis} />
               </div>
             </article>
           ))}

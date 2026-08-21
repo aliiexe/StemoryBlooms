@@ -184,6 +184,7 @@ export const order = pgTable("Order", {
 	paymentStatus: text().default('PENDING_COD').notNull(),
 	deliveryAddress: jsonb().notNull(),
 	notes: text(),
+	sentToInfinidis: boolean().default(false).notNull(),
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 }, (table) => [

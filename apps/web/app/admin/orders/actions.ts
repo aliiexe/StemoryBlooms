@@ -319,24 +319,6 @@ export async function createAssistedOrder(payload: AssistedOrderPayload) {
     details: { orderId: createdOrder.id, orderNumber: createdOrder.orderNumber, total },
   });
   
-  // Fire-and-forget submission to Infinidis API
-  const totalQty = finalOrderItems.reduce((acc, item) => acc + item.quantity, 0);
-  const productSummary = finalOrderItems.map(i => `${i.quantity}x ${i.name}`).join(', ');
-
-  Promise.resolve().then(() => {
-    return sendOrderToInfinidis({
-      fullname: customerName,
-      code: createdOrder.orderNumber,
-      product: productSummary,
-      qty: totalQty,
-      phone: phoneNumber,
-      address: fullAddress,
-      city: city,
-      price: total,
-      note: notes || undefined,
-    });
-  }).catch(console.error);
-
   // Returning the orderNumber to redirect to receipt page
   return { success: true, orderId: createdOrder.id, orderNumber: createdOrder.orderNumber };
 }
@@ -382,4 +364,46 @@ export async function deleteOrder(orderId: string) {
   });
   
   return { success: true };
+}
+
+export async function pushOrderToInfinidis(orderId: string) {
+  await assertAdmin();
+
+  const o = await db.query.order.findFirst({
+    where: eq(order.id, orderId),
+    with: {
+      customer: true,
+      orderItems: true
+    }
+  });
+
+  if (!o) return { success: false, error: 'Order not found' };
+  if (o.sentToInfinidis) return { success: false, error: 'Order already sent to Infinidis' };
+
+  const totalQty = o.orderItems.reduce((acc, item) => acc + item.quantity, 0);
+  const productSummary = o.orderItems.map(i => `${i.quantity}x ${i.productName}`).join(', ');
+
+  const addressData = o.deliveryAddress as any;
+  const city = addressData?.city || 'Casablanca';
+  const addressLine = addressData?.addressLine1 || '';
+
+  const success = await sendOrderToInfinidis({
+    fullname: o.customer.firstName + (o.customer.lastName ? ' ' + o.customer.lastName : ''),
+    code: o.orderNumber,
+    product: productSummary,
+    qty: totalQty,
+    phone: o.customer.phone,
+    address: addressLine,
+    city: city,
+    price: o.total,
+    note: o.notes || undefined,
+  });
+
+  if (success) {
+    await db.update(order).set({ sentToInfinidis: true }).where(eq(order.id, orderId));
+    revalidatePath('/admin/orders');
+    return { success: true };
+  } else {
+    return { success: false, error: 'Failed to send to Infinidis API. Check logs.' };
+  }
 }
