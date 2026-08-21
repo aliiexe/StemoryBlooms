@@ -168,7 +168,9 @@ export default function BuilderFlow({
                   </div>
                   <div className={styles.itemDetails}>
                     <h3 className={styles.itemName}>{item.name}</h3>
-                    <p className={styles.itemPrice}>{item.price === 0 ? 'Free' : `${item.price} MAD`}</p>
+                    <p className={styles.itemPrice}>
+                      {item.price === 0 ? (currentStep === 'Cards' ? 'Free' : 'Included') : `${item.price} MAD`}
+                    </p>
                     {item.minQuantity && item.minQuantity > 1 && (
                       <p style={{ fontSize: '0.8rem', color: '#9A9591', margin: '0.25rem 0 0 0' }}>
                         Min. {item.minQuantity} required
@@ -235,7 +237,11 @@ export default function BuilderFlow({
         {cartItems.map(item => (
           <div key={item.id} className={styles.reviewItem}>
             <span>{cart[item.id]}x {item.name}</span>
-            <span>{item.price === 0 ? 'Free' : `${(cart[item.id] * item.price)} MAD`}</span>
+            <span>
+              {item.price === 0 
+                ? (initialData['Cards']?.some(c => c.id === item.id) ? 'Free' : 'Included') 
+                : `${(cart[item.id] * item.price)} MAD`}
+            </span>
           </div>
         ))}
       </div>
