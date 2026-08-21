@@ -16,7 +16,7 @@ export default async function ReportsPage() {
 
   // Calculate metrics
   const totalOrders = recentOrders.length;
-  const totalRevenue = recentOrders.reduce((acc, o) => o.status !== 'CANCELLED' ? acc + o.total : acc, 0);
+  const totalRevenue = recentOrders.reduce((acc, o) => o.status !== 'CANCELLED' ? acc + Math.max(0, o.subtotal - o.discount) : acc, 0);
   const cancelledOrders = recentOrders.filter(o => o.status === 'CANCELLED').length;
 
   // Group by date for the line chart (Revenue & Orders over time)
@@ -33,7 +33,7 @@ export default async function ReportsPage() {
     }
     
     if (o.status !== 'CANCELLED') {
-      groupedByDate[dString].revenue += o.total;
+      groupedByDate[dString].revenue += Math.max(0, o.subtotal - o.discount);
     }
     groupedByDate[dString].orders += 1;
 
