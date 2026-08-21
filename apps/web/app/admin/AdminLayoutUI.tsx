@@ -8,7 +8,7 @@ import {
   LayoutDashboard, ShoppingBag, Users, Package,
   FileText, ClipboardList, Truck, Image as ImageIcon,
   BarChart2, Settings, Bell, ChevronDown, Store,
-  Radio, Clock, Wrench, ChevronUp
+  Radio, Clock, Wrench, ChevronUp, Calculator
 } from 'lucide-react';
 import { AdminUserSlot } from './AdminUserSlot';
 import { AdminNotifications } from './AdminNotifications';
@@ -41,7 +41,12 @@ const sidebarSections = [
       { href: '/admin/customers', label: 'Customers', icon: Users },
       { href: '/admin/users', label: 'User Management', icon: Users },
       { href: '/admin/finances', label: 'Finances', icon: FileText },
-
+    ],
+  },
+  {
+    title: 'Tools',
+    links: [
+      { href: '/admin/price-helper', label: 'Price Helper', icon: Calculator },
     ],
   },
   {

@@ -28,6 +28,7 @@ export default function BuilderFlow({
 
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [cart, setCart] = useState<Record<string, number>>({});
+  const [cardMessage, setCardMessage] = useState('');
   const addItem = useCartStore((state) => state.addItem);
   const isCartOpen = useCartStore((state) => state.isCartOpen);
   const currentStep = STEPS[currentStepIndex];
@@ -106,10 +107,11 @@ export default function BuilderFlow({
         price: total,
         quantity: 1,
         imageUrl: '/hero-bouquet.png',
-        configuration: cart // Pass the configuration to server for validation and fulfillment
+        configuration: { ...cart, cardMessage: cardMessage.trim() || undefined }
       });
 
       setCart({});
+      setCardMessage('');
       setCurrentStepIndex(0);
     }
   };
@@ -128,37 +130,66 @@ export default function BuilderFlow({
         {items.map(item => {
           const qty = cart[item.id] || 0;
           return (
-            <div key={item.id} className={styles.itemCard}>
-              <div className={styles.itemInfo}>
-                {/* Fixed-size square, image always fills it centered */}
-                <div className={styles.itemImageWrapper}>
-                  <img
-                    src={item.imageUrl || '/hero-bouquet.png'}
-                    alt={item.name}
+            <div key={item.id} className={styles.itemCardContainer}>
+              <div className={styles.itemCard}>
+                <div className={styles.itemInfo}>
+                  <div className={styles.itemImageWrapper}>
+                    <img
+                      src={item.imageUrl || '/hero-bouquet.png'}
+                      alt={item.name}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        objectPosition: 'center',
+                        display: 'block',
+                      }}
+                    />
+                  </div>
+                  <div className={styles.itemDetails}>
+                    <h3 className={styles.itemName}>{item.name}</h3>
+                    <p className={styles.itemPrice}>{item.price === 0 ? 'Free' : `${item.price} MAD`}</p>
+                    {item.minQuantity && item.minQuantity > 1 && (
+                      <p style={{ fontSize: '0.8rem', color: '#9A9591', margin: '0.25rem 0 0 0' }}>
+                        Min. {item.minQuantity} required
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className={styles.quantityPill}>
+                  <button className={styles.qtyBtn} onClick={() => updateQuantity(item, -1, qty)} aria-label="Decrease">−</button>
+                  <span className={styles.qtyValue}>{qty}</span>
+                  <button className={styles.qtyBtn} onClick={() => updateQuantity(item, 1, qty)} aria-label="Increase">+</button>
+                </div>
+              </div>
+              
+              {/* If this is the Cards step and they selected this card, show the textarea */}
+              {currentStep === 'Cards' && qty > 0 && (
+                <div style={{ padding: '1rem', borderTop: '1px solid #EAE6DF', backgroundColor: '#FDFBF7' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: 600, color: '#4E473F' }}>
+                    Card Message
+                  </label>
+                  <textarea
+                    value={cardMessage}
+                    onChange={(e) => setCardMessage(e.target.value)}
+                    maxLength={150}
+                    rows={3}
+                    placeholder="Write a short message (handwritten)..."
                     style={{
                       width: '100%',
-                      height: '100%',
-                      objectFit: 'cover',
-                      objectPosition: 'center',
-                      display: 'block',
+                      padding: '0.75rem',
+                      borderRadius: '8px',
+                      border: '1px solid #D6CFE6',
+                      resize: 'none',
+                      fontFamily: 'inherit',
+                      fontSize: '0.9rem'
                     }}
                   />
+                  <div style={{ textAlign: 'right', fontSize: '0.75rem', color: '#9A9591', marginTop: '0.25rem' }}>
+                    {cardMessage.length} / 150 characters
+                  </div>
                 </div>
-                <div className={styles.itemDetails}>
-                  <h3 className={styles.itemName}>{item.name}</h3>
-                  <p className={styles.itemPrice}>{item.price === 0 ? 'Included' : `${item.price} MAD`}</p>
-                  {item.minQuantity && item.minQuantity > 1 && (
-                    <p style={{ fontSize: '0.8rem', color: '#9A9591', margin: '0.25rem 0 0 0' }}>
-                      Min. {item.minQuantity} required
-                    </p>
-                  )}
-                </div>
-              </div>
-              <div className={styles.quantityPill}>
-                <button className={styles.qtyBtn} onClick={() => updateQuantity(item, -1, qty)} aria-label="Decrease">−</button>
-                <span className={styles.qtyValue}>{qty}</span>
-                <button className={styles.qtyBtn} onClick={() => updateQuantity(item, 1, qty)} aria-label="Increase">+</button>
-              </div>
+              )}
             </div>
           );
         })}
@@ -184,7 +215,7 @@ export default function BuilderFlow({
         {cartItems.map(item => (
           <div key={item.id} className={styles.reviewItem}>
             <span>{cart[item.id]}x {item.name}</span>
-            <span>{item.price === 0 ? 'Included' : `${(cart[item.id] * item.price)} MAD`}</span>
+            <span>{item.price === 0 ? 'Free' : `${(cart[item.id] * item.price)} MAD`}</span>
           </div>
         ))}
       </div>

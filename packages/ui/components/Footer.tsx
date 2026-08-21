@@ -34,6 +34,7 @@ export const Footer: React.FC = () => {
             <h4 className={styles.colTitle}>Support</h4>
             <ul className={styles.colLinks}>
               <li><Link href="/faq">FAQ</Link></li>
+              <li><Link href="/track">Track Order</Link></li>
               <li><Link href="/shipping">Shipping</Link></li>
               <li><Link href="/returns">Returns</Link></li>
             </ul>

@@ -94,22 +94,28 @@
   gap: 1rem;
 }
 
+.itemCardContainer {
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  border: 1px solid #EAE6DF;
+  background-color: #FFFFFF;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.itemCardContainer:hover {
+  border-color: #C8C4BB;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.05);
+  transform: translateY(-1px);
+}
+
 .itemCard {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 1rem 1.25rem;
-  border-radius: 16px;
-  border: 1px solid #EAE6DF;
-  background-color: #FFFFFF;
   gap: 1rem;
-  transition: all 0.2s ease;
-}
-
-.itemCard:hover {
-  border-color: #C8C4BB;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.05);
-  transform: translateY(-1px);
 }
 
 .itemInfo {

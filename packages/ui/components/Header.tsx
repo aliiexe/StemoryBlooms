@@ -43,6 +43,7 @@ export const Header: React.FC<HeaderProps> = ({ authSlot }) => {
     { href: '/about', label: 'About' },
     { href: '/reviews', label: 'Reviews' },
     { href: '/contact', label: 'Contact' },
+    { href: '/track', label: 'Track Order' },
   ];
 
   useEffect(() => {
