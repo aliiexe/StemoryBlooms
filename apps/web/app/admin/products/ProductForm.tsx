@@ -111,17 +111,21 @@ export function ProductForm({
   return (
     <div style={{ width: '100%', maxWidth: '1400px', margin: '0 auto' }}>
       <form
-        action={async (formData) => {
+        onSubmit={(e) => {
+          e.preventDefault();
+          const formData = new FormData(e.currentTarget);
           setIsSubmitting(true);
-          const res = await saveProduct(formData);
-          if (res?.error) {
-            setError(res.error);
-            toast.error(res.error);
-            setIsSubmitting(false);
-          } else {
-            toast.success(product?.id ? 'Product updated' : 'Product created');
-            router.push('/admin/products');
-          }
+          React.startTransition(async () => {
+            const res = await saveProduct(formData);
+            if (res?.error) {
+              setError(res.error);
+              toast.error(res.error);
+              setIsSubmitting(false);
+            } else {
+              toast.success(product?.id ? 'Product updated' : 'Product created');
+              router.push('/admin/products');
+            }
+          });
         }}
       >
         {error && <div style={{ color: '#C62828', backgroundColor: '#FFEBEE', padding: '1rem', borderRadius: '12px', marginBottom: '2rem' }}>{error}</div>}

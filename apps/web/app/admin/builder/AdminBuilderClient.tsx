@@ -76,20 +76,25 @@ function ComponentForm({
   return (
     <div style={{ width: '100%', maxWidth: '1400px', margin: '0 auto' }}>
       <form
-        action={async (formData) => {
+        onSubmit={(e) => {
+          e.preventDefault();
+          const formData = new FormData(e.currentTarget);
           setIsSubmitting(true);
           setError(null);
-          formData.set('isAvailable', isAvailable ? 'on' : 'off');
-          formData.set('componentMaterials', JSON.stringify(bom.filter(b => b.materialId)));
-          const res = await saveBuilderComponent(formData);
-          if (res?.error) {
-            setError(res.error);
-            toast.error(res.error);
-            setIsSubmitting(false);
-          } else {
-            toast.success('Component saved');
-            onSaved();
-          }
+          
+          React.startTransition(async () => {
+            formData.set('isAvailable', isAvailable ? 'on' : 'off');
+            formData.set('componentMaterials', JSON.stringify(bom.filter(b => b.materialId)));
+            const res = await saveBuilderComponent(formData);
+            if (res?.error) {
+              setError(res.error);
+              toast.error(res.error);
+              setIsSubmitting(false);
+            } else {
+              toast.success('Component saved');
+              onSaved();
+            }
+          });
         }}
       >
         {item?.id && <input type="hidden" name="id" value={item.id} />}
