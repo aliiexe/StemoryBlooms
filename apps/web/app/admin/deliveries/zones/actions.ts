@@ -3,8 +3,10 @@
 import { db, eq, deliveryZone } from '@stemory/database';
 import { revalidatePath } from 'next/cache';
 import crypto from 'crypto';
+import { assertAdmin } from '@/lib/user-sync';
 
 export async function saveDeliveryZone(formData: FormData) {
+  await assertAdmin();
   const id = formData.get('id') as string;
   const name = (formData.get('name') as string)?.trim();
   const fee = parseInt(formData.get('fee') as string, 10);
@@ -34,6 +36,7 @@ export async function saveDeliveryZone(formData: FormData) {
 }
 
 export async function deleteDeliveryZone(id: string) {
+  await assertAdmin();
   try {
     await db.delete(deliveryZone).where(eq(deliveryZone.id, id));
     revalidatePath('/admin/deliveries/zones');
@@ -44,6 +47,7 @@ export async function deleteDeliveryZone(id: string) {
 }
 
 export async function toggleDeliveryZone(id: string, isActive: boolean) {
+  await assertAdmin();
   await db.update(deliveryZone).set({ isActive, updatedAt: new Date() }).where(eq(deliveryZone.id, id));
   revalidatePath('/admin/deliveries/zones');
 }

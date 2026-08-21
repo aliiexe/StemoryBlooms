@@ -6,8 +6,10 @@ import { revalidatePath } from 'next/cache';
 import crypto from 'crypto';
 import { parseOptionalDecimalInput } from '../../../lib/form-values';
 import { recordAuditLog } from '@/lib/audit';
+import { assertAdmin } from '@/lib/user-sync';
 
 export async function saveExpense(formData: FormData) {
+  await assertAdmin();
   const id = formData.get('id') as string;
   const description = formData.get('description') as string;
   const category = formData.get('category') as string;
@@ -42,6 +44,7 @@ export async function saveExpense(formData: FormData) {
 }
 
 export async function deleteExpense(id: string) {
+  await assertAdmin();
   try {
     await db.delete(expense).where(eq(expense.id, id));
     revalidatePath('/admin/finances');
@@ -58,6 +61,7 @@ export async function deleteExpense(id: string) {
 }
 
 export async function backfillMaterialExpenses() {
+  await assertAdmin();
   try {
     // We need to import material here. The best way is to import it at the top,
     // but we can just use dynamic import or require if it's tricky, or add the import at the top.

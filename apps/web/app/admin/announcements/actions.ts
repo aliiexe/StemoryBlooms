@@ -7,6 +7,7 @@ import { asc, desc } from 'drizzle-orm';
 import crypto from 'crypto';
 import { parseIntegerInput } from '../../../lib/form-values';
 import { recordAuditLog } from '@/lib/audit';
+import { assertAdmin } from '@/lib/user-sync';
 
 function validateUrl(url: string | null | undefined): string | null {
   if (!url) return null;
@@ -28,6 +29,7 @@ function validateColor(color: string): string {
 }
 
 export async function createAnnouncement(formData: FormData) {
+  await assertAdmin();
   const raw = Object.fromEntries(formData.entries());
   await db.insert(announcement).values({
       id: crypto.randomUUID(),
@@ -77,6 +79,7 @@ export async function createAnnouncement(formData: FormData) {
 }
 
 export async function updateAnnouncement(id: string, formData: FormData) {
+  await assertAdmin();
   const raw = Object.fromEntries(formData.entries());
   await db.update(announcement)
     .set({
@@ -125,24 +128,28 @@ export async function updateAnnouncement(id: string, formData: FormData) {
 }
 
 export async function publishAnnouncement(id: string) {
+  await assertAdmin();
   await db.update(announcement).set({ status: 'ACTIVE', updatedAt: new Date() }).where(eq(announcement.id, id));
   revalidatePath('/admin/announcements');
   revalidatePath('/');
 }
 
 export async function pauseAnnouncement(id: string) {
+  await assertAdmin();
   await db.update(announcement).set({ status: 'PAUSED', updatedAt: new Date() }).where(eq(announcement.id, id));
   revalidatePath('/admin/announcements');
   revalidatePath('/');
 }
 
 export async function archiveAnnouncement(id: string) {
+  await assertAdmin();
   await db.update(announcement).set({ status: 'ARCHIVED', archivedAt: new Date(), updatedAt: new Date() }).where(eq(announcement.id, id));
   revalidatePath('/admin/announcements');
   revalidatePath('/');
 }
 
 export async function deleteAnnouncement(id: string) {
+  await assertAdmin();
   await db.delete(announcement).where(eq(announcement.id, id));
   revalidatePath('/admin/announcements');
   revalidatePath('/');
@@ -155,6 +162,7 @@ export async function deleteAnnouncement(id: string) {
 }
 
 export async function duplicateAnnouncement(id: string) {
+  await assertAdmin();
   const src = await db.query.announcement.findFirst({ where: eq(announcement.id, id) });
   if (!src) return;
   const { id: _id, createdAt: _c, updatedAt: _u, archivedAt: _a, dismissalVersion: _dv, ...rest } = src;
@@ -170,6 +178,7 @@ export async function duplicateAnnouncement(id: string) {
 }
 
 export async function reorderAnnouncements(ids: string[]) {
+  await assertAdmin();
   await db.transaction(async (tx) => {
     for (let i = 0; i < ids.length; i++) {
       await tx.update(announcement).set({ order: i, updatedAt: new Date() }).where(eq(announcement.id, ids[i]));
@@ -180,6 +189,7 @@ export async function reorderAnnouncements(ids: string[]) {
 }
 
 export async function updateBarSettings(formData: FormData) {
+  await assertAdmin();
   const raw = Object.fromEntries(formData.entries());
   const existing = await db.query.announcementBarSettings.findFirst();
   const data = {
@@ -206,6 +216,7 @@ export async function updateBarSettings(formData: FormData) {
 }
 
 export async function seedTemplatesIfEmpty() {
+  await assertAdmin();
   const existing = await db.query.announcementTemplate.findMany({ limit: 1 });
   if (existing.length > 0) return { success: true, seeded: false };
 

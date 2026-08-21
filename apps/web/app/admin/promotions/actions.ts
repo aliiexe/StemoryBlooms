@@ -5,8 +5,10 @@ import { revalidatePath } from 'next/cache';
 import crypto from 'crypto';
 import { parseIntegerInput } from '../../../lib/form-values';
 import { recordAuditLog } from '@/lib/audit';
+import { assertAdmin } from '@/lib/user-sync';
 
 export async function savePromoCode(formData: FormData) {
+  await assertAdmin();
   const id = formData.get('id') as string;
   const code = formData.get('code') as string;
   const type = formData.get('type') as string;
@@ -46,6 +48,7 @@ export async function savePromoCode(formData: FormData) {
 }
 
 export async function deletePromoCode(id: string) {
+  await assertAdmin();
   try {
     await db.delete(promoCode).where(eq(promoCode.id, id));
     revalidatePath('/admin/content');
@@ -62,6 +65,7 @@ export async function deletePromoCode(id: string) {
 }
 
 export async function saveGiftCard(formData: FormData) {
+  await assertAdmin();
   const id = formData.get('id') as string;
   const code = formData.get('code') as string;
   const initialBalance = parseIntegerInput(formData.get('initialBalance') as string | null);
@@ -100,6 +104,7 @@ export async function saveGiftCard(formData: FormData) {
 }
 
 export async function deleteGiftCard(id: string) {
+  await assertAdmin();
   try {
     await db.delete(giftCard).where(eq(giftCard.id, id));
     revalidatePath('/admin/promotions');

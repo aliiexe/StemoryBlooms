@@ -5,8 +5,10 @@ import { review } from '@stemory/database/schema';
 import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { recordAuditLog } from '@/lib/audit';
+import { assertAdmin } from '@/lib/user-sync';
 
 export async function approveReview(id: string) {
+  await assertAdmin();
   try {
     const [rev] = await db.update(review).set({ status: 'APPROVED' }).where(eq(review.id, id)).returning();
     revalidatePath(`/shop/${rev.productId}`);
@@ -25,6 +27,7 @@ export async function approveReview(id: string) {
 }
 
 export async function rejectReview(id: string) {
+  await assertAdmin();
   try {
     const [rev] = await db.update(review).set({ status: 'REJECTED' }).where(eq(review.id, id)).returning();
     revalidatePath(`/shop/${rev.productId}`);
@@ -43,6 +46,7 @@ export async function rejectReview(id: string) {
 }
 
 export async function deleteReview(id: string) {
+  await assertAdmin();
   try {
     const [rev] = await db.delete(review).where(eq(review.id, id)).returning();
     revalidatePath(`/shop/${rev.productId}`);

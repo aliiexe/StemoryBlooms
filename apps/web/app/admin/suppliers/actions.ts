@@ -3,8 +3,10 @@
 import { revalidatePath } from 'next/cache';
 import { db, eq, supplier } from '@stemory/database';
 import crypto from 'crypto';
+import { assertAdmin } from '@/lib/user-sync';
 
 export async function saveSupplier(formData: FormData) {
+  await assertAdmin();
   const id = formData.get('id') as string;
   const name = formData.get('name') as string;
   const contactName = formData.get('contactName') as string;
@@ -48,6 +50,7 @@ export async function saveSupplier(formData: FormData) {
 }
 
 export async function deleteSupplier(id: string) {
+  await assertAdmin();
   try {
     await db.delete(supplier).where(eq(supplier.id, id));
     revalidatePath('/admin/suppliers');

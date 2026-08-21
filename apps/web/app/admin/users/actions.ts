@@ -3,8 +3,10 @@
 import { db, eq, user as userTable, role as roleTable } from '@stemory/database';
 import { revalidatePath } from 'next/cache';
 import { recordAuditLog } from '@/lib/audit';
+import { assertAdmin } from '@/lib/user-sync';
 
 export async function updateUserRole(formData: FormData) {
+  await assertAdmin();
   const userId = formData.get('userId')?.toString();
   const nextRole = formData.get('nextRole')?.toString();
 

@@ -4,8 +4,10 @@ import { db, eq, order, deliveryHandoff } from '@stemory/database';
 import { revalidatePath } from 'next/cache';
 import crypto from 'crypto';
 import { recordAuditLog } from '@/lib/audit';
+import { assertAdmin } from '@/lib/user-sync';
 
 export async function updateOrderStatus(orderId: string, status: string) {
+  await assertAdmin();
   try {
     await db.update(order)
       .set({ status, updatedAt: new Date() })
@@ -27,6 +29,7 @@ export async function updateOrderStatus(orderId: string, status: string) {
 }
 
 export async function createDeliveryHandoff(orderId: string, companyId: string, reference?: string) {
+  await assertAdmin();
   try {
     const existing = await db.query.deliveryHandoff.findFirst({
       where: eq(deliveryHandoff.orderId, orderId)

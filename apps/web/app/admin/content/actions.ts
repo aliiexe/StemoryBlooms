@@ -6,8 +6,10 @@ import { revalidatePath } from 'next/cache';
 import crypto from 'crypto';
 import { parseIntegerInput } from '../../../lib/form-values';
 import { recordAuditLog } from '@/lib/audit';
+import { assertAdmin } from '@/lib/user-sync';
 
 export async function saveContentBlock(formData: FormData) {
+  await assertAdmin();
   const id = formData.get('id') as string;
   const identifier = formData.get('identifier') as string;
   const title = formData.get('title') as string;
@@ -42,6 +44,7 @@ export async function saveContentBlock(formData: FormData) {
 }
 
 export async function deleteContentBlock(id: string) {
+  await assertAdmin();
   try {
     await db.delete(contentBlock).where(eq(contentBlock.id, id));
     revalidatePath('/admin/content');
@@ -58,6 +61,7 @@ export async function deleteContentBlock(id: string) {
 }
 
 export async function createPromoCode(formData: FormData) {
+  await assertAdmin();
   const code = formData.get('code') as string;
   const type = formData.get('type') as string;
   const value = parseIntegerInput(formData.get('value') as string | null);
@@ -89,6 +93,7 @@ export async function createPromoCode(formData: FormData) {
 }
 
 export async function togglePromoCode(id: string, isActive: boolean) {
+  await assertAdmin();
   try {
     await db.update(promoCode).set({ isActive }).where(eq(promoCode.id, id));
     revalidatePath('/admin/content');
@@ -99,6 +104,7 @@ export async function togglePromoCode(id: string, isActive: boolean) {
 }
 
 export async function deletePromoCode(id: string) {
+  await assertAdmin();
   try {
     await db.delete(promoCode).where(eq(promoCode.id, id));
     revalidatePath('/admin/content');
