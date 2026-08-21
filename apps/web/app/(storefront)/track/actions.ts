@@ -2,6 +2,7 @@
 
 import { db, order } from '@stemory/database';
 import { eq } from 'drizzle-orm';
+import { getInfinidisTrackingState } from '@/lib/infinidis';
 
 export async function getOrderStatus(orderNumber: string) {
   if (!orderNumber || typeof orderNumber !== 'string') {
@@ -24,7 +25,16 @@ export async function getOrderStatus(orderNumber: string) {
       return { error: 'Order not found. Please check your order number and try again.' };
     }
 
-    return { success: true, order: foundOrder };
+    // Try to fetch live tracking from Infinidis
+    const infinidisState = await getInfinidisTrackingState(cleanOrderNumber);
+    
+    // We can inject the live state into the returned order object
+    const finalOrder = {
+      ...foundOrder,
+      infinidisState: infinidisState || null
+    };
+
+    return { success: true, order: finalOrder };
   } catch (err) {
     console.error('Error fetching order status:', err);
     return { error: 'An error occurred while fetching your order. Please try again later.' };

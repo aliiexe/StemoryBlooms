@@ -98,8 +98,17 @@ export default function TrackOrderPage() {
         {order && (
           <div className={styles.timelineContainer}>
             <div className={styles.orderHeader}>
-              <span className={styles.orderLabel}>Tracking</span>
-              <span className={styles.orderNumber}>{order.orderNumber}</span>
+              <div style={{ marginBottom: '0.75rem' }}>
+                <span className={styles.orderLabel}>Tracking</span>
+                <span className={styles.orderNumber}>{order.orderNumber}</span>
+              </div>
+              {order.infinidisState && (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', backgroundColor: '#FDFBF7', border: '1px solid #D6CFE6', padding: '6px 12px', borderRadius: '20px' }}>
+                  <Truck size={14} color="#5A5551" />
+                  <span style={{ fontSize: '0.85rem', color: '#5A5551', fontWeight: 500 }}>Courier Status:</span>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--brand-primary)' }}>{order.infinidisState}</span>
+                </div>
+              )}
             </div>
 
             {order.status === 'CANCELLED' ? (

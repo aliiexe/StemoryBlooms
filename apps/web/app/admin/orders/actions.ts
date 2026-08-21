@@ -9,7 +9,7 @@ import { Resend } from 'resend';
 import { render } from '@react-email/render';
 import { OrderConfirmationTemplate } from '@/components/emails/OrderConfirmation';
 import { calculateOrderTotals } from '@/app/api/v1/orders/orderUtils';
-import { sendOrderToInfinidis } from '@/lib/infinidis';
+import { sendOrderToInfinidis, updateInfinidisState } from '@/lib/infinidis';
 
 const resend = new Resend(process.env.RESEND_API_KEY || 're_mock_key');
 
@@ -56,6 +56,13 @@ export async function updateOrderStatus(orderId: string, status: string) {
   }
 
   await db.update(order).set({ status, updatedAt: new Date() }).where(eq(order.id, orderId));
+  
+  if (currentOrder && (status === 'CANCELLED' || status === 'COMPLETED' || status === 'DELIVERED')) {
+    Promise.resolve().then(() => {
+      return updateInfinidisState(currentOrder.orderNumber, status);
+    }).catch(console.error);
+  }
+
   revalidatePath('/admin/orders');
   revalidatePath('/admin');
   
