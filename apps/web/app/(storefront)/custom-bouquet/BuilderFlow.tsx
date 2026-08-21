@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCartStore } from '@stemory/ui';
+import { ZoomIn, X } from 'lucide-react';
 import styles from './BuilderFlow.module.css';
 
 type BuilderItem = {
@@ -29,6 +30,7 @@ export default function BuilderFlow({
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [cart, setCart] = useState<Record<string, number>>({});
   const [cardMessage, setCardMessage] = useState('');
+  const [previewImage, setPreviewImage] = useState<{ url: string, name: string } | null>(null);
   const addItem = useCartStore((state) => state.addItem);
   const isCartOpen = useCartStore((state) => state.isCartOpen);
   const currentStep = STEPS[currentStepIndex];
@@ -133,7 +135,11 @@ export default function BuilderFlow({
             <div key={item.id} className={styles.itemCardContainer}>
               <div className={styles.itemCard}>
                 <div className={styles.itemInfo}>
-                  <div className={styles.itemImageWrapper}>
+                  <div 
+                    className={styles.itemImageWrapper}
+                    onClick={() => setPreviewImage({ url: item.imageUrl || '/hero-bouquet.png', name: item.name })}
+                    style={{ cursor: 'pointer', position: 'relative' }}
+                  >
                     <img
                       src={item.imageUrl || '/hero-bouquet.png'}
                       alt={item.name}
@@ -145,6 +151,20 @@ export default function BuilderFlow({
                         display: 'block',
                       }}
                     />
+                    <div style={{
+                      position: 'absolute',
+                      bottom: '4px',
+                      right: '4px',
+                      backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                      borderRadius: '50%',
+                      padding: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                    }}>
+                      <ZoomIn size={14} color="#5A5551" />
+                    </div>
                   </div>
                   <div className={styles.itemDetails}>
                     <h3 className={styles.itemName}>{item.name}</h3>
@@ -253,6 +273,88 @@ export default function BuilderFlow({
           </motion.div>
         </AnimatePresence>
       </div>
+
+      <AnimatePresence>
+        {previewImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setPreviewImage(null)}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.6)',
+              backdropFilter: 'blur(4px)',
+              zIndex: 100,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '2rem'
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                backgroundColor: '#FFF',
+                borderRadius: '16px',
+                padding: '1rem',
+                maxWidth: '90vw',
+                maxHeight: '90vh',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1rem',
+                position: 'relative'
+              }}
+            >
+              <button 
+                onClick={() => setPreviewImage(null)}
+                style={{
+                  position: 'absolute',
+                  top: '-12px',
+                  right: '-12px',
+                  background: '#FFF',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '32px',
+                  height: '32px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                }}
+              >
+                <X size={16} color="#3A3531" />
+              </button>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#3A3531', textAlign: 'center' }}>
+                {previewImage.name}
+              </h3>
+              <div style={{
+                width: '100%',
+                maxWidth: '400px',
+                aspectRatio: '1/1',
+                borderRadius: '8px',
+                overflow: 'hidden',
+                backgroundColor: '#F0ECE5'
+              }}>
+                <img 
+                  src={previewImage.url} 
+                  alt={previewImage.name}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover'
+                  }}
+                />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {!isCartOpen && (
         <div className={styles.stickyFooter}>
