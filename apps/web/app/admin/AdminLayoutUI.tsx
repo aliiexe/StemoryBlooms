@@ -47,6 +47,7 @@ const sidebarSections = [
     title: 'Tools',
     links: [
       { href: '/admin/price-helper', label: 'Price Helper', icon: Calculator },
+      { href: '/admin/reports', label: 'Reports', icon: BarChart2 },
     ],
   },
   {
