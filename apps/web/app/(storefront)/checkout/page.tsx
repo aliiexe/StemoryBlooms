@@ -151,8 +151,13 @@ function PaymentSelect({ value, onChange }: { value: string; onChange: (v: strin
 export default function CheckoutPage() {
   const router = useRouter();
   const { items, clearCart } = useCartStore();
+  const [isMounted, setIsMounted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
   const [deliveryZones, setDeliveryZones] = useState<DeliveryZoneOption[]>([]);
   const [promoInput, setPromoInput] = useState('');
   const [giftInput, setGiftInput] = useState('');
@@ -274,6 +279,23 @@ export default function CheckoutPage() {
   const totalDiscount = promoDiscount + giftDiscount;
   const total = Math.max(0, subtotal - totalDiscount) + deliveryFee;
 
+  if (!isMounted) {
+    return (
+      <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <p style={{ color: '#9A9591' }}>Loading checkout...</p>
+      </div>
+    );
+  }
+
+  if (items.length === 0) {
+    return (
+      <div className={styles.emptyContainer}>
+        <h2>Your cart is empty</h2>
+        <button onClick={() => router.push('/shop')} className={styles.backBtn}>Continue Shopping</button>
+      </div>
+    );
+  }
+
   const applyCode = async (type: 'promo' | 'giftCard', code: string) => {
     if (!code) return;
     if (type === 'promo') setApplyingPromo(true); else setApplyingGift(true);
@@ -334,15 +356,6 @@ export default function CheckoutPage() {
       setIsSubmitting(false);
     }
   };
-
-  if (items.length === 0) {
-    return (
-      <div className={styles.emptyContainer}>
-        <h2>Your cart is empty</h2>
-        <button onClick={() => router.push('/shop')} className={styles.backBtn}>Continue Shopping</button>
-      </div>
-    );
-  }
 
   return (
     <div className={styles.container}>
