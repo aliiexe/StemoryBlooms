@@ -183,6 +183,24 @@ export async function createAssistedOrder(payload: AssistedOrderPayload) {
     }
   });
 
+  const hasComponents = items.some(item => item.productId.startsWith('COMPONENT_'));
+  if (hasComponents) {
+    const siteSettingsRecord = await db.query.siteSettings.findFirst();
+    const siteConfig = siteSettingsRecord?.config as any;
+    const baseFee = siteConfig?.customBouquetBaseFee ?? 19;
+    
+    subtotal += baseFee;
+    finalOrderItems.push({
+      productId: null,
+      componentId: null,
+      configuration: null,
+      name: '[Element] Base Packaging Fee',
+      quantity: 1,
+      unitPrice: baseFee,
+      totalPrice: baseFee
+    });
+  }
+
   const createdOrderResult = await db.transaction(async (tx) => {
     let promoDiscountAmount = 0;
     let appliedPromoId: string | null = null;
