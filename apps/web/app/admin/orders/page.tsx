@@ -11,7 +11,7 @@ export default async function AdminOrdersPage() {
   });
 
   const summary = {
-    new: orders.filter((o) => o.status === 'NEW').length,
+    new: orders.filter((o) => o.status === 'NEW' || o.status === 'CONFIRMED').length,
     processing: orders.filter((o) => o.status === 'IN_PRODUCTION' || o.status === 'READY').length,
     completed: orders.filter((o) => o.status === 'COMPLETED' || o.status === 'DELIVERED').length,
     cancelled: orders.filter((o) => o.status === 'CANCELLED').length,

@@ -22,7 +22,7 @@ export default async function AdminDashboardPage() {
   const ordersTodayCount = ordersTodayResult[0].count;
 
   const [awaitingResult, productionResult, readyResult, completedResult, customersResult, allOrdersResult] = await Promise.all([
-    db.select({ count: count() }).from(order).where(eq(order.status, 'NEW')),
+    db.select({ count: count() }).from(order).where(inArray(order.status, ['NEW', 'CONFIRMED'])),
     db.select({ count: count() }).from(order).where(eq(order.status, 'IN_PRODUCTION')),
     db.select({ count: count() }).from(order).where(eq(order.status, 'READY')),
     db.select({ count: count() }).from(order).where(inArray(order.status, ['COMPLETED', 'DELIVERED'])),
@@ -78,7 +78,7 @@ export default async function AdminDashboardPage() {
   const recentOrders = recentDbOrders.map(o => ({
     id: o.orderNumber,
     name: `${o.customer.firstName} ${o.customer.lastName}`,
-    total: formatMoney(Math.max(0, o.total - o.deliveryFee)),
+    total: formatMoney(o.total),
     status: o.status,
     bg: statusColors[o.status]?.bg || '#E0F7FA',
     fg: statusColors[o.status]?.fg || '#006064'
