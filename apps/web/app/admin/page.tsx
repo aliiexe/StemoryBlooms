@@ -78,7 +78,7 @@ export default async function AdminDashboardPage() {
   const recentOrders = recentDbOrders.map(o => ({
     id: o.orderNumber,
     name: `${o.customer.firstName} ${o.customer.lastName}`,
-    total: formatMoney(o.total),
+    total: formatMoney(Math.max(0, o.total - o.deliveryFee)),
     status: o.status,
     bg: statusColors[o.status]?.bg || '#E0F7FA',
     fg: statusColors[o.status]?.fg || '#006064'

@@ -65,7 +65,7 @@ export default async function AdminOrdersPage() {
               </div>
 
               <div className={styles.orderSummaryRow}>
-                <span><strong>Total:</strong> {o.total} MAD</span>
+                <span><strong>Total:</strong> {Math.max(0, o.total - o.deliveryFee)} MAD</span>
                 <span><strong>Payment:</strong> {o.paymentStatus}</span>
                 <span><strong>Placed:</strong> {new Date(o.createdAt).toLocaleDateString()}</span>
               </div>
