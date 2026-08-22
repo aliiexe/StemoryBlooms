@@ -28,6 +28,10 @@ export async function POST(request: Request) {
     let verifiedSubtotal = 0;
     const finalOrderItems: any[] = [];
     
+    const siteSettingsRecord = await db.query.siteSettings.findFirst();
+    const siteConfig = siteSettingsRecord?.config as any;
+    const baseFee = siteConfig?.customBouquetBaseFee ?? 19;
+
     const productIds = cartItems.map(i => i.productId).filter(Boolean) as string[];
     const dbProducts = productIds.length > 0 ? await db.query.product.findMany({ where: (t, { inArray }) => inArray(t.id, productIds) }) : [];
     const productsMap = new Map(dbProducts.map(p => [p.id, p]));
@@ -45,7 +49,7 @@ export async function POST(request: Request) {
            configuration: item.configuration
         });
       } else {
-        let customPrice = 0;
+        let customPrice = baseFee;
         if (item.configuration && typeof item.configuration === 'object') {
           const compIds = Object.keys(item.configuration);
           if (compIds.length > 0) {
