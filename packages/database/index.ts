@@ -17,5 +17,3 @@ export * from './schema';
 export * from './relations';
 export { eq, sql, inArray, isNull, isNotNull, and, or, not, desc, asc, lte, gte } from 'drizzle-orm';
 
-import { PrismaClient } from '@prisma/client';
-export const prisma = new PrismaClient();
