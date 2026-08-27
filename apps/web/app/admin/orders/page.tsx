@@ -3,6 +3,7 @@ import { db, order } from '@stemory/database';
 import { desc } from 'drizzle-orm';
 import styles from '../dashboard.module.css';
 import { OrderActions } from './OrderActions';
+import Link from 'next/link';
 
 export default async function AdminOrdersPage() {
   const orders = await db.query.order.findMany({
@@ -51,46 +52,66 @@ export default async function AdminOrdersPage() {
           <span className={styles.sectionHint}>{orders.length} total</span>
         </div>
 
-        <div className={styles.orderList}>
-          {orders.map((o) => (
-            <article key={o.id} className={styles.orderCard}>
-              <div className={styles.orderCardTop}>
-                <div>
-                  <div className={styles.orderTitle}>#{o.orderNumber}</div>
-                  <div className={styles.orderMeta}>{o.customer?.firstName} {o.customer?.lastName}</div>
-                </div>
-                <span className={styles.badge} style={{ backgroundColor: o.status === 'CANCELLED' ? '#FDECEC' : (o.status === 'COMPLETED' || o.status === 'DELIVERED') ? '#E8F5E9' : '#FFF8E1', color: o.status === 'CANCELLED' ? '#B42318' : (o.status === 'COMPLETED' || o.status === 'DELIVERED') ? '#067647' : '#B54708' }}>
-                  {o.status}
-                </span>
-              </div>
-
-              <div className={styles.orderSummaryRow}>
-                <span><strong>Total:</strong> {Math.max(0, o.total - o.deliveryFee)} MAD</span>
-                <span><strong>Payment:</strong> {o.paymentStatus}</span>
-                <span><strong>Placed:</strong> {new Date(o.createdAt).toLocaleDateString()}</span>
-              </div>
-
-              {Array.isArray(o.orderItems) && o.orderItems.length > 0 && (
-                <div style={{ marginTop: '0.9rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  {o.orderItems.slice(0, 3).map((item: any) => (
-                    <span key={item.id} className={styles.orderItemChip}>{item.productName}</span>
-                  ))}
-                </div>
-              )}
-
-              <div className={styles.orderFooter}>
-                <div className={styles.orderMeta}>Fast actions for fulfillment and customer support</div>
-                <OrderActions orderId={o.id} currentStatus={o.status} sentToInfinidis={o.sentToInfinidis} />
-              </div>
-            </article>
-          ))}
-
-          {orders.length === 0 && (
-            <div className={styles.orderCard} style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
-              No orders found.
-            </div>
-          )}
-        </div>
+        {orders.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+            No orders found.
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Order #</th>
+                  <th>Customer</th>
+                  <th>Total</th>
+                  <th>Payment</th>
+                  <th>Items</th>
+                  <th>Date</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map((o) => (
+                  <tr key={o.id}>
+                    <td>
+                      <Link href={`/admin/orders/${o.id}`} style={{ fontWeight: 600, color: 'var(--brand-primary)', textDecoration: 'none' }}>
+                        #{o.orderNumber}
+                      </Link>
+                    </td>
+                    <td>
+                      {o.customer ? `${o.customer.firstName} ${o.customer.lastName}` : 'Guest'}
+                    </td>
+                    <td>{Math.max(0, o.total - o.deliveryFee)} MAD</td>
+                    <td>
+                      <span className={styles.badge} style={{ 
+                        backgroundColor: o.paymentStatus === 'PAID' ? '#E8F5E9' : '#FDECEC', 
+                        color: o.paymentStatus === 'PAID' ? '#067647' : '#B42318' 
+                      }}>
+                        {o.paymentStatus}
+                      </span>
+                    </td>
+                    <td>
+                      {Array.isArray(o.orderItems) && o.orderItems.length > 0 ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                          {o.orderItems.slice(0, 2).map((item: any) => (
+                            <span key={item.id}>{item.quantity}x {item.productName}</span>
+                          ))}
+                          {o.orderItems.length > 2 && <span>+{o.orderItems.length - 2} more</span>}
+                        </div>
+                      ) : (
+                        '-'
+                      )}
+                    </td>
+                    <td>{new Date(o.createdAt).toLocaleDateString()}</td>
+                    <td>
+                      <OrderActions orderId={o.id} currentStatus={o.status} sentToInfinidis={o.sentToInfinidis} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
