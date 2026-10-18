@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 
 const STATUS_OPTIONS = [
   { label: 'Published (Visible to everyone)', value: 'PUBLISHED' },
-  { label: 'Hidden (Requires direct link)', value: 'HIDDEN' },
+  { label: 'Draft (Hidden from the storefront)', value: 'HIDDEN' },
   { label: 'Archived (Removed from store)', value: 'ARCHIVED' },
 ];
 
@@ -42,13 +42,13 @@ type ProductFormValue = {
   categories?: string[];
 };
 
-export function ProductForm({ 
-  product, 
-  materials = [], 
+export function ProductForm({
+  product,
+  materials = [],
   builderComponents = [],
   categories = []
-}: { 
-  product?: ProductFormValue, 
+}: {
+  product?: ProductFormValue,
   materials?: Array<{ id: string; name: string; quantity: number }>,
   builderComponents?: Array<{ id: string; name: string; stock: number }>,
   categories?: Array<{ id: string; name: string }>
@@ -103,7 +103,7 @@ export function ProductForm({
 
   const [selectedCategories, setSelectedCategories] = useState<string[]>(product?.categories || []);
   const toggleCategory = (catId: string) => {
-    setSelectedCategories(prev => 
+    setSelectedCategories(prev =>
       prev.includes(catId) ? prev.filter(id => id !== catId) : [...prev, catId]
     );
   };
@@ -129,8 +129,8 @@ export function ProductForm({
         }}
       >
         {error && <div style={{ color: '#C62828', backgroundColor: '#FFEBEE', padding: '1rem', borderRadius: '12px', marginBottom: '2rem' }}>{error}</div>}
-        
-        {product?.id && <input type="hidden" name="id" value={product.id} />}
+
+        {product?.id && <><input type="hidden" name="id" value={product.id} /><input type="hidden" name="expectedStock" value={product.stock ?? 0} /></>}
         <input type="hidden" name="isSaleEnabled" value={isOnSale ? 'true' : 'false'} />
         {/* Hidden inputs to submit the BOM arrays */}
         <input type="hidden" name="productMaterials" value={JSON.stringify(bom.filter(b => b.materialId))} />
@@ -138,36 +138,36 @@ export function ProductForm({
         <input type="hidden" name="categoryIds" value={JSON.stringify(selectedCategories.filter(id => id.trim() !== ''))} />
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem' }}>
-          
+
           {/* Main Content Column */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-            
+
             {/* General Info Card */}
             <div className={styles.card}>
               <h3 style={{ margin: '0 0 1.5rem 0', color: '#3A3531', fontSize: '1.25rem' }}>General Information</h3>
-              
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#5A5551', fontSize: '0.95rem' }}>Product Name</label>
-                  <input 
-                    type="text" 
-                    name="name" 
-                    defaultValue={product?.name || ''} 
-                    required 
+                  <input
+                    type="text"
+                    name="name"
+                    defaultValue={product?.name || ''}
+                    required
                     placeholder="e.g., The Velvet Rose Bouquet"
-                    style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #D6CFE6', fontSize: '1rem', transition: 'border-color 0.2s' }} 
+                    style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #D6CFE6', fontSize: '1rem', transition: 'border-color 0.2s' }}
                   />
                 </div>
 
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#5A5551', fontSize: '0.95rem' }}>Description</label>
-                  <textarea 
-                    name="description" 
-                    defaultValue={product?.description || ''} 
+                  <textarea
+                    name="description"
+                    defaultValue={product?.description || ''}
                     rows={5}
                     required
                     placeholder="Describe the arrangement, materials used, and ideal occasions..."
-                    style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #D6CFE6', resize: 'vertical', fontSize: '1rem', lineHeight: 1.6 }} 
+                    style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #D6CFE6', resize: 'vertical', fontSize: '1rem', lineHeight: 1.6 }}
                   />
                 </div>
               </div>
@@ -183,7 +183,7 @@ export function ProductForm({
                         {selectedCategories.map((catId, idx) => (
                           <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: 'fit-content', backgroundColor: '#F8F6F2', padding: '0.5rem', borderRadius: '12px' }}>
                             <div style={{ width: '220px' }}>
-                              <CustomSelect 
+                              <CustomSelect
                                 value={catId}
                                 onChange={(val) => {
                                   const newCats = [...selectedCategories];
@@ -199,8 +199,8 @@ export function ProductForm({
                                 ]}
                               />
                             </div>
-                            <button 
-                              type="button" 
+                            <button
+                              type="button"
                               onClick={() => {
                                 const newCats = [...selectedCategories];
                                 newCats.splice(idx, 1);
@@ -214,8 +214,8 @@ export function ProductForm({
                         ))}
                       </div>
                     )}
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       onClick={() => setSelectedCategories([...selectedCategories, ''])}
                       style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px dashed #D6CFE6', backgroundColor: '#fff', color: 'var(--brand-primary)', cursor: 'pointer', fontWeight: 500 }}
                     >
@@ -239,17 +239,17 @@ export function ProductForm({
             {/* Pricing Card */}
             <div className={styles.card}>
               <h3 style={{ margin: '0 0 1.5rem 0', color: '#3A3531', fontSize: '1.25rem' }}>Pricing</h3>
-              
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '2rem' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#5A5551', fontSize: '0.95rem' }}>Base Price (MAD)</label>
-                  <input 
-                    type="number" 
-                    name="basePrice" 
-                    defaultValue={product?.basePrice ?? ''} 
-                    required 
+                  <input
+                    type="number"
+                    name="basePrice"
+                    defaultValue={product?.basePrice ?? ''}
+                    required
                     placeholder="0.00"
-                    style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #D6CFE6', fontSize: '1rem' }} 
+                    style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #D6CFE6', fontSize: '1rem' }}
                   />
                 </div>
 
@@ -258,25 +258,25 @@ export function ProductForm({
                     <label style={{ fontWeight: 500, color: '#5A5551', fontSize: '0.95rem' }}>Sale Price (MAD)</label>
                     <ToggleSwitch checked={isOnSale} onChange={setIsOnSale} />
                   </div>
-                  <input 
-                    type="number" 
-                    name="salePrice" 
-                    defaultValue={product?.salePrice ?? ''} 
+                  <input
+                    type="number"
+                    name="salePrice"
+                    defaultValue={product?.salePrice ?? ''}
                     disabled={!isOnSale}
                     placeholder={isOnSale ? "0.00" : "Enable sale to set price"}
-                    style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #D6CFE6', fontSize: '1rem', backgroundColor: isOnSale ? '#FFFFFF' : '#F5F5F5', cursor: isOnSale ? 'text' : 'not-allowed' }} 
+                    style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #D6CFE6', fontSize: '1rem', backgroundColor: isOnSale ? '#FFFFFF' : '#F5F5F5', cursor: isOnSale ? 'text' : 'not-allowed' }}
                   />
                 </div>
 
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#5A5551', fontSize: '0.95rem' }}>Initial Stock</label>
-                  <input 
-                    type="number" 
-                    name="stock" 
-                    defaultValue={product?.stock ?? 1} 
-                    required 
+                  <input
+                    type="number"
+                    name="stock"
+                    defaultValue={product?.stock ?? 1}
+                    required
                     min="1"
-                    style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #D6CFE6', fontSize: '1rem' }} 
+                    style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #D6CFE6', fontSize: '1rem' }}
                   />
                 </div>
               </div>
@@ -286,14 +286,14 @@ export function ProductForm({
             <div className={styles.card}>
               <h3 style={{ margin: '0 0 0.5rem 0', color: '#3A3531', fontSize: '1.25rem' }}>Recipe (Bill of Materials)</h3>
               <p style={{ color: '#9A9591', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Define exactly which items are consumed when this bouquet is manufactured/sold.</p>
-              
+
               <div style={{ marginBottom: '2rem' }}>
                 <h4 style={{ margin: '0 0 1rem 0', color: '#5A5551', fontSize: '1.05rem' }}>Raw Materials</h4>
                 {bom.length > 0 && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1rem' }}>
                     {bom.map((item, idx) => (
                       <div key={idx} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(120px, 1fr) auto', gap: '1rem', alignItems: 'center', width: '100%' }}>
-                        <CustomSelect 
+                        <CustomSelect
                           value={item.materialId}
                           onChange={(val) => updateMaterial(idx, 'materialId', val)}
                           options={[
@@ -304,15 +304,15 @@ export function ProductForm({
                             }))
                           ]}
                         />
-                        <input 
+                        <input
                           type="number"
                           min="1"
                           value={item.quantity}
                           onChange={(e) => updateMaterial(idx, 'quantity', parseInt(e.target.value) || 1)}
                           style={{ width: '100%', minWidth: 0, padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #D6CFE6', fontSize: '0.95rem' }}
                         />
-                        <button 
-                          type="button" 
+                        <button
+                          type="button"
                           onClick={() => removeMaterial(idx)}
                           style={{ padding: '0.5rem', backgroundColor: '#FFEBEE', color: '#C62828', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
                         >
@@ -322,7 +322,7 @@ export function ProductForm({
                     ))}
                   </div>
                 )}
-                <button 
+                <button
                   type="button"
                   onClick={addMaterial}
                   style={{ padding: '0.75rem 1.5rem', backgroundColor: '#FDFBF7', color: 'var(--brand-primary)', border: '1px dashed var(--brand-primary)', borderRadius: '50px', cursor: 'pointer', fontSize: '0.95rem', fontWeight: 500 }}
@@ -337,7 +337,7 @@ export function ProductForm({
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1rem' }}>
                     {customBom.map((item, idx) => (
                       <div key={idx} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(120px, 1fr) auto', gap: '1rem', alignItems: 'center', width: '100%' }}>
-                        <CustomSelect 
+                        <CustomSelect
                           value={item.builderComponentId}
                           onChange={(val) => updateCustomBom(idx, 'builderComponentId', val)}
                           options={[
@@ -348,15 +348,15 @@ export function ProductForm({
                             }))
                           ]}
                         />
-                        <input 
+                        <input
                           type="number"
                           min="1"
                           value={item.quantity}
                           onChange={(e) => updateCustomBom(idx, 'quantity', parseInt(e.target.value) || 1)}
                           style={{ width: '100%', minWidth: 0, padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #D6CFE6', fontSize: '0.95rem' }}
                         />
-                        <button 
-                          type="button" 
+                        <button
+                          type="button"
                           onClick={() => removeCustomBom(idx)}
                           style={{ padding: '0.5rem', backgroundColor: '#FFEBEE', color: '#C62828', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
                         >
@@ -366,7 +366,7 @@ export function ProductForm({
                     ))}
                   </div>
                 )}
-                <button 
+                <button
                   type="button"
                   onClick={addCustomBom}
                   style={{ padding: '0.75rem 1.5rem', backgroundColor: '#FDFBF7', color: 'var(--brand-primary)', border: '1px dashed var(--brand-primary)', borderRadius: '50px', cursor: 'pointer', fontSize: '0.95rem', fontWeight: 500 }}
@@ -379,15 +379,15 @@ export function ProductForm({
 
           {/* Sidebar Column */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-            
+
             {/* Status Card */}
             <div className={styles.card}>
               <h3 style={{ margin: '0 0 1.5rem 0', color: '#3A3531', fontSize: '1.25rem' }}>Visibility</h3>
-              
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#5A5551', fontSize: '0.95rem' }}>Status</label>
-                  <CustomSelect 
+                  <CustomSelect
                     name="status"
                     options={STATUS_OPTIONS}
                     value={status}
@@ -396,13 +396,13 @@ export function ProductForm({
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingTop: '1rem', borderTop: '1px solid #EAE6DF' }}>
-                  <ToggleSwitch 
+                  <ToggleSwitch
                     name="isAvailable"
                     label="Available in stock"
                     checked={isAvailable ?? false}
                     onChange={setIsAvailable}
                   />
-                  <ToggleSwitch 
+                  <ToggleSwitch
                     name="isFeatured"
                     label="Feature on homepage"
                     checked={isFeatured ?? false}
@@ -411,7 +411,7 @@ export function ProductForm({
                 </div>
               </div>
             </div>
-            
+
           </div>
         </div>
 
@@ -420,10 +420,10 @@ export function ProductForm({
           <Link href="/admin/products" style={{ padding: '1rem 2rem', color: '#5A5551', textDecoration: 'none', fontWeight: 500, borderRadius: '50px', transition: 'background-color 0.2s' }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#F5F5F5'} onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
             Discard Changes
           </Link>
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             disabled={isSubmitting}
-            className={styles.submitBtn} 
+            className={styles.submitBtn}
             style={{ width: 'auto', margin: 0, padding: '1rem 3rem', borderRadius: '50px', fontSize: '1.1rem' }}
           >
             {isSubmitting ? 'Saving...' : 'Save Product'}

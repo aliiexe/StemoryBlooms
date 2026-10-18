@@ -1,0 +1,36 @@
+name: Commerce checks
+on: [push, pull_request]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.5.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter web typecheck
+      - run: pnpm --filter web test
+      - name: Lint commerce and permission boundaries
+        working-directory: apps/web
+        run: pnpm exec eslint lib/commerce app/api/v1/orders/route.ts app/api/v1/orders/quote/route.ts app/api/internal/notifications/route.ts app/admin/orders/actions.ts app/admin/materials/actions.ts
+      - name: Check migration metadata drift
+        run: |
+          pnpm --filter @stemory/database db:generate
+          git diff --exit-code -- packages/database/drizzle
+          test -z "$(git ls-files --others --exclude-standard packages/database/drizzle)"
+      - name: Record remaining repository lint debt
+        continue-on-error: true
+        run: pnpm --filter web lint
+      - name: Production build
+        env:
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+        run: |
+          test -n "$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY"
+          pnpm --filter web build

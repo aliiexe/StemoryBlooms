@@ -1,65 +1,19 @@
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import 'dotenv/config';
+import { randomUUID } from 'node:crypto';
+import { db, eq, sql, role, user } from './index';
 
 async function main() {
-  const email = process.argv[2]
-  if (!email) {
-    console.error('Please provide an email address. Example: pnpm run make-admin myemail@example.com')
-    process.exit(1)
-  }
-
-  console.log(`Looking for user with email: ${email}...`)
-
-  // Ensure OWNER role exists
-  const ownerRole = await db.insert(role).values({
-    where: { name: 'OWNER' },
-    update: {},
-    create: { name: 'OWNER' },
-  })
-
-  // We upsert the user based on email. If they haven't logged in yet and clerkId isn't synced,
-  // we'll just create a placeholder that the webhook can match later (or just tell them to login first).
-  // Ideally, they should login to the site first so Clerk creates their account.
-  
-  try {
-    // Try to find the user first
-    const user = await prisma.user.findUnique({
-      where: { email }
-    })
-
-    if (!user) {
-      console.log(`User ${email} not found in the local database.`)
-      console.log(`Please sign in on the website first so your user record is created!`)
-      
-      // As a fallback, we can create it if they know their Clerk ID, but usually it's best they login first.
-      console.log(`\nAlternatively, we created an empty record for you. Make sure your Clerk webhook is configured to update it.`)
-      
-      await prisma.user.create({
-        data: {
-          email,
-          clerkId: `manual-${Date.now()}`, // Temporary placeholder
-          roleId: ownerRole.id
-        }
-      })
-      console.log(`\n✅ Created user ${email} and assigned OWNER role!`)
-    } else {
-      await prisma.user.update({
-        where: { email },
-        data: { roleId: ownerRole.id }
-      })
-      console.log(`\n✅ Updated existing user ${email} to have the OWNER role!`)
-    }
-  } catch (error) {
-    console.error('Error assigning admin role:', error)
-  }
+  const email = process.argv[2]?.trim().toLowerCase();
+  if (!email || !email.includes('@')) throw new Error('Usage: pnpm --filter @stemory/database make-admin email@example.com');
+  await db.transaction(async tx => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended('admin-role-changes', 0))`);
+    const [existing] = await tx.select().from(user).where(sql`lower(trim(${user.email})) = ${email}`).for('update');
+    if (!existing) throw new Error('Sign in on the website first so a real Clerk-linked user exists.');
+    await tx.insert(role).values({ id: randomUUID(), name: 'ADMIN', updatedAt: new Date() }).onConflictDoNothing({ target: role.name });
+    const adminRole = await tx.query.role.findFirst({ where: eq(role.name, 'ADMIN') });
+    if (!adminRole) throw new Error('Could not create admin role.');
+    await tx.update(user).set({ roleId: adminRole.id, updatedAt: new Date() }).where(eq(user.id, existing.id));
+  });
+  console.log('Administrator role assigned to the existing user.');
 }
-
-main()
-  .catch(e => {
-    console.error(e)
-    process.exit(1)
-  })
-  .finally(async () => {
-    await prisma.$disconnect()
-  })
+main().then(() => process.exit(0)).catch(error => { console.error(error instanceof Error ? error.message : 'Role assignment failed.'); process.exit(1); });

@@ -1,7 +1,8 @@
 import { currentUser } from '@clerk/nextjs/server';
-import { db, customer as customerTable, order as orderTable, eq, desc } from '@stemory/database';
+import { db, order as orderTable, sql, desc } from '@stemory/database';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
+import { ORDER_STATUS_LABELS } from '@/lib/commerce/order-status';
 
 export default async function AccountPage() {
   const user = await currentUser();
@@ -11,20 +12,13 @@ export default async function AccountPage() {
 
   const primaryEmail = user.emailAddresses[0]?.emailAddress;
 
-  const customer = primaryEmail 
-    ? await db.query.customer.findFirst({
-        where: eq(customerTable.email, primaryEmail),
-        with: { addresses: true }
-      })
-    : null;
-
-  const orders = customer
-    ? await db.query.order.findMany({
-        where: eq(orderTable.customerId, customer.id),
-        orderBy: [desc(orderTable.createdAt)],
-        with: { orderItems: true }
-      })
-    : [];
+  // An email entered at checkout is not evidence of account ownership.
+  const orders = await db.query.order.findMany({
+    where: sql`${orderTable.deliveryAddress}->>'ownerClerkId' = ${user.id}`,
+    orderBy: [desc(orderTable.createdAt)],
+    limit: 100,
+    with: { orderItems: true },
+  });
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'MAD' }).format(amount);
@@ -48,7 +42,7 @@ export default async function AccountPage() {
           <h2 style={{ fontSize: '1.5rem', borderBottom: '1px solid #EAE6DF', paddingBottom: '1rem', marginBottom: '1.5rem', color: 'var(--brand-primary)' }}>
             Order History
           </h2>
-          
+
           {orders.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {orders.map(order => (
@@ -61,11 +55,11 @@ export default async function AccountPage() {
                     <div style={{ textAlign: 'right' }}>
                       <p style={{ fontWeight: 600, fontSize: '1.1rem' }}>{formatCurrency(order.total)}</p>
                       <span style={{ display: 'inline-block', marginTop: '0.5rem', padding: '4px 8px', backgroundColor: '#F5F5F5', borderRadius: '4px', fontSize: '0.8rem', color: '#616161', fontWeight: 500 }}>
-                        {order.status}
+                        {ORDER_STATUS_LABELS[order.status] || order.status}
                       </span>
                     </div>
                   </div>
-                  
+
                   <div style={{ borderTop: '1px solid #F5F5F5', paddingTop: '1rem' }}>
                     <p style={{ fontSize: '0.9rem', color: '#4A4A4A', marginBottom: '0.5rem', fontWeight: 500 }}>Items</p>
                     <ul style={{ listStyle: 'none', padding: 0, margin: 0, fontSize: '0.9rem', color: '#7A7571' }}>
@@ -81,7 +75,7 @@ export default async function AccountPage() {
             </div>
           ) : (
             <div style={{ padding: '3rem', textAlign: 'center', backgroundColor: '#FDFBF7', borderRadius: '12px', border: '1px solid #EAE6DF' }}>
-              <p style={{ color: '#7A7571', marginBottom: '1.5rem' }}>You haven't placed any orders yet.</p>
+              <p style={{ color: '#7A7571', marginBottom: '1.5rem' }}>No orders are linked to this account yet. For guest and earlier purchases, use your private receipt link or contact us for help.</p>
               <Link href="/shop" style={{ display: 'inline-block', padding: '0.75rem 1.5rem', backgroundColor: 'var(--brand-primary)', color: 'var(--surface-primary)', textDecoration: 'none', borderRadius: '8px', fontWeight: 500 }}>
                 Start Shopping
               </Link>
@@ -89,26 +83,7 @@ export default async function AccountPage() {
           )}
         </section>
 
-        <section>
-          <h2 style={{ fontSize: '1.5rem', borderBottom: '1px solid #EAE6DF', paddingBottom: '1rem', marginBottom: '1.5rem', color: 'var(--brand-primary)' }}>
-            Saved Addresses
-          </h2>
-          
-          {customer?.addresses && customer.addresses.length > 0 ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
-              {customer.addresses.map(address => (
-                <div key={address.id} style={{ border: '1px solid #EAE6DF', borderRadius: '12px', padding: '1.5rem', backgroundColor: 'var(--surface-primary)' }}>
-                  {address.isDefault && <span style={{ display: 'inline-block', marginBottom: '0.5rem', padding: '2px 6px', backgroundColor: '#E8F5E9', color: '#1B5E20', fontSize: '0.75rem', borderRadius: '4px', fontWeight: 600 }}>DEFAULT</span>}
-                  <p style={{ fontWeight: 500, marginBottom: '0.25rem' }}>{address.addressLine1}</p>
-                  {address.addressLine2 && <p style={{ color: '#7A7571', fontSize: '0.9rem', marginBottom: '0.25rem' }}>{address.addressLine2}</p>}
-                  <p style={{ color: '#7A7571', fontSize: '0.9rem' }}>{address.city}{address.zone ? `, ${address.zone}` : ''}</p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p style={{ color: '#7A7571' }}>No saved addresses found. You can add one during checkout.</p>
-          )}
-        </section>
+
       </div>
     </div>
   );

@@ -19,7 +19,7 @@ const itemVariants = {
 
 export default function UsersClient({ users }: { users: any[] }) {
   return (
-    <motion.div 
+    <motion.div
       className={styles.dashboard}
       variants={containerVariants}
       initial="hidden"
@@ -48,22 +48,22 @@ export default function UsersClient({ users }: { users: any[] }) {
             <tbody>
               {users.map((user, i) => {
                 const isAdmin = user.role?.name === 'ADMIN';
-                const initials = user.firstName || user.lastName 
+                const initials = user.firstName || user.lastName
                   ? `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`
                   : 'U';
 
                 return (
-                  <motion.tr 
+                  <motion.tr
                     key={user.id}
                     whileHover={{ backgroundColor: 'rgba(255, 255, 255, 0.9)' }}
                     style={{ borderBottom: i === users.length - 1 ? 'none' : '1px solid #F3F4F6', transition: 'background-color 0.2s' }}
                   >
                     <td style={{ padding: '1.25rem 1.5rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <div style={{ 
-                          width: '40px', height: '40px', borderRadius: '50%', 
-                          background: isAdmin ? 'rgba(16, 185, 129, 0.1)' : 'rgba(107, 114, 128, 0.1)', 
-                          color: isAdmin ? '#10B981' : '#6B7280', display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                        <div style={{
+                          width: '40px', height: '40px', borderRadius: '50%',
+                          background: isAdmin ? 'rgba(16, 185, 129, 0.1)' : 'rgba(107, 114, 128, 0.1)',
+                          color: isAdmin ? '#10B981' : '#6B7280', display: 'flex', alignItems: 'center', justifyContent: 'center',
                           fontSize: '0.9rem', fontWeight: 700
                         }}>
                           {initials.toUpperCase()}
@@ -80,15 +80,15 @@ export default function UsersClient({ users }: { users: any[] }) {
                       </div>
                     </td>
                     <td style={{ padding: '1.25rem 1.5rem' }}>
-                      <span style={{ 
+                      <span style={{
                         display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
-                        padding: '0.25rem 0.75rem', 
-                        backgroundColor: isAdmin ? '#ECFDF5' : '#F3F4F6', 
-                        color: isAdmin ? '#059669' : '#4B5563', 
-                        borderRadius: '9999px', 
-                        fontSize: '0.85rem', 
-                        fontWeight: 600, 
-                        border: `1px solid ${isAdmin ? '#D1FAE5' : '#E5E7EB'}` 
+                        padding: '0.25rem 0.75rem',
+                        backgroundColor: isAdmin ? '#ECFDF5' : '#F3F4F6',
+                        color: isAdmin ? '#059669' : '#4B5563',
+                        borderRadius: '9999px',
+                        fontSize: '0.85rem',
+                        fontWeight: 600,
+                        border: `1px solid ${isAdmin ? '#D1FAE5' : '#E5E7EB'}`
                       }}>
                         {isAdmin ? <Shield size={12} /> : <User size={12} />}
                         {user.role?.name ?? 'CUSTOMER'}
@@ -96,21 +96,22 @@ export default function UsersClient({ users }: { users: any[] }) {
                     </td>
                     <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right' }}>
                       <form action={async (formData) => {
-                        await updateUserRole(formData);
-                        toast.success(`User role updated to ${isAdmin ? 'CUSTOMER' : 'ADMIN'}`);
+                        const result = await updateUserRole(formData);
+                        if (result?.error) toast.error(result.error);
+                        else if (result?.success) toast.success(`User role updated to ${isAdmin ? 'CUSTOMER' : 'ADMIN'}`);
                       }}>
                         <input type="hidden" name="userId" value={user.id} />
                         <input type="hidden" name="nextRole" value={isAdmin ? 'CUSTOMER' : 'ADMIN'} />
-                        <motion.button 
-                          type="submit" 
+                        <motion.button
+                          type="submit"
                           whileHover={{ scale: 1.02, backgroundColor: isAdmin ? '#FEF2F2' : '#F0FDF4', color: isAdmin ? '#DC2626' : '#166534', borderColor: isAdmin ? '#FEE2E2' : '#DCFCE7' }}
                           whileTap={{ scale: 0.98 }}
-                          style={{ 
-                            border: '1px solid #E5E7EB', 
-                            background: 'white', 
+                          style={{
+                            border: '1px solid #E5E7EB',
+                            background: 'white',
                             color: '#374151',
-                            borderRadius: '8px', 
-                            padding: '0.4rem 0.85rem', 
+                            borderRadius: '8px',
+                            padding: '0.4rem 0.85rem',
                             cursor: 'pointer',
                             fontSize: '0.85rem',
                             fontWeight: 500,
@@ -124,7 +125,7 @@ export default function UsersClient({ users }: { users: any[] }) {
                   </motion.tr>
                 );
               })}
-              
+
               {users.length === 0 && (
                 <tr>
                   <td colSpan={3} style={{ textAlign: 'center', padding: '4rem', color: '#6B7280' }}>

@@ -29,15 +29,16 @@ type FeaturedProduct = {
   price: number;
   salePrice?: number | null;
   imageUrl: string;
+  stock: number; isAvailable: boolean;
 };
 
-export default function HomeClient({ 
-  collectionProducts = [], 
+export default function HomeClient({
+  collectionProducts = [],
   bestSellerProducts = [],
   heroImages = [],
   heroFadeSpeed = 5
-}: { 
-  collectionProducts?: FeaturedProduct[]; 
+}: {
+  collectionProducts?: FeaturedProduct[];
   bestSellerProducts?: FeaturedProduct[];
   heroImages?: string[];
   heroFadeSpeed?: number;
@@ -46,7 +47,7 @@ export default function HomeClient({
     <main className={styles.main}>
       {/* HERO SECTION */}
       <section className={styles.hero}>
-        <motion.div 
+        <motion.div
           className={styles.heroContent}
           initial="hidden"
           animate="visible"
@@ -55,7 +56,7 @@ export default function HomeClient({
           <span className={styles.tagline}>Everlasting Beauty</span>
           <h1 className={styles.mainHeading}>Handcrafted Pipe Cleaner Bouquets</h1>
           <p className={styles.subtitle}>
-            Discover luxury, handmade everlasting floral arrangements. 
+            Discover luxury, handmade everlasting floral arrangements.
             Meticulously crafted in Morocco to bring eternal bloom to your space.
           </p>
           <div className={styles.heroActions}>
@@ -63,18 +64,18 @@ export default function HomeClient({
             <Link href="/custom-bouquet" className={styles.secondaryButton}>Custom Order</Link>
           </div>
         </motion.div>
-        
-        <motion.div 
+
+        <motion.div
           className={styles.heroImageWrapper}
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
         >
           <div className={styles.imageContainer}>
-            <HeroSlideshow 
-              images={heroImages} 
-              fadeSpeedSeconds={heroFadeSpeed} 
-              priority 
+            <HeroSlideshow
+              images={heroImages}
+              fadeSpeedSeconds={heroFadeSpeed}
+              priority
             />
           </div>
         </motion.div>
@@ -113,6 +114,7 @@ export default function HomeClient({
             {bestSellerProducts.map((product) => (
               <motion.div key={product.id} variants={fadeInUp}>
                 <ProductCard
+                  stock={product.stock} isAvailable={product.isAvailable}
                   id={product.id}
                   title={product.title}
                   price={product.price}
@@ -131,9 +133,9 @@ export default function HomeClient({
           <h2 className={styles.featuredTitle}>Latest Creations</h2>
           <Link href="/shop" className={styles.viewAllLink}>View All &rarr;</Link>
         </div>
-        
+
         {collectionProducts.length > 0 ? (
-          <motion.div 
+          <motion.div
             className={styles.productGrid}
             variants={staggerContainer}
             initial="hidden"
@@ -142,7 +144,8 @@ export default function HomeClient({
           >
             {collectionProducts.map((product) => (
               <motion.div key={product.id} variants={fadeInUp}>
-                <ProductCard 
+                <ProductCard
+                  stock={product.stock} isAvailable={product.isAvailable}
                   id={product.id}
                   title={product.title}
                   price={product.price}

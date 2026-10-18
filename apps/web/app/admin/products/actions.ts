@@ -3,6 +3,7 @@
 import { db, eq, product, productMaterial, material, builderComponent, productBuilderComponent, categoryToProduct } from '@stemory/database';
 import { revalidatePath } from 'next/cache';
 import crypto from 'crypto';
+import { z } from 'zod';
 import { parseIntegerInput } from '../../../lib/form-values';
 import { assertAdmin } from '../../../lib/user-sync';
 import { recordAuditLog } from '@/lib/audit';
@@ -12,7 +13,7 @@ export async function saveProduct(formData: FormData) {
   const id = formData.get('id') as string;
   const name = formData.get('name') as string;
   const description = formData.get('description') as string;
-  const basePrice = parseIntegerInput(formData.get('basePrice') as string | null);
+  const basePrice = Number(formData.get('basePrice') || NaN);
 
   const salePriceStr = formData.get('salePrice') as string;
   const salePrice = salePriceStr ? parseIntegerInput(salePriceStr) : null;
@@ -31,7 +32,7 @@ export async function saveProduct(formData: FormData) {
   const isAvailable = formData.get('isAvailable') === 'on';
   const isFeatured = formData.get('isFeatured') === 'on';
   const isSaleEnabled = formData.get('isSaleEnabled') === 'true';
-  const stock = parseIntegerInput(formData.get('stock') as string | null) ?? 1;
+  const stock = Number(formData.get('stock') ?? 0);
 
   let finalSalePrice = salePrice;
   if (!isSaleEnabled) finalSalePrice = null;
@@ -69,11 +70,11 @@ export async function saveProduct(formData: FormData) {
     console.error('Failed to parse category IDs JSON', e);
   }
 
-  if (!name?.trim() || !description?.trim() || basePrice === null) {
+  if (!name?.trim() || !description?.trim() || !Number.isSafeInteger(basePrice) || basePrice < 0 || basePrice > 1000000 || !Number.isSafeInteger(stock) || stock < 0 || stock > 100000 || !['PUBLISHED', 'DRAFT', 'HIDDEN', 'ARCHIVED'].includes(status)) {
     return { error: 'Name, description, and valid base price are required' };
   }
 
-  if (allImages.length === 0) {
+  if (!Array.isArray(allImages) || allImages.length === 0 || allImages.length > 10 || allImages.some(image => typeof image !== 'string' || image.length > 1500000)) {
     return { error: 'At least one product image is required' };
   }
 
@@ -81,67 +82,17 @@ export async function saveProduct(formData: FormData) {
     return { error: 'At least one valid material or custom flower line is required' };
   }
 
+  if (finalSalePrice !== null && (!Number.isSafeInteger(finalSalePrice) || finalSalePrice < 0 || finalSalePrice > basePrice)) return { error: 'Sale price must be between zero and the base price.' };
+  if ([...productMaterialsList, ...productBuilderComponentsList].some(line => !Number.isSafeInteger(line.quantity) || line.quantity <= 0)) return { error: 'Recipe quantities must be positive whole units.' };
+
   try {
     let currentProductId = id;
 
     await db.transaction(async (tx) => {
       if (id) {
-        // Fetch old product stock and BOM
-        const oldProduct = await tx.query.product.findFirst({ where: eq(product.id, id) });
-        const oldStock = oldProduct?.stock ?? 0;
-        const oldBOM = await tx.query.productMaterial.findMany({ where: eq(productMaterial.productId, id) });
-        const oldCustomBOM = await tx.query.productBuilderComponent.findMany({ where: eq(productBuilderComponent.productId, id) });
-
-        // --- Calculate raw material usage differences ---
-        const oldUsage = new Map<string, number>();
-        for (const ob of oldBOM) {
-          oldUsage.set(ob.materialId, oldStock * ob.quantity);
-        }
-        const newUsage = new Map<string, number>();
-        for (const nb of productMaterialsList) {
-          newUsage.set(nb.materialId, stock * nb.quantity);
-        }
-        const allMatIds = new Set([...oldUsage.keys(), ...newUsage.keys()]);
-        for (const mId of allMatIds) {
-          const oldU = oldUsage.get(mId) ?? 0;
-          const newU = newUsage.get(mId) ?? 0;
-          const diff = newU - oldU;
-
-          if (diff !== 0) {
-            const mat = await tx.query.material.findFirst({ where: eq(material.id, mId) });
-            if (mat) {
-              await tx.update(material)
-                .set({ quantity: mat.quantity - diff, updatedAt: new Date() })
-                .where(eq(material.id, mId));
-            }
-          }
-        }
-
-        // --- Calculate custom flower (builder component) usage differences ---
-        const oldCustomUsage = new Map<string, number>();
-        for (const ob of oldCustomBOM) {
-          oldCustomUsage.set(ob.builderComponentId, oldStock * ob.quantity);
-        }
-        const newCustomUsage = new Map<string, number>();
-        for (const nb of productBuilderComponentsList) {
-          newCustomUsage.set(nb.builderComponentId, stock * nb.quantity);
-        }
-        const allCompIds = new Set([...oldCustomUsage.keys(), ...newCustomUsage.keys()]);
-        for (const cId of allCompIds) {
-          const oldU = oldCustomUsage.get(cId) ?? 0;
-          const newU = newCustomUsage.get(cId) ?? 0;
-          const diff = newU - oldU;
-
-          if (diff !== 0) {
-            const comp = await tx.query.builderComponent.findFirst({ where: eq(builderComponent.id, cId) });
-            if (comp) {
-              await tx.update(builderComponent)
-                .set({ stock: comp.stock - diff, updatedAt: new Date() })
-                .where(eq(builderComponent.id, cId));
-            }
-          }
-        }
-
+        const [existing] = await tx.select().from(product).where(eq(product.id, id)).for('update');
+        if (!existing) throw new Error('Product not found.');
+        if (Number(formData.get('expectedStock')) !== existing.stock) throw new Error('Stock changed while editing. Refresh before saving.');
         await tx.delete(productMaterial).where(eq(productMaterial.productId, id));
         await tx.delete(productBuilderComponent).where(eq(productBuilderComponent.productId, id));
         await tx.delete(categoryToProduct).where(eq(categoryToProduct.b, id));
@@ -156,25 +107,6 @@ export async function saveProduct(formData: FormData) {
         }).returning({ id: product.id });
         currentProductId = newProduct.id;
 
-        // Deduct materials for new product
-        for (const pm of productMaterialsList) {
-          const mat = await tx.query.material.findFirst({ where: eq(material.id, pm.materialId) });
-          if (mat) {
-            await tx.update(material)
-              .set({ quantity: mat.quantity - (stock * pm.quantity), updatedAt: new Date() })
-              .where(eq(material.id, pm.materialId));
-          }
-        }
-
-        // Deduct builder components for new product
-        for (const pbc of productBuilderComponentsList) {
-          const comp = await tx.query.builderComponent.findFirst({ where: eq(builderComponent.id, pbc.builderComponentId) });
-          if (comp) {
-            await tx.update(builderComponent)
-              .set({ stock: comp.stock - (stock * pbc.quantity), updatedAt: new Date() })
-              .where(eq(builderComponent.id, pbc.builderComponentId));
-          }
-        }
       }
 
       if (productMaterialsList.length > 0) {
@@ -217,7 +149,7 @@ export async function saveProduct(formData: FormData) {
     });
   } catch (error) {
     console.error('Save product error:', error);
-    return { error: 'Failed to save product. Make sure the database schema is updated.' };
+    return { error: error instanceof Error && error.message.startsWith('Stock changed') ? error.message : 'Failed to save product. Check the product and recipe details.' };
   }
 
   return { success: true };
@@ -234,7 +166,7 @@ export async function deleteProduct(id: string) {
     });
     revalidatePath('/admin/products');
     revalidatePath('/shop');
-    
+
     await recordAuditLog({
       action: 'DELETE',
       target: 'PRODUCT',
@@ -249,114 +181,38 @@ export async function deleteProduct(id: string) {
 
 export async function backfillProductMaterialDeductions() {
   await assertAdmin();
-  try {
-    const products = await db.query.product.findMany({
-      with: { productMaterials: true }
-    });
-
-    let deductedCount = 0;
-    const materialDeductions = new Map<string, number>();
-
-    for (const prod of products) {
-      if (prod.stock > 0 && prod.productMaterials) {
-        for (const pm of prod.productMaterials) {
-          const usage = prod.stock * pm.quantity;
-          materialDeductions.set(pm.materialId, (materialDeductions.get(pm.materialId) || 0) + usage);
-          deductedCount++;
-        }
-      }
-    }
-
-    for (const [mId, ded] of materialDeductions.entries()) {
-      const mat = await db.query.material.findFirst({ where: eq(material.id, mId) });
-      if (mat) {
-        await db.update(material)
-          .set({ quantity: mat.quantity - ded, updatedAt: new Date() })
-          .where(eq(material.id, mId));
-      }
-    }
-
-    revalidatePath('/admin/inventory');
-    revalidatePath('/admin/materials');
-    return { deducted: deductedCount };
-  } catch (err) {
-    console.error(err);
-    return { error: 'Failed to backfill deductions' };
-  }
+  return { error: 'Automatic backfill is disabled. Reconcile existing stock before applying any correction.' };
 }
 
-export async function quickUpdateProduct(id: string, updates: { stock?: number, salePrice?: number | null, isSaleEnabled?: boolean }) {
+export async function quickUpdateProduct(id: string, updates: { stock?: number; expectedStock?: number; salePrice?: number | null; isSaleEnabled?: boolean }) {
+  await assertAdmin();
+  const parsed = z.object({
+    stock: z.number().int().min(0).max(100000).optional(),
+    expectedStock: z.number().int().optional(),
+    salePrice: z.number().int().min(0).max(1000000).nullable().optional(),
+    isSaleEnabled: z.boolean().optional(),
+  }).strict().safeParse(updates);
+  if (!id || !parsed.success) return { error: 'Please enter a valid price or whole stock quantity.' };
   try {
-    const payload: any = {};
-    if (updates.isSaleEnabled !== undefined) {
-      payload.isSaleEnabled = updates.isSaleEnabled;
-      if (!updates.isSaleEnabled) {
-        payload.salePrice = null;
-      } else if (updates.salePrice !== undefined) {
-        payload.salePrice = updates.salePrice;
-      }
-    } else if (updates.salePrice !== undefined) {
-      payload.salePrice = updates.salePrice;
-    }
-
-    if (updates.stock !== undefined) {
-      await db.transaction(async (tx) => {
-        const prod = await tx.query.product.findFirst({
-          where: eq(product.id, id),
-          with: { productMaterials: true, productBuilderComponents: true }
-        });
-        
-        if (prod && prod.stock !== updates.stock) {
-          const oldStock = prod.stock;
-          const newStock = updates.stock as number;
-          
-          for (const pm of prod.productMaterials) {
-            const oldU = oldStock * pm.quantity;
-            const newU = newStock * pm.quantity;
-            const diff = newU - oldU;
-            
-            if (diff !== 0) {
-              const mat = await tx.query.material.findFirst({ where: eq(material.id, pm.materialId) });
-              if (mat) {
-                await tx.update(material)
-                  .set({ quantity: mat.quantity - diff, updatedAt: new Date() })
-                  .where(eq(material.id, pm.materialId));
-              }
-            }
-          }
-          
-          for (const pbc of prod.productBuilderComponents) {
-            const oldU = oldStock * pbc.quantity;
-            const newU = newStock * pbc.quantity;
-            const diff = newU - oldU;
-            
-            if (diff !== 0) {
-              const comp = await tx.query.builderComponent.findFirst({ where: eq(builderComponent.id, pbc.builderComponentId) });
-              if (comp) {
-                await tx.update(builderComponent)
-                  .set({ stock: comp.stock - diff, updatedAt: new Date() })
-                  .where(eq(builderComponent.id, pbc.builderComponentId));
-              }
-            }
-          }
-        }
-        
-        payload.stock = updates.stock;
-        await tx.update(product).set({ ...payload, updatedAt: new Date() }).where(eq(product.id, id));
-      });
-    } else {
-      await db.update(product).set({ ...payload, updatedAt: new Date() }).where(eq(product.id, id));
-    }
+    const saved = await db.transaction(async tx => {
+      const [current] = await tx.select().from(product).where(eq(product.id, id)).for('update');
+      if (!current) throw new Error('Product not found.');
+      if (updates.stock !== undefined && updates.expectedStock !== current.stock) throw new Error('Stock changed. Refresh this product and try again.');
+      const { expectedStock: _expectedStock, ...values } = parsed.data;
+      const payload = { ...values, ...(values.isSaleEnabled === false ? { salePrice: null } : {}),
+        ...(values.stock !== undefined ? { isAvailable: values.stock > 0 } : {}), updatedAt: new Date() };
+      const sale = values.isSaleEnabled ?? current.isSaleEnabled;
+      const price = payload.salePrice === undefined ? current.salePrice : payload.salePrice;
+      if (sale && (price === null || price > current.basePrice)) throw new Error('Sale price must be between zero and the base price.');
+      const [result] = await tx.update(product).set(payload).where(eq(product.id, id)).returning();
+      return result;
+    });
     revalidatePath('/admin/products');
     revalidatePath('/shop');
-    await recordAuditLog({
-      action: 'UPDATE',
-      target: 'PRODUCT',
-      summary: `Quick updated product`,
-      details: { productId: id, updates },
-    });
-    return { success: true };
-  } catch {
-    return { error: 'Failed to quick update product' };
+    revalidatePath(`/shop/${id}`);
+    await recordAuditLog({ action: 'UPDATE', target: 'PRODUCT', summary: 'Updated product price or finished stock', details: { productId: id, updates } });
+    return { success: true, product: saved };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : 'Failed to update product.' };
   }
 }

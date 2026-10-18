@@ -19,8 +19,8 @@ export default async function StorefrontLayout({
     auth()
   ]);
 
-  const isWaitlist = settings?.mode === 'WAITLIST';
-  const isMaintenance = settings?.mode === 'MAINTENANCE';
+  const isWaitlist = !settings || settings.mode === 'WAITLIST';
+  const isMaintenance = settings?.mode === 'MAINTENANCE' || settings?.mode === 'DRAFT';
 
   const config = settings?.config as Record<string, any> | null;
   const heroImages = (config?.heroImages as string[]) || [];

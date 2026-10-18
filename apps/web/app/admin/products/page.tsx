@@ -1,3 +1,4 @@
+import { assertAdmin } from '@/lib/user-sync';
 import React from 'react';
 import Link from 'next/link';
 import { db } from '@stemory/database';
@@ -5,6 +6,7 @@ import styles from '../dashboard.module.css';
 import { AdminProductsClient } from './AdminProductsClient';
 
 export default async function AdminProductsPage() {
+  await assertAdmin();
   const products = await db.query.product.findMany({
     orderBy: (product, { desc }) => [desc(product.createdAt)],
   });

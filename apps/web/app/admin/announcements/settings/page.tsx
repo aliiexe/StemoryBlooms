@@ -1,9 +1,11 @@
+import { assertAdmin } from '@/lib/user-sync';
 import { db } from '@stemory/database';
 import styles from '../../dashboard.module.css';
 import { updateBarSettings } from '../actions';
 import SettingsForm from './SettingsForm';
 
 export default async function AnnouncementSettingsPage() {
+  await assertAdmin();
   const settings = await db.query.announcementBarSettings.findFirst();
 
   return (

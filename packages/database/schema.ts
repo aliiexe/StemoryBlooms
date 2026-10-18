@@ -188,6 +188,8 @@ export const order = pgTable("Order", {
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 }, (table) => [
+	index("Order_createdAt_idx").on(table.createdAt.desc()),
+	index("Order_status_idx").on(table.status),
 	uniqueIndex("Order_idempotencyKey_key").using("btree", table.idempotencyKey.asc().nullsLast().op("text_ops")),
 	uniqueIndex("Order_orderNumber_key").using("btree", table.orderNumber.asc().nullsLast().op("text_ops")),
 	foreignKey({
@@ -411,7 +413,7 @@ export const notificationOutbox = pgTable("NotificationOutbox", {
 	error: text(),
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
-});
+}, (table) => [index("NotificationOutbox_status_idx").on(table.status, table.createdAt)]);
 
 export const adminInboxEvent = pgTable("AdminInboxEvent", {
 	id: text().primaryKey().notNull(),

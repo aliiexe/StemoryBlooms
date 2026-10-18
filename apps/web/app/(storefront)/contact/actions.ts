@@ -3,6 +3,10 @@
 import { db, contactMessage } from '@stemory/database';
 import crypto from 'crypto';
 import { Resend } from 'resend';
+import { headers } from 'next/headers';
+import { contactInput, escapeEmailHtml } from '@/lib/commerce/public-input';
+import { enforceSubmissionLimit } from '@/lib/commerce/rate-limit';
+import { publicError } from '@/lib/commerce/errors';
 
 const resend = new Resend(process.env.RESEND_API_KEY || 're_mock_key');
 
@@ -13,6 +17,7 @@ function buildContactEmailHtml(details: {
   subject: string;
   message: string;
 }) {
+  details = Object.fromEntries(Object.entries(details).map(([key, value]) => [key, escapeEmailHtml(value)])) as typeof details;
   return `
     <div style="font-family: Arial, sans-serif; color: #2f2a24; max-width: 640px; margin: 0 auto; line-height: 1.6;">
       <h2 style="margin-bottom: 0.25rem;">New contact message</h2>
@@ -26,17 +31,11 @@ function buildContactEmailHtml(details: {
 }
 
 export async function submitContactMessage(formData: FormData) {
-  const firstName = formData.get('firstName') as string;
-  const lastName = formData.get('lastName') as string;
-  const email = formData.get('email') as string;
-  const subject = formData.get('subject') as string;
-  const message = formData.get('message') as string;
-
-  if (!firstName || !lastName || !email || !message) {
-    return { error: 'Please fill out all required fields.' };
-  }
-
+  const parsed = contactInput.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: 'Please enter a valid name, email, subject, and message (up to 5,000 characters).' };
+  const { firstName, lastName, email, subject, message } = parsed.data;
   try {
+    await enforceSubmissionLimit('contact', await headers(), 3);
     await db.insert(contactMessage).values({ id: crypto.randomUUID(), firstName, lastName, email, subject, message, updatedAt: new Date() });
 
     if (process.env.RESEND_API_KEY) {
@@ -56,6 +55,6 @@ export async function submitContactMessage(formData: FormData) {
     return { success: true };
   } catch (error) {
     console.error('Failed to submit contact message:', error);
-    return { error: 'Something went wrong. Please try again.' };
+    return { error: publicError(error).message };
   }
 }

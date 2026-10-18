@@ -1,9 +1,11 @@
+import { assertAdmin } from '@/lib/user-sync';
 import React from 'react';
 import { db } from '@stemory/database';
 import styles from '../dashboard.module.css';
 import { ReviewActions } from './ReviewActions';
 
 export default async function AdminReviewsPage() {
+  await assertAdmin();
   const reviews = await db.query.review.findMany({
     orderBy: (table, { desc }) => [desc(table.createdAt)],
     with: { product: true }
@@ -46,9 +48,9 @@ export default async function AdminReviewsPage() {
                   </p>
                 </td>
                 <td>
-                  <span className={styles.badge} style={{ 
-                    backgroundColor: r.status === 'APPROVED' ? '#E8F5E9' : r.status === 'REJECTED' ? '#FFEBEE' : '#FFF3E0', 
-                    color: r.status === 'APPROVED' ? '#1B5E20' : r.status === 'REJECTED' ? '#C62828' : '#E65100' 
+                  <span className={styles.badge} style={{
+                    backgroundColor: r.status === 'APPROVED' ? '#E8F5E9' : r.status === 'REJECTED' ? '#FFEBEE' : '#FFF3E0',
+                    color: r.status === 'APPROVED' ? '#1B5E20' : r.status === 'REJECTED' ? '#C62828' : '#E65100'
                   }}>
                     {r.status}
                   </span>

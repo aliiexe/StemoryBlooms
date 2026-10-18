@@ -35,9 +35,9 @@ export default function PDPClient({ product, recommendations }: { product: any, 
 
   const handleAddToCart = () => {
     addItem({
-      id: product.id,
+      id: product.id, productId: product.id, kind: 'PRODUCT', maxQuantity: Math.min(100, product.stock),
       name: product.name,
-      price: product.isSaleEnabled && product.salePrice ? product.salePrice : product.basePrice,
+      price: product.isSaleEnabled && product.salePrice !== null ? product.salePrice : product.basePrice,
       quantity,
       imageUrl: images[0]
     });
@@ -52,7 +52,7 @@ export default function PDPClient({ product, recommendations }: { product: any, 
   return (
     <div style={{ backgroundColor: 'var(--surface-primary)', minHeight: '100vh' }}>
       <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '2rem 1.5rem', paddingBottom: '6rem' }}>
-        
+
         {/* Breadcrumbs */}
         <div style={{ marginBottom: '2rem', fontSize: '0.9rem', color: '#7A7571' }}>
           <Link href="/" style={{ color: 'inherit', textDecoration: 'none' }}>Home</Link>
@@ -65,7 +65,7 @@ export default function PDPClient({ product, recommendations }: { product: any, 
         {/* Main Product Layout (Split Column) */}
         <div className={styles.productLayout}>
           {/* Left Column: Sticky Image Gallery */}
-          <div 
+          <div
             className={styles.imageGallery}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
@@ -90,7 +90,7 @@ export default function PDPClient({ product, recommendations }: { product: any, 
                 />
               ))}
             </div>
-            
+
             {/* Thumbnails */}
             {images.length > 1 && (
               <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
@@ -124,9 +124,9 @@ export default function PDPClient({ product, recommendations }: { product: any, 
             <h1 style={{ fontFamily: 'var(--font-editorial)', fontSize: '3.5rem', color: 'var(--brand-primary)', marginBottom: '1rem', lineHeight: 1.1 }}>
               {product.name}
             </h1>
-            
+
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
-              {product.isSaleEnabled && product.salePrice ? (
+              {product.isSaleEnabled && product.salePrice !== null ? (
                 <>
                   <span style={{ fontWeight: 600, fontSize: '2rem', color: 'var(--brand-primary)' }}>{formatCurrency(product.salePrice)}</span>
                   <span style={{ textDecoration: 'line-through', color: '#888', fontSize: '1.25rem' }}>{formatCurrency(product.basePrice)}</span>
@@ -143,35 +143,35 @@ export default function PDPClient({ product, recommendations }: { product: any, 
             {/* Actions */}
             <div style={{ display: 'flex', gap: '1rem', marginBottom: '3rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #D6CFE6', borderRadius: '50px', padding: '0.25rem', backgroundColor: '#fff' }}>
-                <button 
+                <button
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
                   style={{ background: 'none', border: 'none', padding: '0.5rem 1.25rem', cursor: 'pointer', fontSize: '1.2rem', color: '#5A5551' }}
                 >-</button>
                 <span style={{ minWidth: '2rem', textAlign: 'center', fontWeight: 600, fontSize: '1.1rem' }}>{quantity}</span>
-                <button 
-                  onClick={() => setQuantity(quantity + 1)}
+                <button
+                  onClick={() => setQuantity(Math.min(100, product.stock, quantity + 1))}
                   style={{ background: 'none', border: 'none', padding: '0.5rem 1.25rem', cursor: 'pointer', fontSize: '1.2rem', color: '#5A5551' }}
                 >+</button>
               </div>
 
-              <button 
+              <button
                 onClick={handleAddToCart}
-                disabled={!product.isAvailable}
-                style={{ 
-                  flex: 1, 
-                  padding: '1rem 2rem', 
-                  backgroundColor: product.isAvailable ? (added ? '#1B5E20' : 'var(--brand-primary)') : '#EAE6DF', 
-                  color: product.isAvailable ? '#FDFBF7' : '#9A9591', 
-                  border: 'none', 
-                  borderRadius: '50px', 
-                  fontSize: '1.1rem', 
-                  fontWeight: 600, 
-                  cursor: product.isAvailable ? 'pointer' : 'not-allowed',
+                disabled={!(product.isAvailable && product.stock > 0)}
+                style={{
+                  flex: 1,
+                  padding: '1rem 2rem',
+                  backgroundColor: (product.isAvailable && product.stock > 0) ? (added ? '#1B5E20' : 'var(--brand-primary)') : '#EAE6DF',
+                  color: (product.isAvailable && product.stock > 0) ? '#FDFBF7' : '#9A9591',
+                  border: 'none',
+                  borderRadius: '50px',
+                  fontSize: '1.1rem',
+                  fontWeight: 600,
+                  cursor: (product.isAvailable && product.stock > 0) ? 'pointer' : 'not-allowed',
                   transition: 'all 0.2s ease',
                   letterSpacing: '0.5px'
                 }}
               >
-                {product.isAvailable ? (added ? '✓ Added to Cart' : 'Add to Cart') : 'Out of Stock'}
+                {(product.isAvailable && product.stock > 0) ? (added ? '✓ Added to Cart' : 'Add to Cart') : 'Out of Stock'}
               </button>
             </div>
 
@@ -205,9 +205,9 @@ export default function PDPClient({ product, recommendations }: { product: any, 
           <h2 style={{ fontFamily: 'var(--font-editorial)', fontSize: '2.5rem', color: 'var(--brand-primary)', marginBottom: '3rem', textAlign: 'center' }}>
             Customer Reviews
           </h2>
-          
+
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '4rem' }}>
-            
+
             {/* Reviews List */}
             <div style={{ order: 2 }}>
               {product.reviews && product.reviews.length > 0 ? (
@@ -238,7 +238,7 @@ export default function PDPClient({ product, recommendations }: { product: any, 
             <div style={{ order: 1 }}>
               <div style={{ backgroundColor: '#FDFBF7', padding: '2.5rem', borderRadius: '24px', border: '1px solid #EAE6DF', position: 'sticky', top: '120px' }}>
                 <h3 style={{ fontSize: '1.5rem', marginBottom: '2rem', color: '#3A3531', fontFamily: 'var(--font-editorial)' }}>Write a Review</h3>
-                
+
                 {reviewStatus?.success ? (
                   <div style={{ backgroundColor: '#E8F5E9', color: '#1B5E20', padding: '1.5rem', borderRadius: '12px', textAlign: 'center', fontWeight: 500 }}>
                     Thank you! Your review has been submitted and is pending approval.
@@ -251,7 +251,7 @@ export default function PDPClient({ product, recommendations }: { product: any, 
                     else setReviewStatus({ success: true });
                     setIsSubmittingReview(false);
                   }} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                    
+
                     {reviewStatus?.error && (
                       <div style={{ color: '#C62828', backgroundColor: '#FFEBEE', padding: '1rem', borderRadius: '12px', fontSize: '0.95rem' }}>
                         {reviewStatus.error}
@@ -262,7 +262,7 @@ export default function PDPClient({ product, recommendations }: { product: any, 
                       <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.95rem', color: '#4A4A4A', fontWeight: 500 }}>Name *</label>
                       <input type="text" name="authorName" required style={{ width: '100%', padding: '0.9rem', borderRadius: '12px', border: '1px solid #D6CFE6', fontSize: '1rem' }} />
                     </div>
-                    
+
                     <div>
                       <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.95rem', color: '#4A4A4A', fontWeight: 500 }}>Rating *</label>
                       <select name="rating" required style={{ width: '100%', padding: '0.9rem', borderRadius: '12px', border: '1px solid #D6CFE6', fontSize: '1rem', backgroundColor: '#fff' }}>
@@ -284,8 +284,8 @@ export default function PDPClient({ product, recommendations }: { product: any, 
                       <textarea name="content" required rows={4} style={{ width: '100%', padding: '0.9rem', borderRadius: '12px', border: '1px solid #D6CFE6', resize: 'vertical', fontSize: '1rem' }}></textarea>
                     </div>
 
-                    <button 
-                      type="submit" 
+                    <button
+                      type="submit"
                       disabled={isSubmittingReview}
                       style={{ padding: '1rem', backgroundColor: 'var(--brand-primary)', color: '#fff', border: 'none', borderRadius: '50px', cursor: isSubmittingReview ? 'not-allowed' : 'pointer', fontWeight: 600, marginTop: '1rem', fontSize: '1.05rem', transition: 'background-color 0.2s' }}
                     >
@@ -306,7 +306,7 @@ export default function PDPClient({ product, recommendations }: { product: any, 
             </h2>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '2rem' }}>
               {recommendations.map(rec => (
-                <ProductCard key={rec.id} id={rec.id} title={rec.name} price={rec.basePrice} salePrice={rec.isSaleEnabled ? rec.salePrice : null} imageUrl={rec.images?.[0] || '/hero-bouquet.png'} />
+                <ProductCard stock={rec.stock} isAvailable={rec.isAvailable} key={rec.id} id={rec.id} title={rec.name} price={rec.basePrice} salePrice={rec.isSaleEnabled ? rec.salePrice : null} imageUrl={rec.images?.[0] || '/hero-bouquet.png'} />
               ))}
             </div>
           </div>

@@ -1,4 +1,4 @@
-import { db, builderComponent, eq } from '@stemory/database';
+import { db, builderComponent, eq, and, sql } from '@stemory/database';
 import styles from './page.module.css';
 import BuilderFlow from './BuilderFlow';
 
@@ -14,12 +14,12 @@ const SECTION_TO_TYPE: Record<string, string> = {
 export default async function CustomBouquetPage() {
   const [components, settings] = await Promise.all([
     db.query.builderComponent.findMany({
-      where: eq(builderComponent.isAvailable, true)
+      where: and(eq(builderComponent.isAvailable, true), sql`${builderComponent.stock} >= GREATEST(1, ${builderComponent.minQuantity})`)
     }),
     db.query.siteSettings.findFirst(),
   ]);
 
-  const config = settings?.config as Record<string, any> | null;
+  const config = settings?.config as { builderSections?: Record<string, boolean>; customBouquetBaseFee?: number } | null;
   const builderSections: Record<string, boolean> = config?.builderSections ?? {};
 
   // Determine which steps are enabled (default: all enabled if no config)
@@ -37,7 +37,7 @@ export default async function CustomBouquetPage() {
     price: c.unitPrice,
     imageUrl: c.imageUrl,
     minQuantity: c.minQuantity,
-    maxQuantity: c.maxQuantity
+    maxQuantity: Math.min(c.maxQuantity ?? 100, c.stock, 100)
   });
 
   const itemsData: Record<string, ReturnType<typeof mapItem>[]> = {};
@@ -60,14 +60,14 @@ export default async function CustomBouquetPage() {
         <h1 className={styles.title}>Build Your Bouquet</h1>
         <p className={styles.subtitle}>Craft your perfect everlasting arrangement</p>
       </header>
-      
+
       {components.length === 0 ? (
         <div style={{ padding: '6rem 2rem', textAlign: 'center', maxWidth: '600px', margin: '0 auto' }}>
           <h2 style={{ fontFamily: 'var(--font-editorial)', fontSize: '2rem', color: '#3A3531', marginBottom: '1rem' }}>
             Custom Builder Unavailable
           </h2>
           <p style={{ color: '#7A7571', fontSize: '1.1rem', lineHeight: 1.6, marginBottom: '2rem' }}>
-            We are currently restocking our supply of raw materials for custom arrangements. 
+            We are currently restocking our supply of raw materials for custom arrangements.
             The builder will be back online as soon as our master florists restock!
           </p>
         </div>

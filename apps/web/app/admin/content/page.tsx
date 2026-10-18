@@ -1,10 +1,10 @@
+import { assertAdmin } from '@/lib/user-sync';
 import React from 'react';
 import { db, contentBlock, giftCard, promoCode } from '@stemory/database';
 import { desc } from 'drizzle-orm';
 import styles from '../dashboard.module.css';
 import { saveContentBlock } from './actions';
-import { PromoForm } from '../promotions/PromoForm';
-import { GiftCardForm } from '../promotions/GiftCardForm';
+import BenefitsManager from './BenefitsManager';
 
 type ContentBlockPayload = {
   title?: string;
@@ -33,6 +33,7 @@ const contentBlockIdeas = [
 ];
 
 export default async function AdminContentPage() {
+  await assertAdmin();
   const blocks = await db.query.contentBlock.findMany({
     orderBy: [desc(contentBlock.createdAt)],
   });
@@ -54,98 +55,7 @@ export default async function AdminContentPage() {
         </p>
       </header>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', alignItems: 'start', marginBottom: '2rem' }}>
-        <div className={styles.card}>
-          <h3 className={styles.cardTitle}>Promo codes</h3>
-          <PromoForm />
-          <table className={styles.table} style={{ marginTop: '1.5rem' }}>
-            <thead>
-              <tr>
-                <th>Code</th>
-                <th>Value</th>
-                <th>Usage</th>
-              </tr>
-            </thead>
-            <tbody>
-              {promos.map((promo) => (
-                <tr key={promo.id}>
-                  <td><strong>{promo.code}</strong></td>
-                  <td>{promo.type === 'PERCENTAGE' ? `${promo.value}%` : `${promo.value} MAD`}</td>
-                  <td>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      <span style={{ fontSize: '0.85rem', color: '#5A5551', fontWeight: 500 }}>
-                        {promo.usageLimit ? `${promo.usageCount} / ${promo.usageLimit}` : `${promo.usageCount} uses`}
-                        {!promo.usageLimit && <span style={{ marginLeft: '6px', padding: '2px 6px', backgroundColor: '#E3F2FD', color: '#0D47A1', borderRadius: '4px', fontSize: '0.75rem' }}>No limit</span>}
-                      </span>
-                      {promo.usageLimit ? (
-                        <div style={{ width: '100%', maxWidth: '120px', height: '6px', backgroundColor: '#F0EBE1', borderRadius: '3px', overflow: 'hidden' }}>
-                          <div style={{ width: `${Math.min(100, (promo.usageCount / promo.usageLimit) * 100)}%`, height: '100%', backgroundColor: 'var(--brand-primary)', borderRadius: '3px' }} />
-                        </div>
-                      ) : null}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {promos.length === 0 && (
-                <tr>
-                  <td colSpan={3} style={{ textAlign: 'center', padding: '2rem', color: '#7A7571' }}>No promo codes yet.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        <div className={styles.card}>
-          <h3 className={styles.cardTitle}>Gift cards</h3>
-          <GiftCardForm />
-          <table className={styles.table} style={{ marginTop: '1.5rem' }}>
-            <thead>
-              <tr>
-                <th>Code</th>
-                <th>Balance</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {giftCards.map((card) => (
-                <tr key={card.id}>
-                  <td><strong>{card.code}</strong></td>
-                  <td>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      <span style={{ fontSize: '0.85rem', color: '#5A5551', fontWeight: 500 }}>
-                        {card.currentBalance} / {card.initialBalance} MAD
-                      </span>
-                      <div style={{ width: '100%', maxWidth: '120px', height: '6px', backgroundColor: '#F0EBE1', borderRadius: '3px', overflow: 'hidden' }}>
-                        <div style={{ 
-                          width: `${Math.min(100, (card.currentBalance / Math.max(card.initialBalance, 1)) * 100)}%`, 
-                          height: '100%', 
-                          backgroundColor: (card.currentBalance / Math.max(card.initialBalance, 1)) < 0.2 ? '#D32F2F' : '#388E3C', 
-                          borderRadius: '3px',
-                          transition: 'width 0.3s ease'
-                        }} />
-                      </div>
-                    </div>
-                  </td>
-                  <td>
-                    <span style={{ 
-                      padding: '4px 10px', borderRadius: '99px', fontSize: '0.75rem', fontWeight: 600,
-                      backgroundColor: card.isActive ? '#E8F5E9' : '#FCE4EC',
-                      color: card.isActive ? '#1B5E20' : '#C2185B'
-                    }}>
-                      {card.isActive ? 'Active' : 'Disabled'}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-              {giftCards.length === 0 && (
-                <tr>
-                  <td colSpan={3} style={{ textAlign: 'center', padding: '2rem', color: '#7A7571' }}>No gift cards issued.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <BenefitsManager promos={promos} cards={giftCards} />
 
       <div className={styles.card}>
         <h3 className={styles.cardTitle}>Content blocks</h3>

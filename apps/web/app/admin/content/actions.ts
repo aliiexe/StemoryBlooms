@@ -28,7 +28,7 @@ export async function saveContentBlock(formData: FormData) {
     } else {
       await db.insert(contentBlock).values({ id: crypto.randomUUID(), key: identifier, content: payload, updatedAt: new Date() });
     }
-    
+
     revalidatePath('/admin/content');
     await recordAuditLog({
       action: id ? 'UPDATE' : 'CREATE',
@@ -66,7 +66,7 @@ export async function createPromoCode(formData: FormData) {
   const type = formData.get('type') as string;
   const value = parseIntegerInput(formData.get('value') as string | null);
   const usageLimitStr = formData.get('usageLimit') as string;
-  
+
   if (!code || !type || value === null) {
     return { error: 'Missing required fields' };
   }
@@ -106,7 +106,7 @@ export async function togglePromoCode(id: string, isActive: boolean) {
 export async function deletePromoCode(id: string) {
   await assertAdmin();
   try {
-    await db.delete(promoCode).where(eq(promoCode.id, id));
+    await db.update(promoCode).set({ isActive: false, updatedAt: new Date() }).where(eq(promoCode.id, id));
     revalidatePath('/admin/content');
     return { success: true };
   } catch (error) {

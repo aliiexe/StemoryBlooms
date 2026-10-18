@@ -2,141 +2,41 @@
 
 import { db, eq, material } from '@stemory/database';
 import { revalidatePath } from 'next/cache';
-import crypto from 'crypto';
-import { parseIntegerInput, parseOptionalDecimalInput } from '../../../lib/form-values';
-import { assertAdmin } from '../../../lib/user-sync';
+import { assertAdmin } from '@/lib/user-sync';
 import { recordAuditLog } from '@/lib/audit';
+import { saveInventoryMaterial, correctMaterial, purchaseMaterial } from '@/lib/commerce/inventory';
+import { publicError } from '@/lib/commerce/errors';
 
+function refreshInventory() { for (const path of ['/admin/inventory', '/admin/materials', '/admin/finances', '/admin']) revalidatePath(path); }
 export async function saveMaterial(formData: FormData) {
-  await assertAdmin();
-  const id = formData.get('id') as string;
-  const name = formData.get('name') as string;
-  const quantity = parseIntegerInput(formData.get('quantity') as string | null);
-  const cost = parseOptionalDecimalInput(formData.get('cost') as string | null);
-  const lowStockThreshold = parseIntegerInput(formData.get('lowStockThreshold') as string | null);
-
-  if (!name || quantity === null || cost === null) {
-    return { error: 'Name, valid quantity, and cost are required' };
-  }
-
+  const actor = await assertAdmin();
   try {
-    if (id) {
-      await db.update(material)
-        .set({ name, quantity, updatedAt: new Date(), cost, lowStockThreshold: lowStockThreshold === null ? null : lowStockThreshold })
-        .where(eq(material.id, id));
-    } else {
-      const newId = crypto.randomUUID();
-      await db.insert(material).values({
-        id: newId,
-        name, 
-        quantity, 
-        updatedAt: new Date(), 
-        cost,
-        lowStockThreshold: lowStockThreshold === null ? null : lowStockThreshold
-      });
-
-      if (quantity > 0) {
-        const { expense } = await import('@stemory/database');
-        const totalCost = quantity * cost;
-        await db.insert(expense).values({
-          id: crypto.randomUUID(),
-          amount: Math.round(totalCost),
-          description: `Initial stock: ${quantity}x ${name}`,
-          category: 'SUPPLIES',
-          relatedMaterialId: newId,
-          date: new Date(),
-          updatedAt: new Date()
-        });
-      }
-    }
-    
-    revalidatePath('/admin/materials');
-    revalidatePath('/admin/inventory');
-    revalidatePath('/admin/finances');
-    
-    await recordAuditLog({
-      action: id ? 'UPDATE' : 'CREATE',
-      target: 'MATERIAL',
-      summary: `${id ? 'Updated' : 'Created'} material "${name}"`,
-      details: { materialId: id, name, quantity, cost },
-    });
+    const nullableNumber = (name: string) => formData.get(name) === '' || formData.get(name) === null ? null : Number(formData.get(name));
+    const saved = await saveInventoryMaterial(formData.get('id')?.toString() || null, {
+      expectedQuantity: formData.has('expectedQuantity') ? Number(formData.get('expectedQuantity')) : undefined,
+      name: formData.get('name'), quantity: nullableNumber('quantity'), cost: nullableNumber('cost'),
+      lowStockThreshold: nullableNumber('lowStockThreshold'), supplierId: formData.get('supplierId')?.toString() || null,
+    }, actor.id);
+    refreshInventory();
+    await recordAuditLog({ action: 'SAVE', target: 'MATERIAL', summary: `Saved material ${saved.name}`, details: { materialId: saved.id } });
     return { success: true };
-  } catch (error) {
-    console.error(error);
-    return { error: 'Failed to save material' };
-  }
+  } catch (error) { return { error: publicError(error).message }; }
 }
-
 export async function deleteMaterial(id: string) {
   await assertAdmin();
   try {
-    await db.delete(material).where(eq(material.id, id));
-    revalidatePath('/admin/materials');
-    
-    await recordAuditLog({
-      action: 'DELETE',
-      target: 'MATERIAL',
-      summary: `Deleted material`,
-      details: { materialId: id },
-    });
+    await db.delete(material).where(eq(material.id, id)); refreshInventory();
+    await recordAuditLog({ action: 'DELETE', target: 'MATERIAL', summary: 'Deleted unused material', details: { materialId: id } });
     return { success: true };
-  } catch {
-    return { error: 'Failed to delete material' };
-  }
+  } catch { return { error: 'This material may have recipes or stock history. Retain it for those records.' }; }
 }
-
-export async function updateMaterialInline(id: string, updates: Partial<typeof material.$inferInsert>) {
-  await assertAdmin();
-  try {
-    await db.update(material).set({ ...updates, updatedAt: new Date() }).where(eq(material.id, id));
-    revalidatePath('/admin/materials');
-    
-    await recordAuditLog({
-      action: 'UPDATE',
-      target: 'MATERIAL',
-      summary: `Inline updated material`,
-      details: { materialId: id, updates },
-    });
-    return { success: true };
-  } catch (error) {
-    return { error: 'Failed to update material inline' };
-  }
+export async function updateMaterialInline(id: string, updates: unknown) {
+  const actor = await assertAdmin();
+  try { const saved = await correctMaterial(id, updates, actor.id); refreshInventory(); return { success: true, material: saved }; }
+  catch (error) { return { error: publicError(error).message }; }
 }
-
-export async function restockMaterial(id: string, restockQty: number) {
-  await assertAdmin();
-  try {
-    const { expense } = await import('@stemory/database');
-    const existing = await db.query.material.findFirst({ where: eq(material.id, id) });
-    if (!existing) return { error: 'Material not found' };
-
-    await db.update(material)
-      .set({ quantity: existing.quantity + restockQty, updatedAt: new Date() })
-      .where(eq(material.id, id));
-
-    const totalCost = restockQty * (existing.cost ?? 0);
-    
-    await db.insert(expense).values({
-      id: crypto.randomUUID(),
-      amount: Math.round(totalCost),
-      description: `Restock: ${restockQty}x ${existing.name}`,
-      category: 'SUPPLIES',
-      relatedMaterialId: existing.id,
-      date: new Date(),
-      updatedAt: new Date()
-    });
-
-    revalidatePath('/admin/materials');
-    revalidatePath('/admin/finances');
-    
-    await recordAuditLog({
-      action: 'UPDATE',
-      target: 'MATERIAL',
-      summary: `Restocked material by ${restockQty}`,
-      details: { materialId: id, restockQty },
-    });
-    return { success: true };
-  } catch (error) {
-    return { error: 'Failed to restock material' };
-  }
+export async function restockMaterial(id: string, quantity: number) {
+  const actor = await assertAdmin();
+  try { const saved = await purchaseMaterial(id, quantity, actor.id); refreshInventory(); return { success: true, material: saved }; }
+  catch (error) { return { error: publicError(error).message }; }
 }

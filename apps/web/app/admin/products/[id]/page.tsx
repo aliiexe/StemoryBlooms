@@ -1,3 +1,4 @@
+import { assertAdmin } from '@/lib/user-sync';
 import React from 'react';
 import { db } from '@stemory/database';
 import { notFound } from 'next/navigation';
@@ -5,18 +6,19 @@ import styles from '../../dashboard.module.css';
 import { ProductForm } from '../ProductForm';
 
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
+  await assertAdmin();
   const { id } = await params;
   const productRaw = await db.query.product.findFirst({
     where: (table, { eq }) => eq(table.id, id),
-    with: { 
+    with: {
       productMaterials: true,
       productBuilderComponents: true,
       categoryToProducts: true
     }
   });
 
-  const product = productRaw ? { 
-    ...productRaw, 
+  const product = productRaw ? {
+    ...productRaw,
     materials: productRaw.productMaterials,
     builderComponents: productRaw.productBuilderComponents,
     categories: productRaw.categoryToProducts.map(c => c.a)

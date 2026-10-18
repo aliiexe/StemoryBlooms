@@ -150,6 +150,7 @@ interface Props {
 export default function NewAssistedOrderForm({ products, components, deliveryZones, baseFee = 19 }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const attemptRef = useRef({ key: '', payload: '' });
 
   const [source, setSource] = useState('INSTAGRAM');
   const [customerName, setCustomerName] = useState('');
@@ -158,13 +159,13 @@ export default function NewAssistedOrderForm({ products, components, deliveryZon
   const [city, setCity] = useState('');
   const [address, setAddress] = useState('');
   const [notes, setNotes] = useState('');
-  
+
   const [deliveryZoneId, setDeliveryZoneId] = useState(deliveryZones[0]?.id || '');
   const [manualDiscount, setManualDiscount] = useState<number>(0);
-  
+
   const [promoCode, setPromoCode] = useState('');
   const [showPromoInput, setShowPromoInput] = useState(false);
-  
+
   const [isHandDelivered, setIsHandDelivered] = useState(false);
   const [items, setItems] = useState<OrderItemState[]>([
     { id: '1', productId: '', quantity: 1 }
@@ -261,7 +262,7 @@ export default function NewAssistedOrderForm({ products, components, deliveryZon
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (items.some(i => !i.productId || i.quantity < 1 || (i.productId === 'CUSTOM' && (!i.customName || (i.customPrice || 0) <= 0)))) {
       alert("Please ensure all items have a product (or Custom name/price) and a valid quantity.");
       return;
@@ -269,7 +270,9 @@ export default function NewAssistedOrderForm({ products, components, deliveryZon
 
     startTransition(async () => {
       try {
+        if (!attemptRef.current.key) attemptRef.current.key = `staff-${crypto.randomUUID()}`;
         const payload = {
+          idempotencyKey: attemptRef.current.key,
           source,
           customerName,
           phoneNumber,
@@ -288,10 +291,16 @@ export default function NewAssistedOrderForm({ products, components, deliveryZon
             customPrice: i.productId === 'CUSTOM' ? i.customPrice : undefined,
           }))
         };
+        const fingerprint = JSON.stringify({ ...payload, idempotencyKey: '' });
+        if (attemptRef.current.payload && attemptRef.current.payload !== fingerprint) {
+          attemptRef.current.key = `staff-${crypto.randomUUID()}`;
+          payload.idempotencyKey = attemptRef.current.key;
+        }
+        attemptRef.current.payload = fingerprint;
         const result = await createAssistedOrder(payload);
         if (result?.success && result.orderNumber) {
           localStorage.removeItem('assistedOrderDraft');
-          router.push(`/receipt/${result.orderNumber}`);
+          router.push(result.receiptUrl);
         } else {
           router.push('/admin/orders');
         }
@@ -304,20 +313,20 @@ export default function NewAssistedOrderForm({ products, components, deliveryZon
   return (
     <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       <style>{`
-        input[type="number"]::-webkit-inner-spin-button, 
-        input[type="number"]::-webkit-outer-spin-button { 
-          -webkit-appearance: none; 
-          margin: 0; 
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
         }
-        input[type="number"] { 
-          -moz-appearance: textfield; 
+        input[type="number"] {
+          -moz-appearance: textfield;
         }
       `}</style>
-      <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem', alignItems: 'start' }}>
-        
+      <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 400px), 1fr))', gap: '2rem', alignItems: 'start' }}>
+
         {/* LEFT COLUMN: Customer & Delivery */}
         <div className={styles.card} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%', boxSizing: 'border-box' }}>
-          
+
           <div>
             <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', borderBottom: '1px solid #EFEBE8', paddingBottom: '0.5rem', color: '#111827' }}>Order Source</h3>
             <div>
@@ -355,9 +364,9 @@ export default function NewAssistedOrderForm({ products, components, deliveryZon
 
           <div>
             <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', borderBottom: '1px solid #EFEBE8', paddingBottom: '0.5rem', color: '#111827' }}>Delivery Information</h3>
-            
+
             {source === 'IN_PERSON' && (
-              <div 
+              <div
                 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', userSelect: 'none' }}
                 onClick={() => setIsHandDelivered(!isHandDelivered)}
               >
@@ -382,16 +391,16 @@ export default function NewAssistedOrderForm({ products, components, deliveryZon
                 </div>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#374151', fontWeight: 500 }}>Delivery Zone *</label>
-                  <DeliveryZoneSelect 
-                    zones={deliveryZones} 
-                    value={deliveryZoneId} 
-                    onChange={setDeliveryZoneId} 
+                  <DeliveryZoneSelect
+                    zones={deliveryZones}
+                    value={deliveryZoneId}
+                    onChange={setDeliveryZoneId}
                     disabled={false}
                   />
                 </div>
               </div>
             )}
-            
+
             {!(source === 'IN_PERSON' && isHandDelivered) && (
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#374151', fontWeight: 500 }}>Address Line 1 *</label>
@@ -409,9 +418,9 @@ export default function NewAssistedOrderForm({ products, components, deliveryZon
 
         {/* RIGHT COLUMN: Items & Pricing */}
         <div className={styles.card} style={{ display: 'flex', flexDirection: 'column', width: '100%', boxSizing: 'border-box' }}>
-          
+
           <h3 style={{ fontSize: '1.1rem', marginBottom: '1.5rem', borderBottom: '1px solid #EFEBE8', paddingBottom: '0.5rem', color: '#111827' }}>Order Items</h3>
-          
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginBottom: '1.5rem' }}>
             {items.map((item, index) => (
               <div key={item.id} style={{ background: '#F9FAFB', padding: '1rem', borderRadius: '8px', border: '1px solid #E5E7EB' }}>
@@ -469,7 +478,7 @@ export default function NewAssistedOrderForm({ products, components, deliveryZon
               <span>Subtotal:</span>
               <span style={{ fontWeight: 600 }}>{subtotal} MAD</span>
             </div>
-            
+
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1rem', color: '#4B5563' }}>
               <span>Delivery Fee ({activeZone?.name || 'Select Zone'}):</span>
               <span style={{ fontWeight: 600 }}>+{deliveryFee} MAD</span>
@@ -479,35 +488,35 @@ export default function NewAssistedOrderForm({ products, components, deliveryZon
               <span style={{ fontSize: '1rem', color: '#4B5563' }}>Manual Discount:</span>
               <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #D1D5DB', borderRadius: '4px', overflow: 'hidden' }}>
                 <button type="button" onClick={() => adjustDiscount(-10)} style={{ padding: '0.5rem', background: '#F3F4F6', border: 'none', borderRight: '1px solid #D1D5DB', cursor: 'pointer' }}><Minus size={14} /></button>
-                <input 
-                  type="number" 
-                  min="0" 
-                  value={manualDiscount || ''} 
-                  onChange={e => setManualDiscount(parseInt(e.target.value) || 0)} 
-                  className={styles.input} 
-                  style={{ width: '80px', border: 'none', borderRadius: 0, textAlign: 'center', margin: 0, padding: '0.5rem' }} 
+                <input
+                  type="number"
+                  min="0"
+                  value={manualDiscount || ''}
+                  onChange={e => setManualDiscount(parseInt(e.target.value) || 0)}
+                  className={styles.input}
+                  style={{ width: '80px', border: 'none', borderRadius: 0, textAlign: 'center', margin: 0, padding: '0.5rem' }}
                 />
                 <button type="button" onClick={() => adjustDiscount(10)} style={{ padding: '0.5rem', background: '#F3F4F6', border: 'none', borderLeft: '1px solid #D1D5DB', cursor: 'pointer' }}><Plus size={14} /></button>
               </div>
             </div>
 
             <div style={{ marginTop: '0.5rem' }}>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => setShowPromoInput(!showPromoInput)}
                 style={{ background: 'none', border: 'none', color: '#2563EB', fontSize: '0.9rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', padding: 0 }}
               >
                 <Tag size={14} /> {showPromoInput ? 'Cancel Promo Code' : 'Add Promo Code'}
               </button>
-              
+
               {showPromoInput && (
                 <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                  <input 
-                    type="text" 
-                    value={promoCode} 
+                  <input
+                    type="text"
+                    value={promoCode}
                     onChange={e => setPromoCode(e.target.value.toUpperCase())}
-                    placeholder="Enter code..." 
-                    className={styles.input} 
+                    placeholder="Enter code..."
+                    className={styles.input}
                     style={{ flex: 1 }}
                   />
                   <span style={{ alignSelf: 'center', fontSize: '0.8rem', color: '#6B7280' }}>* Validated on save</span>

@@ -1,427 +1,103 @@
 'use server';
 
-import { db, eq, sql, promoCode as promoCodeTable, giftCard as giftCardTable, customer, order, orderItem, socialOrderMetadata, deliveryZone } from '@stemory/database';
+import { db, eq, sql, order } from '@stemory/database';
 import { revalidatePath } from 'next/cache';
-import { assertAdmin } from '../../../lib/user-sync';
+import { assertAdmin } from '@/lib/user-sync';
 import { recordAuditLog } from '@/lib/audit';
-import crypto from 'crypto';
-import { Resend } from 'resend';
-import { render } from '@react-email/render';
-import { OrderConfirmationTemplate } from '@/components/emails/OrderConfirmation';
-import { calculateOrderTotals } from '@/app/api/v1/orders/orderUtils';
-import { sendOrderToInfinidis, updateInfinidisState } from '@/lib/infinidis';
+import { createStaffOrder } from '@/lib/commerce/orders';
+import { transitionOrder, archiveOrder, recordCashCollection } from '@/lib/commerce/order-lifecycle';
+import { publicError } from '@/lib/commerce/errors';
+import { receiptUrl, type OrderAddress } from '@/lib/commerce/receipt-access';
+import { sendOrderToInfinidis } from '@/lib/infinidis';
+import { randomBytes } from 'node:crypto';
+import { AssistedOrderSchema } from '@stemory/contracts';
+import type { z } from 'zod';
+import { after } from 'next/server';
+import { processNotificationOutbox } from '@/lib/commerce/outbox';
 
-const resend = new Resend(process.env.RESEND_API_KEY || 're_mock_key');
+function refreshOrders() {
+  for (const path of ['/admin', '/admin/orders', '/admin/deliveries', '/admin/finances', '/admin/reports', '/shop']) revalidatePath(path);
+}
 
 export async function updateOrderStatus(orderId: string, status: string) {
-  await assertAdmin();
-  
-  const currentOrder = await db.query.order.findFirst({ where: eq(order.id, orderId) });
-  
-  // If transitioning to CANCELLED from another status, restock items
-  if (status === 'CANCELLED' && currentOrder?.status !== 'CANCELLED') {
-    const items = await db.query.orderItem.findMany({ where: eq(orderItem.orderId, orderId) });
-    for (const item of items) {
-      if (item.productId) {
-        await db.execute(
-          sql`UPDATE "Product" SET "stock" = "stock" + ${item.quantity}, "isAvailable" = true WHERE "id" = ${item.productId}`
-        );
-      } else if (item.configuration) {
-        for (const [cId, qty] of Object.entries(item.configuration as Record<string, number>)) {
-          const totalRestock = qty * item.quantity;
-          await db.execute(
-            sql`UPDATE "BuilderComponent" SET "stock" = "stock" + ${totalRestock}, "isAvailable" = true WHERE "id" = ${cId}`
-          );
-        }
-      }
-    }
-  } 
-  // If transitioning FROM CANCELLED back to a valid state, deduct stock again
-  else if (currentOrder?.status === 'CANCELLED' && status !== 'CANCELLED') {
-    const items = await db.query.orderItem.findMany({ where: eq(orderItem.orderId, orderId) });
-    for (const item of items) {
-      if (item.productId) {
-        await db.execute(
-          sql`UPDATE "Product" SET "stock" = GREATEST(0, "stock" - ${item.quantity}), "isAvailable" = CASE WHEN ("stock" - ${item.quantity}) > 0 THEN true ELSE false END WHERE "id" = ${item.productId}`
-        );
-      } else if (item.configuration) {
-        for (const [cId, qty] of Object.entries(item.configuration as Record<string, number>)) {
-          const totalDeduct = qty * item.quantity;
-          await db.execute(
-            sql`UPDATE "BuilderComponent" SET "stock" = GREATEST(0, "stock" - ${totalDeduct}), "isAvailable" = CASE WHEN ("stock" - ${totalDeduct}) > 0 THEN true ELSE false END WHERE "id" = ${cId}`
-          );
-        }
-      }
-    }
-  }
-
-  await db.update(order).set({ status, updatedAt: new Date() }).where(eq(order.id, orderId));
-  
-  if (currentOrder && (status === 'CANCELLED' || status === 'COMPLETED' || status === 'DELIVERED')) {
-    Promise.resolve().then(() => {
-      return updateInfinidisState(currentOrder.orderNumber, status);
-    }).catch(console.error);
-  }
-
-  revalidatePath('/admin/orders');
-  revalidatePath('/admin');
-  
-  await recordAuditLog({
-    action: 'UPDATE',
-    target: 'ORDER',
-    summary: `Updated order status to ${status}`,
-    details: { orderId, status },
-  });
-}
-
-export type AssistedOrderPayload = {
-  source: string;
-  customerName: string;
-  phoneNumber: string;
-  email?: string;
-  city: string;
-  address: string;
-  notes?: string;
-  deliveryZoneId?: string;
-  manualDiscount: number;
-  promoCode?: string;
-  isHandDelivered?: boolean;
-  items: { productId: string; quantity: number; customName?: string; customPrice?: number }[];
-};
-
-export async function createAssistedOrder(payload: AssistedOrderPayload) {
-  await assertAdmin();
-
-  const { source, customerName, phoneNumber, email, city, address, notes, deliveryZoneId, manualDiscount, promoCode, isHandDelivered, items } = payload;
-
-  if (items.length === 0) {
-    throw new Error('Order must contain at least one item');
-  }
-
-  // Auto-append phone number to address (if provided)
-  const fullAddress = isHandDelivered 
-    ? 'Hand Delivered' 
-    : (address ? `${address} - Tel: ${phoneNumber}` : '');
-
-  // 1. Fetch products
-  const productIds = items
-    .filter(i => i.productId !== 'CUSTOM' && !i.productId.startsWith('COMPONENT_'))
-    .map(i => i.productId);
-    
-  const componentIds = items
-    .filter(i => i.productId.startsWith('COMPONENT_'))
-    .map(i => i.productId.replace('COMPONENT_', ''));
-
-  const dbProducts = productIds.length > 0 ? await db.query.product.findMany({
-    where: (table, { inArray }) => inArray(table.id, productIds)
-  }) : [];
-  const productMap = new Map(dbProducts.map(p => [p.id, p]));
-  
-  const dbComponents = componentIds.length > 0 ? await db.query.builderComponent.findMany({
-    where: (table, { inArray }) => inArray(table.id, componentIds)
-  }) : [];
-  const componentMap = new Map(dbComponents.map(c => [c.id, c]));
-
-  // 2. Fetch delivery zone
-  let deliveryFee = 0;
-  if (isHandDelivered) {
-    deliveryFee = 0;
-  } else if (deliveryZoneId) {
-    const zone = await db.query.deliveryZone.findFirst({ where: eq(deliveryZone.id, deliveryZoneId) });
-    if (zone) deliveryFee = zone.fee;
-  } else {
-    // fallback default
-    const activeZone = await db.query.deliveryZone.findFirst({ where: (table, { eq }) => eq(table.isActive, true) });
-    if (activeZone) deliveryFee = activeZone.fee;
-  }
-
-  // 3. Calculate subtotal & build items list
-  let subtotal = 0;
-  const finalOrderItems = items.map(item => {
-    if (item.productId === 'CUSTOM') {
-      const price = item.customPrice || 0;
-      const name = item.customName || 'Custom Item';
-      subtotal += price * item.quantity;
-      return {
-        productId: null,
-        componentId: null,
-        configuration: null,
-        name,
-        quantity: item.quantity,
-        unitPrice: price,
-        totalPrice: price * item.quantity
-      };
-    } else if (item.productId.startsWith('COMPONENT_')) {
-      const compId = item.productId.replace('COMPONENT_', '');
-      const c = componentMap.get(compId);
-      if (!c) throw new Error(`Component not found: ${compId}`);
-      const price = c.unitPrice;
-      subtotal += price * item.quantity;
-      return {
-        productId: null,
-        componentId: c.id,
-        configuration: { [c.id]: 1 },
-        name: `[Element] ${c.name}`,
-        quantity: item.quantity,
-        unitPrice: price,
-        totalPrice: price * item.quantity
-      };
-    } else {
-      const p = productMap.get(item.productId);
-      if (!p) throw new Error(`Product not found: ${item.productId}`);
-      const price = p.salePrice ?? p.basePrice;
-      subtotal += price * item.quantity;
-      return {
-        productId: p.id,
-        componentId: null,
-        configuration: null,
-        name: p.name,
-        quantity: item.quantity,
-        unitPrice: price,
-        totalPrice: price * item.quantity
-      };
-    }
-  });
-
-  const hasComponents = items.some(item => item.productId.startsWith('COMPONENT_'));
-  if (hasComponents) {
-    const siteSettingsRecord = await db.query.siteSettings.findFirst();
-    const siteConfig = siteSettingsRecord?.config as any;
-    const baseFee = siteConfig?.customBouquetBaseFee ?? 19;
-    
-    subtotal += baseFee;
-    finalOrderItems.push({
-      productId: null,
-      componentId: null,
-      configuration: null,
-      name: '[Element] Base Packaging Fee',
-      quantity: 1,
-      unitPrice: baseFee,
-      totalPrice: baseFee
-    });
-  }
-
-  const createdOrderResult = await db.transaction(async (tx) => {
-    let promoDiscountAmount = 0;
-    let appliedPromoId: string | null = null;
-    let promoDetails: { type: 'PERCENTAGE' | 'FIXED'; value: number } | null = null;
-
-    if (promoCode) {
-      const dbPromo = await tx.query.promoCode.findFirst({
-        where: eq(promoCodeTable.code, promoCode.toUpperCase().trim())
-      });
-      if (!dbPromo || !dbPromo.isActive || (dbPromo.usageLimit && dbPromo.usageCount >= dbPromo.usageLimit)) {
-        throw new Error('Invalid or expired promo code');
-      }
-      appliedPromoId = dbPromo.id;
-      promoDetails = { type: dbPromo.type as 'PERCENTAGE' | 'FIXED', value: dbPromo.value };
-    }
-
-    const orderTotals = calculateOrderTotals({ subtotal, promoCode, promoDetails, deliveryFee });
-    promoDiscountAmount = orderTotals.discountAmount;
-
-    // Total discount is manual + promo
-    const totalDiscount = manualDiscount + promoDiscountAmount;
-    const total = Math.max(0, subtotal - totalDiscount) + deliveryFee;
-
-    // Upsert customer
-    const [dbCustomer] = await tx.insert(customer).values({
-      id: crypto.randomUUID(),
-      firstName: customerName,
-      lastName: '',
-      email: email || undefined,
-      phone: phoneNumber,
-      updatedAt: new Date()
-    }).onConflictDoUpdate({
-      target: customer.phone,
-      set: { firstName: customerName, email: email || undefined, updatedAt: new Date() }
-    }).returning({ id: customer.id });
-
-    const orderNumber = `AST-${Date.now().toString().slice(-6)}`;
-    
-    const [createdOrder] = await tx.insert(order).values({
-      id: crypto.randomUUID(),
-      orderNumber,
-      customerId: dbCustomer.id,
-      status: 'CONFIRMED', // Assisted orders start as CONFIRMED
-      source: source,
-      subtotal,
-      deliveryFee,
-      discount: totalDiscount,
-      total,
-      notes,
-      deliveryAddress: { city, addressLine1: fullAddress },
-      updatedAt: new Date()
-    }).returning({ id: order.id, orderNumber: order.orderNumber });
-
-    // Insert items & deduct stock
-    for (const item of finalOrderItems) {
-      await tx.insert(orderItem).values({
-        id: crypto.randomUUID(),
-        orderId: createdOrder.id,
-        productId: item.productId,
-        productName: item.name,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        totalPrice: item.totalPrice,
-        configuration: item.configuration,
-        updatedAt: new Date()
-      });
-
-      if (item.productId) {
-        await tx.execute(
-          sql`UPDATE "Product" SET "stock" = "stock" - ${item.quantity}, "isAvailable" = CASE WHEN ("stock" - ${item.quantity}) > 0 THEN true ELSE false END WHERE "id" = ${item.productId} AND "stock" >= ${item.quantity}`
-        );
-      } else if (item.componentId) {
-        await tx.execute(
-          sql`UPDATE "BuilderComponent" SET "stock" = "stock" - ${item.quantity}, "isAvailable" = CASE WHEN ("stock" - ${item.quantity}) > 0 THEN true ELSE false END WHERE "id" = ${item.componentId} AND "stock" >= ${item.quantity}`
-        );
-      }
-    }
-
-    if (appliedPromoId) {
-      await tx.execute(sql`UPDATE "PromoCode" SET "usageCount" = "usageCount" + 1, "updatedAt" = CURRENT_TIMESTAMP WHERE "id" = ${appliedPromoId} AND ("usageLimit" IS NULL OR "usageCount" < "usageLimit")`);
-    }
-
-    if (['INSTAGRAM', 'TIKTOK'].includes(source)) {
-      await tx.insert(socialOrderMetadata).values({
-        id: crypto.randomUUID(),
-        orderId: createdOrder.id,
-        handle: customerName,
-        platform: source
-      });
-    }
-
-    return { createdOrder, totalDiscount, total };
-  });
-
-  const { createdOrder, totalDiscount, total } = createdOrderResult;
-
-  // Send Email
+  const actor = await assertAdmin();
   try {
-    const html = await render(
-      OrderConfirmationTemplate({
-        customerName,
-        customerEmail: email || 'stemoryblooms@gmail.com', // fallback to default
-        orderNumber: createdOrder.orderNumber,
-        subtotal,
-        deliveryFee,
-        discount: totalDiscount,
-        total,
-        city,
-        address: fullAddress,
-        items: finalOrderItems.map(i => ({
-          name: i.name,
-          quantity: i.quantity,
-          price: i.unitPrice
-        })),
-      })
-    );
-    await resend.emails.send({
-      from: 'Stemory Blooms <onboarding@resend.dev>',
-      to: ['stemoryblooms@gmail.com'], // The user wanted it sent to the personal email they already have
-      subject: `🌸 New Assisted Order #${createdOrder.orderNumber} — ${customerName}`,
-      html,
-    });
-  } catch (e) {
-    console.error('Email send failed', e);
-  }
-
-  revalidatePath('/admin');
-  revalidatePath('/admin/orders');
-  
-  await recordAuditLog({
-    action: 'CREATE',
-    target: 'ORDER',
-    summary: `Created assisted order ${createdOrder.orderNumber}`,
-    details: { orderId: createdOrder.id, orderNumber: createdOrder.orderNumber, total },
-  });
-  
-  // Returning the orderNumber to redirect to receipt page
-  return { success: true, orderId: createdOrder.id, orderNumber: createdOrder.orderNumber };
+    await transitionOrder(orderId, status, actor.id);
+    after(() => processNotificationOutbox(2, orderId).catch(console.error));
+    refreshOrders();
+    revalidatePath(`/admin/orders/${orderId}`);
+    await recordAuditLog({ action: 'UPDATE', target: 'ORDER', summary: `Order status changed to ${status}`, details: { orderId, status } });
+    return { success: true };
+  } catch (error) { return { error: publicError(error).message }; }
 }
 
-export async function deleteOrder(orderId: string) {
+export type AssistedOrderPayload = z.infer<typeof AssistedOrderSchema>;
+
+export async function createAssistedOrder(payload: unknown) {
   await assertAdmin();
+  const created = await createStaffOrder(payload);
+  after(() => processNotificationOutbox(2, created.id).catch(console.error));
+  refreshOrders();
+  await recordAuditLog({ action: 'CREATE', target: 'ORDER', summary: `Created assisted order ${created.orderNumber}`, details: { orderId: created.id } });
+  return { success: true, orderId: created.id, orderNumber: created.orderNumber, receiptUrl: created.receiptUrl };
+}
 
-  // Restock items if the order wasn't already CANCELLED
-  const currentOrder = await db.query.order.findFirst({ where: eq(order.id, orderId) });
-  if (currentOrder && currentOrder.status !== 'CANCELLED') {
-    const items = await db.query.orderItem.findMany({ where: eq(orderItem.orderId, orderId) });
-    for (const item of items) {
-      if (item.productId) {
-        await db.execute(
-          sql`UPDATE "Product" SET "stock" = "stock" + ${item.quantity}, "isAvailable" = true WHERE "id" = ${item.productId}`
-        );
-      } else if (item.configuration) {
-        for (const [cId, qty] of Object.entries(item.configuration as Record<string, number>)) {
-          const totalRestock = qty * item.quantity;
-          await db.execute(
-            sql`UPDATE "BuilderComponent" SET "stock" = "stock" + ${totalRestock}, "isAvailable" = true WHERE "id" = ${cId}`
-          );
-        }
-      }
-    }
-  }
+// Retain the exported action name for existing clients; business records are archived, never destroyed.
+export async function deleteOrder(orderId: string) {
+  const actor = await assertAdmin();
+  try {
+    await archiveOrder(orderId, actor.id);
+    refreshOrders();
+    await recordAuditLog({ action: 'ARCHIVE', target: 'ORDER', summary: 'Archived order; financial and stock records retained', details: { orderId } });
+    return { success: true };
+  } catch (error) { return { error: publicError(error).message }; }
+}
 
-  // Delete related data first
-  await db.delete(orderItem).where(eq(orderItem.orderId, orderId));
-  await db.delete(socialOrderMetadata).where(eq(socialOrderMetadata.orderId, orderId));
-  
-  // Then delete the order itself
-  await db.delete(order).where(eq(order.id, orderId));
+export async function recordOrderPayment(orderId: string) {
+  const actor = await assertAdmin();
+  try {
+    await recordCashCollection(orderId, actor.id);
+    refreshOrders();
+    revalidatePath(`/admin/orders/${orderId}`);
+    await recordAuditLog({ action: 'UPDATE', target: 'PAYMENT', summary: 'Recorded cash collected', details: { orderId } });
+    return { success: true };
+  } catch (error) { return { error: publicError(error).message }; }
+}
 
-  revalidatePath('/admin/orders');
-  revalidatePath('/admin');
-  
-  await recordAuditLog({
-    action: 'DELETE',
-    target: 'ORDER',
-    summary: `Deleted order`,
-    details: { orderId },
+export async function rotateReceiptLink(orderId: string) {
+  await assertAdmin();
+  const url = await db.transaction(async tx => {
+    const [current] = await tx.select().from(order).where(eq(order.id, orderId)).for('update');
+    if (!current) throw new Error('Order not found.');
+    const address = { ...current.deliveryAddress as OrderAddress, receiptNonce: randomBytes(32).toString('hex') };
+    await tx.update(order).set({ deliveryAddress: address, updatedAt: new Date() }).where(eq(order.id, orderId));
+    return receiptUrl(current.orderNumber, address);
   });
-  
-  return { success: true };
+  await recordAuditLog({ action: 'UPDATE', target: 'RECEIPT_ACCESS', summary: 'Rotated guest receipt link; previous link revoked', details: { orderId } });
+  return { url };
 }
 
 export async function pushOrderToInfinidis(orderId: string) {
   await assertAdmin();
-
-  const o = await db.query.order.findFirst({
-    where: eq(order.id, orderId),
-    with: {
-      customer: true,
-      orderItems: true
-    }
-  });
-
-  if (!o) return { success: false, error: 'Order not found' };
-  if (o.sentToInfinidis) return { success: false, error: 'Order already sent to Infinidis' };
-
-  const totalQty = o.orderItems.reduce((acc, item) => acc + item.quantity, 0);
-  const productSummary = o.orderItems.map(i => `${i.quantity}x ${i.productName}`).join(', ');
-
-  const addressData = o.deliveryAddress as any;
-  const city = addressData?.city || 'Casablanca';
-  const addressLine = addressData?.addressLine1 || '';
-
-  const success = await sendOrderToInfinidis({
-    fullname: o.customer.firstName + (o.customer.lastName ? ' ' + o.customer.lastName : ''),
-    code: o.orderNumber,
-    product: productSummary,
-    qty: totalQty,
-    phone: o.customer.phone,
-    address: addressLine,
-    city: city,
-    price: o.total,
-    note: o.notes || undefined,
-  });
-
-  if (success) {
-    await db.update(order).set({ sentToInfinidis: true }).where(eq(order.id, orderId));
-    revalidatePath('/admin/orders');
-    return { success: true };
-  } else {
-    return { success: false, error: 'Failed to send to Infinidis API. Check logs.' };
-  }
+  try {
+    const result = await db.transaction(async tx => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`dispatch:${orderId}`}, 0))`);
+      await tx.select({ id: order.id }).from(order).where(eq(order.id, orderId)).for('update');
+      const current = await tx.query.order.findFirst({ where: eq(order.id, orderId), with: { customer: true, orderItems: true } });
+      if (!current) return { success: false, error: 'Order not found.' };
+      if (current.sentToInfinidis) return { success: false, error: 'This order has already been sent to the carrier.' };
+      const address = current.deliveryAddress as OrderAddress;
+      if (address.archivedAt || current.status !== 'READY') return { success: false, error: 'Only ready orders can be dispatched.' };
+      const buyer = address.customerSnapshot || current.customer;
+      const success = await sendOrderToInfinidis({ fullname: `${buyer.firstName} ${buyer.lastName}`.trim(),
+        code: current.orderNumber, product: current.orderItems.map(item => `${item.quantity}x ${item.productName}`).join(', '),
+        qty: current.orderItems.reduce((sum, item) => sum + item.quantity, 0), phone: buyer.phone,
+        address: address.addressLine1 || '', city: address.city || '', price: current.total, note: current.notes || undefined });
+      if (!success) return { success: false, error: 'The carrier did not confirm this order. Review the carrier dashboard before retrying.' };
+      await tx.update(order).set({ sentToInfinidis: true, updatedAt: new Date() }).where(eq(order.id, orderId));
+      return { success: true };
+    });
+    refreshOrders();
+    return result;
+  } catch { return { success: false, error: 'Dispatch could not be confirmed. Check the carrier dashboard before retrying.' }; }
 }

@@ -1,225 +1,58 @@
-import React from 'react';
-import { db, order, product } from '@stemory/database';
-import { eq } from 'drizzle-orm';
+import { assertAdmin } from '@/lib/user-sync';
+import { db, eq, inArray, order, product, builderComponent } from '@stemory/database';
 import { notFound } from 'next/navigation';
-import styles from '../../dashboard.module.css';
 import Link from 'next/link';
-import { ArrowLeft, User, MapPin, CreditCard, Box } from 'lucide-react';
+import styles from '../../dashboard.module.css';
 import { OrderActions } from '../OrderActions';
 import DeleteOrderButton from './DeleteOrderButton';
+import PaymentActions from './PaymentActions';
+import type { OrderAddress } from '@/lib/commerce/receipt-access';
+import { ORDER_STATUS_LABELS } from '@/lib/commerce/order-status';
 
 export default async function OrderDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+  await assertAdmin();
   const { id } = await params;
-  const o = await db.query.order.findFirst({
-    where: eq(order.id, id),
-    with: { 
-      customer: true,
-      orderItems: true
-    }
-  });
-
-  if (!o) {
-    notFound();
-  }
-
-  // Fetch product images for order items
-  const itemsWithImages = await Promise.all(o.orderItems.map(async (item) => {
-    let imageUrl: string | null = null;
-    
-    // Check if it's a custom bouquet with an image in configuration
-    const config = item.configuration as any;
-    if (config?.image) {
-      imageUrl = config.image;
-    } else if (item.productId) {
-      // Fetch product to get its main image
-      const prod = await db.query.product.findFirst({
-        where: eq(product.id, item.productId)
-      });
-      if (prod?.images && prod.images.length > 0) {
-        imageUrl = prod.images[0];
-      }
-    }
-    
-    return {
-      ...item,
-      imageUrl
-    };
-  }));
-
-  const address = o.deliveryAddress as any;
-  const addressString = address 
-    ? `${address.addressLine1 || ''} ${address.addressLine2 || ''}, ${address.city || ''}, ${address.postalCode || ''}`.trim().replace(/^[,\s]+|[,\s]+$/g, '')
-    : 'No address provided';
-
-  return (
-    <div className={styles.dashboard}>
-      <header className={styles.pageHeader}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-            <Link href="/admin/orders" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.9rem' }}>
-              <ArrowLeft size={16} style={{ marginRight: '4px' }} />
-              Back to Orders
-            </Link>
-          </div>
-          <h1 className={styles.pageTitle}>Order #{o.orderNumber}</h1>
-          <p className={styles.pageSubtitle}>Placed on {new Date(o.createdAt).toLocaleString()}</p>
-        </div>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <OrderActions orderId={o.id} currentStatus={o.status} sentToInfinidis={o.sentToInfinidis} />
-          <DeleteOrderButton orderId={o.id} />
-        </div>
-      </header>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '1.5rem', alignItems: 'start' }}>
-        
-        {/* Left Column: Items */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <div className={styles.card}>
-            <div className={styles.sectionHeader}>
-              <h2 className={styles.sectionTitle}>Order Items</h2>
-              <span className={styles.sectionHint}>{itemsWithImages.length} items</span>
-            </div>
-            <div style={{ padding: '0 1.5rem 1.5rem 1.5rem' }}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th>Product</th>
-                    <th>Price</th>
-                    <th>Qty</th>
-                    <th>Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {itemsWithImages.map((item) => (
-                    <tr key={item.id}>
-                      <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                          <div style={{ width: '48px', height: '48px', borderRadius: '6px', backgroundColor: '#F3F4F6', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            {item.imageUrl ? (
-                              <img src={item.imageUrl} alt={item.productName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            ) : (
-                              <Box size={20} color="#9CA3AF" />
-                            )}
-                          </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                            <span style={{ fontWeight: 500 }}>{item.productName}</span>
-                            {item.configuration && (item.configuration as any).color && (
-                              <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Color: {(item.configuration as any).color}</span>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td>{item.unitPrice} MAD</td>
-                      <td>{item.quantity}</td>
-                      <td style={{ fontWeight: 600 }}>{item.totalPrice} MAD</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              <div style={{ marginTop: '2rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '300px', marginLeft: 'auto' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
-                  <span>Subtotal</span>
-                  <span>{o.subtotal} MAD</span>
-                </div>
-                {o.discount > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#B42318' }}>
-                    <span>Discount</span>
-                    <span>-{o.discount} MAD</span>
-                  </div>
-                )}
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, fontSize: '1.1rem', paddingTop: '0.75rem', borderTop: '1px solid #E5E7EB', marginTop: '0.25rem' }}>
-                  <span>Total</span>
-                  <span>{Math.max(0, o.total - o.deliveryFee)} MAD</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Column: Customer & Details */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          
-          {/* Customer Card */}
-          <div className={styles.card}>
-            <div className={styles.sectionHeader} style={{ paddingBottom: '1rem', borderBottom: '1px solid #F3F4F6' }}>
-              <h2 className={styles.sectionTitle} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <User size={18} /> Customer Info
-              </h2>
-            </div>
-            <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div>
-                <div style={{ fontWeight: 600, marginBottom: '2px' }}>
-                  {o.customer ? `${o.customer.firstName} ${o.customer.lastName}` : 'Guest Customer'}
-                </div>
-                {o.customer?.email && <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{o.customer.email}</div>}
-                {o.customer?.phone && <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{o.customer.phone}</div>}
-              </div>
-              
-              {o.customer?.socialHandle && (
-                <div style={{ paddingTop: '1rem', borderTop: '1px solid #F3F4F6' }}>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Social</div>
-                  <div style={{ fontSize: '0.9rem' }}>{o.customer.socialHandle}</div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Delivery Card */}
-          <div className={styles.card}>
-            <div className={styles.sectionHeader} style={{ paddingBottom: '1rem', borderBottom: '1px solid #F3F4F6' }}>
-              <h2 className={styles.sectionTitle} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <MapPin size={18} /> Delivery
-              </h2>
-            </div>
-            <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Address</div>
-                <div style={{ fontSize: '0.9rem', lineHeight: '1.5' }}>{addressString || 'N/A'}</div>
-              </div>
-              
-              {address?.phone && (
-                <div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Delivery Phone</div>
-                  <div style={{ fontSize: '0.9rem' }}>{address.phone}</div>
-                </div>
-              )}
-              
-              {o.notes && (
-                <div style={{ paddingTop: '1rem', borderTop: '1px solid #F3F4F6' }}>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Order Notes</div>
-                  <div style={{ fontSize: '0.9rem', backgroundColor: '#F9FAFB', padding: '0.75rem', borderRadius: '6px' }}>{o.notes}</div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Payment Card */}
-          <div className={styles.card}>
-            <div className={styles.sectionHeader} style={{ paddingBottom: '1rem', borderBottom: '1px solid #F3F4F6' }}>
-              <h2 className={styles.sectionTitle} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <CreditCard size={18} /> Payment
-              </h2>
-            </div>
-            <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Status</span>
-                <span className={styles.badge} style={{ 
-                  backgroundColor: o.paymentStatus === 'PAID' ? '#E8F5E9' : '#FDECEC', 
-                  color: o.paymentStatus === 'PAID' ? '#067647' : '#B42318' 
-                }}>
-                  {o.paymentStatus}
-                </span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Method</span>
-                <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{o.source || 'Online'}</span>
-              </div>
-            </div>
-          </div>
-
-        </div>
+  const current = await db.query.order.findFirst({ where: eq(order.id, id), with: { customer: true, orderItems: true, orderStatusHistories: true, paymentStatusHistories: true } });
+  if (!current) notFound();
+  const address = current.deliveryAddress as OrderAddress;
+  const buyer = address.customerSnapshot || current.customer;
+  const productIds = current.orderItems.flatMap(item => item.productId ? [item.productId] : []);
+  const products = productIds.length ? await db.select({ id: product.id, images: product.images }).from(product).where(inArray(product.id, productIds)) : [];
+  const components = await db.select({ id: builderComponent.id, name: builderComponent.name }).from(builderComponent);
+  const money = (amount: number) => `${amount.toLocaleString('en-MA', { maximumFractionDigits: 2 })} MAD`;
+  const date = (value: Date) => new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Africa/Casablanca' }).format(value);
+  return <div className={styles.dashboard}>
+    <header className={styles.pageHeader}><div><Link href="/admin/orders">← Back to orders</Link><h1 className={styles.pageTitle}>Order {current.orderNumber}</h1><p>{date(current.createdAt)} · {current.source}{address.archivedAt ? ' · Archived' : ''}</p></div>
+      {!address.archivedAt && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}><OrderActions orderId={id} currentStatus={current.status} sentToInfinidis={current.sentToInfinidis} /><DeleteOrderButton orderId={id} /></div>}
+    </header>
+    <div className={styles.orderDetailGrid}>
+      <div style={{ display: 'grid', gap: 24 }}>
+        <section className={styles.card} style={{ padding: '1.25rem' }}><h2>Order items</h2>
+          {current.orderItems.map(item => {
+            const config = item.configuration as { components?: Record<string, number>; componentNames?: Record<string, string>; cardMessage?: string } | null;
+            const image = products.find(value => value.id === item.productId)?.images?.[0];
+            return <article key={item.id} style={{ padding: '1rem 0', borderBottom: '1px solid #EAE6DF' }}>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'start' }}>{image && <img src={image} alt="" width={56} height={56} style={{ objectFit: 'cover', borderRadius: 8 }} />}<div style={{ minWidth: 0 }}><strong>{item.productName}</strong><p>{item.quantity} × {money(item.unitPrice)} = {money(item.totalPrice)}</p></div></div>
+              {config?.components && <ul>{Object.entries(config.components).map(([componentId, quantity]) => <li key={componentId}>{quantity} × {config.componentNames?.[componentId] || components.find(value => value.id === componentId)?.name || 'Archived component'}</li>)}</ul>}
+              {config?.cardMessage && <p><strong>Card message:</strong> {config.cardMessage}</p>}
+            </article>;
+          })}
+          <dl style={{ marginTop: 24 }}><div className={styles.summaryLine}><dt>Merchandise subtotal</dt><dd>{money(current.subtotal)}</dd></div>
+            <div className={styles.summaryLine}><dt>Discounts and gift credit</dt><dd>−{money(current.discount)}</dd></div>
+            <div className={styles.summaryLine}><dt>Delivery fee</dt><dd>{money(current.deliveryFee)}</dd></div>
+            <div className={styles.summaryLine}><dt><strong>Order total</strong></dt><dd><strong>{money(current.total)}</strong></dd></div></dl>
+        </section>
+        <section className={styles.card} style={{ padding: '1.25rem' }}><h2>Order history</h2>
+          {current.orderStatusHistories.length ? <ol>{current.orderStatusHistories.sort((a,b) => a.createdAt.getTime() - b.createdAt.getTime()).map(event => <li key={event.id}><strong>{ORDER_STATUS_LABELS[event.status] || event.status}</strong> — {date(event.createdAt)}{event.note && <p>{event.note}</p>}</li>)}</ol> : <p>No status events were recorded for this older order.</p>}
+          {current.paymentStatusHistories.length > 0 && <><h3>Payment events</h3><ul>{current.paymentStatusHistories.map(event => <li key={event.id}>{event.status} — {date(event.createdAt)}</li>)}</ul></>}
+        </section>
+      </div>
+      <div style={{ display: 'grid', gap: 24 }}>
+        <section className={styles.card} style={{ padding: '1.25rem', overflowWrap: 'anywhere' }}><h2>Customer</h2><strong>{buyer.firstName} {buyer.lastName}</strong><p><a href={`tel:${buyer.phone}`}>{buyer.phone}</a></p>{buyer.email && <a href={`mailto:${buyer.email}`}>{buyer.email}</a>}</section>
+        <section className={styles.card} style={{ padding: '1.25rem', overflowWrap: 'anywhere' }}><h2>Delivery</h2><p>{address.addressLine1}</p><p>{address.city}</p>{address.deliveryEstimate && <p>{address.deliveryEstimate}</p>}{current.notes && <><h3>Notes</h3><p style={{ whiteSpace: 'pre-wrap' }}>{current.notes}</p></>}</section>
+        <section className={styles.card} style={{ padding: '1.25rem' }}><h2>Payment</h2><p>{current.paymentStatus === 'PAID' ? 'Cash collection recorded' : 'Awaiting cash collection'}</p><p>Cash on delivery · {money(current.total)}</p>{!address.archivedAt && <PaymentActions orderId={id} paid={current.paymentStatus === 'PAID'} delivered={['DELIVERED', 'COMPLETED'].includes(current.status)} />}</section>
+        <Link href={`/receipt/${encodeURIComponent(current.orderNumber)}`}>View private receipt</Link>
       </div>
     </div>
-  );
+  </div>;
 }

@@ -18,10 +18,10 @@ export const Header: React.FC<HeaderProps> = ({ authSlot }) => {
   const [searchValue, setSearchValue] = useState('');
   const router = useRouter();
   const searchInputRef = useRef<HTMLInputElement>(null);
-  
+
   // Zustand Cart Store
   const { items, isCartOpen, toggleCart, removeItem, updateQuantity } = useCartStore();
-  
+
   useEffect(() => {
     if (isCartOpen || isMobileNavOpen || isSearchOpen) {
       document.body.style.overflow = 'hidden';
@@ -83,7 +83,7 @@ export const Header: React.FC<HeaderProps> = ({ authSlot }) => {
           </button>
 
           {authSlot || (
-            <Link href="/sign-in" className={styles.iconBtn} aria-label="Account">
+            <Link href="/account" className={styles.iconBtn} aria-label="My orders">
               <User size={18} strokeWidth={1.5} />
             </Link>
           )}
@@ -207,7 +207,7 @@ export const Header: React.FC<HeaderProps> = ({ authSlot }) => {
                   <X size={22} />
                 </button>
               </div>
-              
+
               {items.length === 0 ? (
                 <div className={styles.cartEmpty}>
                   <ShoppingCart size={40} strokeWidth={1} style={{ opacity: 0.4 }} />
@@ -241,7 +241,7 @@ export const Header: React.FC<HeaderProps> = ({ authSlot }) => {
                       </div>
                     ))}
                   </div>
-                  
+
                   <div className={styles.cartFooter}>
                     <div className={styles.cartSubtotal}>
                       <span>Subtotal</span>
@@ -251,7 +251,7 @@ export const Header: React.FC<HeaderProps> = ({ authSlot }) => {
                       <strong>Made to Order:</strong> Allow 2-3 days for production plus delivery time.
                     </p>
                     <p className={styles.shippingNotice}>Shipping & taxes calculated at checkout</p>
-                    <a 
+                    <a
                       href="/checkout"
                       className={styles.checkoutBtn}
                       onClick={() => {

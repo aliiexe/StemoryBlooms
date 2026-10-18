@@ -3,7 +3,7 @@
 import React, {  useState, useTransition  } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { updateMaterialInline, deleteMaterial, restockMaterial } from '../materials/actions';
-import { backfillProductMaterialDeductions } from '../products/actions';
+import { useRouter } from 'next/navigation';
 import styles from '../dashboard.module.css';
 import { MaterialModal } from './MaterialModal';
 import { usePagination } from '../components/usePagination';
@@ -30,10 +30,9 @@ interface Props {
 export function InventoryTableClient({ initialMaterials, suppliers }: Props) {
 
   const [materials, setMaterials] = useState(initialMaterials);
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [backfilling, setBackfilling] = useState(false);
-  const [showBackfillConfirm, setShowBackfillConfirm] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [restockingId, setRestockingId] = useState<string | null>(null);
   const [restockQty, setRestockQty] = useState(1);
@@ -41,35 +40,24 @@ export function InventoryTableClient({ initialMaterials, suppliers }: Props) {
   const { page, setPage, rowsPerPage, setRowsPerPage, totalPages, paginatedItems, totalItems } = usePagination(materials, 10);
 
   async function handleRestock(m: Material) {
-    if (restockQty <= 0) return;
-    const newQty = m.quantity + restockQty;
-    setMaterials(current => current.map(x => x.id === m.id ? { ...x, quantity: newQty } : x));
-    setRestockingId(null);
-    setRestockQty(1);
-    const res = await restockMaterial(m.id, restockQty);
-    if (res?.error) toast.error(res.error);
-    else toast.success(`Restocked ${restockQty}x ${m.name}`);
-  }
-
-  async function executeBackfill() {
-    setShowBackfillConfirm(false);
-    setBackfilling(true);
-    const result = await backfillProductMaterialDeductions();
-    setBackfilling(false);
-    toast.success(`Done. Deducted materials for ${result.deducted} product-material link(s).`);
+    const quantity = restockQty;
+    if (!Number.isInteger(quantity) || quantity <= 0) return;
+    const result = await restockMaterial(m.id, quantity);
+    if (result.error) toast.error(result.error);
+    else { setRestockingId(null); setRestockQty(1); toast.success(`Restocked ${quantity}× ${m.name}`); router.refresh(); }
   }
 
   const [error, setError] = useState<string | null>(null);
 
   const handleUpdate = (id: string, updates: Partial<Material>) => {
-    // Optimistic UI update
+    const previous = materials.find(m => m.id === id);
     setMaterials(current =>
       current.map(m => (m.id === id ? { ...m, ...updates } : m))
     );
     startTransition(async () => {
-      const res = await updateMaterialInline(id, updates);
-      if (res?.error) toast.error(res.error);
-      else toast.success('Material updated');
+      const res = await updateMaterialInline(id, { ...updates, ...(updates.quantity !== undefined ? { expectedQuantity: previous?.quantity } : {}) });
+      if (res?.error) { if (previous) setMaterials(current => current.map(m => m.id === id ? previous : m)); toast.error(res.error); }
+      else { toast.success('Material updated'); router.refresh(); }
     });
   };
 
@@ -91,15 +79,8 @@ export function InventoryTableClient({ initialMaterials, suppliers }: Props) {
         <span>{error}</span>
         <button onClick={() => setError(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#C62828' }}>✕</button>
       </div>}
-      
+
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginBottom: '1rem' }}>
-        <button
-          onClick={() => setShowBackfillConfirm(true)}
-          disabled={backfilling}
-          style={{ padding: '0.6rem 1.25rem', borderRadius: '8px', border: 'none', backgroundColor: '#F0F4FF', color: '#3451B2', fontWeight: 600, cursor: backfilling ? 'not-allowed' : 'pointer', fontSize: '0.9rem' }}
-        >
-          {backfilling ? 'Running...' : '🔄 Run Auto-Deduct (Backfill)'}
-        </button>
         <button
           onClick={() => setIsModalOpen(true)}
           style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', border: 'none', backgroundColor: 'var(--brand-primary)', color: '#fff', cursor: 'pointer', fontWeight: 500 }}
@@ -223,18 +204,18 @@ export function InventoryTableClient({ initialMaterials, suppliers }: Props) {
             )}
           </tbody>
         </table>
-        <TablePagination 
-          page={page} 
-          totalPages={totalPages} 
-          totalItems={totalItems} 
-          rowsPerPage={rowsPerPage} 
-          onPageChange={setPage} 
-          onRowsPerPageChange={setRowsPerPage} 
+        <TablePagination
+          page={page}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          rowsPerPage={rowsPerPage}
+          onPageChange={setPage}
+          onRowsPerPageChange={setRowsPerPage}
         />
       </div>
 
       <MaterialModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} suppliers={suppliers} />
-      
+
       <ConfirmModal
         isOpen={!!itemToDelete}
         title="Delete Material"

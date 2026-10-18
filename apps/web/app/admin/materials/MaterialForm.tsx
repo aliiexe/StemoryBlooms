@@ -34,7 +34,7 @@ export function MaterialForm({ material, onSaved }: { material?: MaterialFormVal
 
   return (
     <>
-      <form 
+      <form
         action={async (formData) => {
           setIsSubmitting(true);
           const res = await saveMaterial(formData);
@@ -50,66 +50,66 @@ export function MaterialForm({ material, onSaved }: { material?: MaterialFormVal
         style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
       >
         {error && <div style={{ color: '#C62828', fontSize: '0.9rem' }}>{error}</div>}
-        
-        {material?.id && <input type="hidden" name="id" value={material.id} />}
+
+        {material?.id && <><input type="hidden" name="id" value={material.id} /><input type="hidden" name="expectedQuantity" value={material.quantity ?? 0} /></>}
 
         <div>
           <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem' }}>Name</label>
-          <input 
-            type="text" 
-            name="name" 
-            defaultValue={material?.name || ''} 
-            required 
-            style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #D6CFE6' }} 
+          <input
+            type="text"
+            name="name"
+            defaultValue={material?.name || ''}
+            required
+            style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #D6CFE6' }}
           />
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
           <div>
             <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem' }}>Quantity</label>
-            <input 
-              type="number" 
-              name="quantity" 
-              defaultValue={material?.quantity ?? 0} 
-              required 
-              style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #D6CFE6' }} 
+            <input
+              type="number"
+              name="quantity"
+              defaultValue={material?.quantity ?? 0}
+              required
+              style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #D6CFE6' }}
             />
           </div>
           <div>
             <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem' }}>Cost (MAD)</label>
-            <input 
-              type="number" 
-              step="0.01" 
-              name="cost" 
-              defaultValue={material?.cost || ''} 
-              style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #D6CFE6' }} 
+            <input
+              type="number"
+              step="0.01"
+              name="cost"
+              defaultValue={material?.cost || ''}
+              style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #D6CFE6' }}
             />
           </div>
         </div>
 
         <div>
           <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem' }}>Low Stock Alert Threshold</label>
-          <input 
-            type="number" 
-            name="lowStockThreshold" 
+          <input
+            type="number"
+            name="lowStockThreshold"
             placeholder="e.g. 10"
-            defaultValue={material?.lowStockThreshold || ''} 
-            style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #D6CFE6' }} 
+            defaultValue={material?.lowStockThreshold || ''}
+            style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #D6CFE6' }}
           />
         </div>
 
         <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             disabled={isSubmitting}
-            className={styles.submitBtn} 
+            className={styles.submitBtn}
             style={{ flex: 1, padding: '0.5rem', margin: 0 }}
           >
             {isSubmitting ? 'Saving...' : 'Save'}
           </button>
           {material?.id && (
-            <button 
-              type="button" 
+            <button
+              type="button"
               onClick={() => setShowConfirm(true)}
               style={{ padding: '0.5rem 1rem', border: '1px solid #FFEBEE', backgroundColor: '#FFEBEE', color: '#C62828', borderRadius: '4px', cursor: 'pointer' }}
             >

@@ -18,6 +18,7 @@ export default async function HomePage() {
     id: p.id,
     title: p.name,
     price: p.basePrice,
+    stock: p.stock, isAvailable: p.isAvailable,
     salePrice: p.isSaleEnabled ? p.salePrice : null,
     imageUrl: p.images?.[0] || '/hero-bouquet.png'
   }));
@@ -51,14 +52,15 @@ export default async function HomePage() {
     id: p.id,
     title: p.name,
     price: p.basePrice,
+    stock: p.stock, isAvailable: p.isAvailable,
     salePrice: p.isSaleEnabled ? p.salePrice : null,
     imageUrl: p.images?.[0] || '/hero-bouquet.png'
   }));
 
   return (
-    <HomeClient 
-      collectionProducts={collectionProducts} 
-      bestSellerProducts={bestSellerProducts} 
+    <HomeClient
+      collectionProducts={collectionProducts}
+      bestSellerProducts={bestSellerProducts}
       heroImages={heroImages}
       heroFadeSpeed={heroFadeSpeed}
     />

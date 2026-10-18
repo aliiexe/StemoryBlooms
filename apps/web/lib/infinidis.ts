@@ -15,7 +15,7 @@ interface InfinidisOrderPayload {
 
 export async function sendOrderToInfinidis(orderData: Omit<InfinidisOrderPayload, 'email'>) {
   const accountEmail = process.env.INFINIDIS_ACCOUNT_EMAIL;
-  
+
   if (!accountEmail) {
     console.error('Missing INFINIDIS_ACCOUNT_EMAIL in environment variables');
     return false;
@@ -29,6 +29,7 @@ export async function sendOrderToInfinidis(orderData: Omit<InfinidisOrderPayload
   try {
     const response = await fetch('https://app.infinidis.ma/sendtoinfinidis.php', {
       method: 'POST',
+      signal: AbortSignal.timeout(15_000),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
@@ -40,7 +41,7 @@ export async function sendOrderToInfinidis(orderData: Omit<InfinidisOrderPayload
 
     if (response.ok && data?.success) {
       console.log(`Order ${orderData.code} sent to Infinidis successfully.`);
-      
+
       // Optionally log this success
       await recordAuditLog({
         action: 'UPDATE',
@@ -52,7 +53,7 @@ export async function sendOrderToInfinidis(orderData: Omit<InfinidisOrderPayload
       return true;
     } else {
       console.error(`Failed to send order ${orderData.code} to Infinidis:`, data);
-      
+
       await recordAuditLog({
         action: 'UPDATE',
         target: 'ORDER',
@@ -70,7 +71,7 @@ export async function sendOrderToInfinidis(orderData: Omit<InfinidisOrderPayload
 
 export async function getInfinidisTrackingState(orderCode: string): Promise<string | null> {
   const accountEmail = process.env.INFINIDIS_ACCOUNT_EMAIL;
-  
+
   if (!accountEmail) {
     return null;
   }
@@ -82,6 +83,7 @@ export async function getInfinidisTrackingState(orderCode: string): Promise<stri
 
     const response = await fetch(url.toString(), {
       method: 'GET',
+      signal: AbortSignal.timeout(10_000),
       headers: {
         'Accept': 'application/json'
       }
@@ -92,7 +94,7 @@ export async function getInfinidisTrackingState(orderCode: string): Promise<stri
     if (response.ok && data?.success && data?.state) {
       return data.state;
     }
-    
+
     return null;
   } catch (error) {
     console.error(`Error fetching tracking for ${orderCode}:`, error);
@@ -108,7 +110,7 @@ export async function updateInfinidisState(orderCode: string, storeStatus: strin
   let infinidisState = '';
   switch (storeStatus) {
     case 'CANCELLED': infinidisState = 'Annulé'; break;
-    case 'DELIVERED': 
+    case 'DELIVERED':
     case 'COMPLETED': infinidisState = 'Livré'; break;
     default: return false; // Don't try to sync intermediate steps, let the courier handle those
   }
@@ -116,6 +118,7 @@ export async function updateInfinidisState(orderCode: string, storeStatus: strin
   try {
     const response = await fetch('https://app.infinidis.ma/change_state.php', {
       method: 'POST',
+      signal: AbortSignal.timeout(15_000),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
@@ -128,7 +131,7 @@ export async function updateInfinidisState(orderCode: string, storeStatus: strin
       })
     });
     const data = await response.json().catch(() => null);
-    return data?.success || false;
+    return response.ok && data?.success === true;
   } catch (err) {
     console.error(`Error updating tracking state for ${orderCode}:`, err);
     return false;

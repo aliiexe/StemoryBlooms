@@ -27,7 +27,7 @@ interface FinanceProps {
   netProfit: number;
 }
 
-export function AdminFinancesClient({ 
+export function AdminFinancesClient({
   initialExpenses,
   totalRevenue,
   totalDeliveryFees,
@@ -35,11 +35,11 @@ export function AdminFinancesClient({
   netProfit
 }: FinanceProps) {
   const router = useRouter();
-  
+
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
-  
+
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<any>(null);
@@ -93,7 +93,7 @@ export function AdminFinancesClient({
   };
 
   return (
-    <motion.div 
+    <motion.div
       className={styles.dashboard}
       variants={containerVariants}
       initial="hidden"
@@ -101,7 +101,7 @@ export function AdminFinancesClient({
     >
       <header style={{ marginBottom: '2rem' }}>
         <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#111827', margin: 0 }}>Financial Tracking</h1>
-        <p style={{ color: '#6B7280', margin: '0.5rem 0 0 0', fontSize: '0.95rem' }}>Track revenue, business expenses, and net profit.</p>
+        <p style={{ color: '#6B7280', margin: '0.5rem 0 0 0', fontSize: '0.95rem' }}>Track recorded cash collection, delivery charges, and business expenses.</p>
       </header>
 
       {/* Metric Cards */}
@@ -109,14 +109,14 @@ export function AdminFinancesClient({
         <div className={styles.metricCard} style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }}>
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-              <span className={styles.metricLabel}>Total Revenue</span>
+              <span className={styles.metricLabel}>Cash Collected</span>
               <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.1)', color: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <TrendingUp size={18} />
               </div>
             </div>
             <div className={styles.metricValue}>{formatMoney(totalRevenue)}</div>
           </div>
-          <div className={styles.metricTrend} style={{ color: '#6B7280', marginTop: '0.5rem' }}>Product sales only</div>
+          <div className={styles.metricTrend} style={{ color: '#6B7280', marginTop: '0.5rem' }}>Collected cash excluding delivery</div>
         </div>
 
         <div className={styles.metricCard} style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }}>
@@ -129,7 +129,7 @@ export function AdminFinancesClient({
             </div>
             <div className={styles.metricValue} style={{ color: '#D97706' }}>{formatMoney(totalDeliveryFees)}</div>
           </div>
-          <div className={styles.metricTrend} style={{ color: '#6B7280', marginTop: '0.5rem' }}>Passed to carrier</div>
+          <div className={styles.metricTrend} style={{ color: '#6B7280', marginTop: '0.5rem' }}>Collected delivery charges</div>
         </div>
 
         <div className={styles.metricCard} style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }}>
@@ -148,7 +148,7 @@ export function AdminFinancesClient({
         <div className={styles.metricCard} style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between', background: netProfit >= 0 ? 'rgba(240, 253, 244, 0.5)' : 'rgba(254, 242, 242, 0.5)' }}>
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-              <span className={styles.metricLabel} style={{ color: netProfit >= 0 ? '#166534' : '#991B1B' }}>Net Profit</span>
+              <span className={styles.metricLabel} style={{ color: netProfit >= 0 ? '#166534' : '#991B1B' }}>Cash Position</span>
               <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: netProfit >= 0 ? 'rgba(22, 101, 52, 0.1)' : 'rgba(153, 27, 27, 0.1)', color: netProfit >= 0 ? '#166534' : '#991B1B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <DollarSign size={18} />
               </div>
@@ -163,11 +163,11 @@ export function AdminFinancesClient({
       <motion.div className={styles.card} style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255, 255, 255, 0.8)', overflow: 'hidden', padding: 0 }} variants={itemVariants}>
         <div style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #E5E7EB' }}>
           <h3 style={{ margin: 0, color: '#111827', fontSize: '1.25rem', fontWeight: 600 }}>Logged Expenses</h3>
-          <motion.button 
+          <motion.button
             onClick={openAddModal}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            style={{ 
+            style={{
               background: 'var(--brand-primary)',
               color: 'white',
               border: 'none',
@@ -198,7 +198,7 @@ export function AdminFinancesClient({
             </thead>
             <tbody>
               {currentExpenses.map((e, i) => (
-                <motion.tr 
+                <motion.tr
                   key={e.id}
                   whileHover={{ backgroundColor: 'rgba(255, 255, 255, 0.9)' }}
                   style={{ borderBottom: i === currentExpenses.length - 1 ? 'none' : '1px solid #F3F4F6' }}
@@ -212,7 +212,7 @@ export function AdminFinancesClient({
                   </td>
                   <td style={{ padding: '1rem 1.5rem', color: '#DC2626', fontWeight: 600 }}>-{formatMoney(e.amount)}</td>
                   <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
-                    <button 
+                    <button
                       onClick={() => openEditModal(e)}
                       style={{ background: 'none', border: 'none', color: 'var(--brand-primary)', cursor: 'pointer', fontWeight: 500, padding: '0.25rem 0.5rem', borderRadius: '4px' }}
                       onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(46, 125, 50, 0.05)')}
@@ -241,8 +241,8 @@ export function AdminFinancesClient({
               Showing {startIndex + 1}-{Math.min(startIndex + itemsPerPage, initialExpenses.length)} of {initialExpenses.length}
             </span>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button 
-                onClick={handlePrevPage} 
+              <button
+                onClick={handlePrevPage}
                 disabled={currentPage === 1}
                 className={styles.paginationBtn}
               >
@@ -251,8 +251,8 @@ export function AdminFinancesClient({
               <span style={{ display: 'flex', alignItems: 'center', padding: '0 0.5rem', fontSize: '0.9rem', color: '#4B5563', fontWeight: 500 }}>
                 Page {currentPage} of {totalPages}
               </span>
-              <button 
-                onClick={handleNextPage} 
+              <button
+                onClick={handleNextPage}
                 disabled={currentPage === totalPages}
                 className={styles.paginationBtn}
               >
@@ -265,10 +265,10 @@ export function AdminFinancesClient({
 
       {/* Modal logic omitted for brevity, assuming it renders properly as a controlled overlay */}
       {/* Modal rendered with proper styling */}
-      <ExpenseModal 
-        isOpen={isModalOpen} 
-        onClose={handleSaved} 
-        expense={editingExpense} 
+      <ExpenseModal
+        isOpen={isModalOpen}
+        onClose={handleSaved}
+        expense={editingExpense}
       />
     </motion.div>
   );

@@ -9,6 +9,7 @@ import { recordAuditLog } from '@/lib/audit';
 
 export async function setSiteMode(mode: 'WAITLIST' | 'LIVE' | 'MAINTENANCE' | 'DRAFT') {
   await assertAdmin();
+  if (!['WAITLIST', 'LIVE', 'MAINTENANCE', 'DRAFT'].includes(mode)) return { error: 'Invalid site mode.' };
   const existing = await db.query.siteSettings.findFirst();
   if (existing) {
     await db.update(siteSettings).set({ mode, updatedAt: new Date() }).where(eq(siteSettings.id, existing.id));
@@ -134,18 +135,18 @@ export async function saveCustomBuilderSettings(formData: FormData) {
   const customBouquetBaseFee = parseIntegerInput(formData.get('customBouquetBaseFee') as string | null) ?? 19;
 
   const existing = await db.query.siteSettings.findFirst();
-  
+
   const config = (existing?.config as any) || {};
   config.customBouquetBaseFee = customBouquetBaseFee;
 
   if (existing) {
     await db.update(siteSettings).set({ config, updatedAt: new Date() }).where(eq(siteSettings.id, existing.id));
   } else {
-    await db.insert(siteSettings).values({ 
-      id: crypto.randomUUID(), 
+    await db.insert(siteSettings).values({
+      id: crypto.randomUUID(),
       mode: 'WAITLIST',
       config,
-      updatedAt: new Date() 
+      updatedAt: new Date()
     });
   }
 

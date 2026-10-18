@@ -1,16 +1,21 @@
 'use client';
 
 import React from 'react';
-import { Printer, Download, Share, ChevronLeft } from 'lucide-react';
+import { Printer, Share, ChevronLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 type ReceiptProps = {
-  order: any; // The full order with customer and items
+  order: {
+    orderNumber: string; createdAt: string; subtotal: number; deliveryFee: number; discount: number; total: number; paymentStatus: string;
+    deliveryAddress: { city?: string; addressLine1?: string };
+    customer: { firstName: string; lastName: string; email: string | null; phone: string };
+    items: { id: string; productName: string; quantity: number; unitPrice: number; totalPrice: number }[];
+  };
 };
 
 export default function ReceiptClient({ order }: ReceiptProps) {
   const router = useRouter();
-  
+
   const handlePrint = () => {
     window.print();
   };
@@ -43,7 +48,7 @@ export default function ReceiptClient({ order }: ReceiptProps) {
           .receipt-card { box-shadow: none !important; border: none !important; padding: 0 !important; }
         }
       `}} />
-      
+
       <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <button onClick={() => router.back()} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'white', border: '1px solid #D1D5DB', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer', fontWeight: 500 }}>
           <ChevronLeft size={18} /> Back
@@ -96,7 +101,7 @@ export default function ReceiptClient({ order }: ReceiptProps) {
             </tr>
           </thead>
           <tbody>
-            {order.items.map((item: any) => (
+            {order.items.map((item) => (
               <tr key={item.id} style={{ borderBottom: '1px solid #F3F4F6' }}>
                 <td style={{ padding: '1rem 0', color: '#111827', fontWeight: 500 }}>{item.productName}</td>
                 <td style={{ padding: '1rem 0', textAlign: 'center', color: '#4B5563' }}>{item.quantity}</td>

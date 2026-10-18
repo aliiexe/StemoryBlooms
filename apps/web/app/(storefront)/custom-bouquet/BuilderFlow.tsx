@@ -60,7 +60,7 @@ export default function BuilderFlow({
         delete next[item.id];
         return next;
       }
-      
+
       if (newQty > maxQty) {
         return prev; // Ignore, can't go above max
       }
@@ -76,11 +76,11 @@ export default function BuilderFlow({
     });
 
     const hasItems = Object.keys(cart).length > 0;
-    
+
     // Determine when to show the base fee
     const wrappingIndex = STEPS.indexOf('Wrapping');
     const cardsIndex = STEPS.indexOf('Cards');
-    
+
     const showFee = hasItems && (
       currentStep === 'Review' ||
       (wrappingIndex !== -1 && currentStepIndex >= wrappingIndex) ||
@@ -105,11 +105,12 @@ export default function BuilderFlow({
 
       addItem({
         id: `custom-${Date.now()}`,
+        kind: 'CUSTOM',
         name: 'Custom Built Bouquet',
         price: total,
         quantity: 1,
         imageUrl: '/hero-bouquet.png',
-        configuration: { ...cart, cardMessage: cardMessage.trim() || undefined }
+        configuration: { components: { ...cart }, cardMessage: cardMessage.trim() || undefined }
       });
 
       setCart({});
@@ -135,7 +136,7 @@ export default function BuilderFlow({
             <div key={item.id} className={styles.itemCardContainer}>
               <div className={styles.itemCard}>
                 <div className={styles.itemInfo}>
-                  <div 
+                  <div
                     className={styles.itemImageWrapper}
                     onClick={() => setPreviewImage({ url: item.imageUrl || '/hero-bouquet.png', name: item.name })}
                     style={{ cursor: 'pointer', position: 'relative' }}
@@ -171,7 +172,7 @@ export default function BuilderFlow({
                     <p className={styles.itemPrice}>
                       {item.price === 0 ? (currentStep === 'Cards' ? 'Free' : 'Included') : `${item.price} MAD`}
                     </p>
-                    {item.minQuantity && item.minQuantity > 1 && (
+                    {(item.minQuantity ?? 0) > 1 && (
                       <p style={{ fontSize: '0.8rem', color: '#9A9591', margin: '0.25rem 0 0 0' }}>
                         Min. {item.minQuantity} required
                       </p>
@@ -184,7 +185,7 @@ export default function BuilderFlow({
                   <button className={styles.qtyBtn} onClick={() => updateQuantity(item, 1, qty)} aria-label="Increase">+</button>
                 </div>
               </div>
-              
+
               {/* If this is the Cards step and they selected this card, show the textarea */}
               {currentStep === 'Cards' && qty > 0 && (
                 <div style={{ padding: '1rem', borderTop: '1px solid #EAE6DF', backgroundColor: '#FDFBF7' }}>
@@ -238,8 +239,8 @@ export default function BuilderFlow({
           <div key={item.id} className={styles.reviewItem}>
             <span>{cart[item.id]}x {item.name}</span>
             <span>
-              {item.price === 0 
-                ? (initialData['Cards']?.some(c => c.id === item.id) ? 'Free' : 'Included') 
+              {item.price === 0
+                ? (initialData['Cards']?.some(c => c.id === item.id) ? 'Free' : 'Included')
                 : `${(cart[item.id] * item.price)} MAD`}
             </span>
           </div>
@@ -264,6 +265,7 @@ export default function BuilderFlow({
         ))}
       </div>
 
+      <p className={styles.currentStepLabel} aria-live="polite">{currentStep} — step {currentStepIndex + 1} of {STEPS.length}</p>
       <div className={styles.stepContent}>
         <AnimatePresence mode="wait">
           <motion.div
@@ -316,7 +318,7 @@ export default function BuilderFlow({
                 position: 'relative'
               }}
             >
-              <button 
+              <button
                 onClick={() => setPreviewImage(null)}
                 style={{
                   position: 'absolute',
@@ -347,8 +349,8 @@ export default function BuilderFlow({
                 overflow: 'hidden',
                 backgroundColor: '#F0ECE5'
               }}>
-                <img 
-                  src={previewImage.url} 
+                <img
+                  src={previewImage.url}
                   alt={previewImage.name}
                   style={{
                     width: '100%',

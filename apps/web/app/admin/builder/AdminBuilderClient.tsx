@@ -81,7 +81,7 @@ function ComponentForm({
           const formData = new FormData(e.currentTarget);
           setIsSubmitting(true);
           setError(null);
-          
+
           React.startTransition(async () => {
             formData.set('isAvailable', isAvailable ? 'on' : 'off');
             formData.set('componentMaterials', JSON.stringify(bom.filter(b => b.materialId)));
@@ -97,7 +97,7 @@ function ComponentForm({
           });
         }}
       >
-        {item?.id && <input type="hidden" name="id" value={item.id} />}
+        {item?.id && <><input type="hidden" name="id" value={item.id} /><input type="hidden" name="expectedStock" value={item.stock} /></>}
 
         {error && (
           <div style={{ color: '#C62828', backgroundColor: '#FFEBEE', padding: '1rem', borderRadius: '12px', marginBottom: '2rem' }}>
@@ -529,7 +529,7 @@ export function AdminBuilderClient({
                             const newStock = Math.max(0, item.stock - 1);
                             if (newStock !== item.stock) {
                               startTransition(async () => {
-                                const res = await updateBuilderComponentStock(item.id, newStock);
+                                const res = await updateBuilderComponentStock(item.id, newStock, item.stock);
                                 if (res?.error) toast.error(res.error);
                                 else {
                                   toast.success('Stock updated');
@@ -540,8 +540,8 @@ export function AdminBuilderClient({
                           }}
                           style={{ width: '24px', height: '24px', borderRadius: '4px', border: '1px solid #D6CFE6', background: '#fff', cursor: 'pointer' }}
                         >-</button>
-                        <input 
-                          type="number" 
+                        <input
+                          type="number"
                           min="0"
                           className="no-spinners"
                           value={item.stock}
@@ -550,7 +550,7 @@ export function AdminBuilderClient({
                             if (isNaN(newStock)) return;
                             if (newStock !== item.stock) {
                               startTransition(async () => {
-                                const res = await updateBuilderComponentStock(item.id, newStock);
+                                const res = await updateBuilderComponentStock(item.id, newStock, item.stock);
                                 if (res?.error) toast.error(res.error);
                                 else {
                                   toast.success('Stock updated');
@@ -559,11 +559,11 @@ export function AdminBuilderClient({
                               });
                             }
                           }}
-                          style={{ 
-                            width: '50px', 
-                            padding: '0.25rem', 
-                            borderRadius: '4px', 
-                            border: '1px solid #D6CFE6', 
+                          style={{
+                            width: '50px',
+                            padding: '0.25rem',
+                            borderRadius: '4px',
+                            border: '1px solid #D6CFE6',
                             fontSize: '0.9rem',
                             textAlign: 'center'
                           }}
@@ -575,7 +575,7 @@ export function AdminBuilderClient({
                           onClick={() => {
                             const newStock = item.stock + 1;
                             startTransition(async () => {
-                              const res = await updateBuilderComponentStock(item.id, newStock);
+                              const res = await updateBuilderComponentStock(item.id, newStock, item.stock);
                               if (res?.error) toast.error(res.error);
                               else {
                                 toast.success('Stock updated');

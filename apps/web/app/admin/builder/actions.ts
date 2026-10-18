@@ -26,7 +26,7 @@ export async function saveBuilderComponent(formData: FormData) {
     if (materialsStr) materials = JSON.parse(materialsStr);
   } catch { /* ignore */ }
 
-  if (!name?.trim() || unitPrice === null) {
+  if (!name?.trim() || unitPrice === null || unitPrice < 0 || !Number.isSafeInteger(stock) || stock < 0 || minQuantity < 0 || (maxQuantity !== null && maxQuantity < Math.max(1, minQuantity)) || !['FLOWER', 'LEAF', 'ANIMAL_BUG', 'WRAPPING', 'CARD'].includes(type)) {
     return { error: 'Name and unit price are required' };
   }
 
@@ -43,45 +43,11 @@ export async function saveBuilderComponent(formData: FormData) {
 
   try {
     await db.transaction(async (tx) => {
-      let oldStock = 0;
-      let oldMaterials: { materialId: string; quantity: number }[] = [];
-
       if (id) {
-        const existing = await tx.query.builderComponent.findFirst({ where: eq(builderComponent.id, id) });
-        if (existing) {
-          oldStock = existing.stock;
-          oldMaterials = (existing.materials as { materialId: string; quantity: number }[]) || [];
-        }
+        const [existing] = await tx.select().from(builderComponent).where(eq(builderComponent.id, id)).for('update');
+        if (!existing) throw new Error('Component not found.');
+        if (Number(formData.get('expectedStock')) !== existing.stock) throw new Error('Stock changed while editing. Refresh before saving.');
       }
-
-      // Calculate material usage differences
-      const oldUsage = new Map<string, number>();
-      for (const om of oldMaterials) {
-        oldUsage.set(om.materialId, oldStock * om.quantity);
-      }
-
-      const newUsage = new Map<string, number>();
-      for (const nm of materials) {
-        newUsage.set(nm.materialId, stock * nm.quantity);
-      }
-
-      const allMatIds = new Set([...oldUsage.keys(), ...newUsage.keys()]);
-
-      for (const mId of allMatIds) {
-        const oldU = oldUsage.get(mId) ?? 0;
-        const newU = newUsage.get(mId) ?? 0;
-        const diff = newU - oldU;
-
-        if (diff !== 0) {
-          const mat = await tx.query.material.findFirst({ where: eq(material.id, mId) });
-          if (mat) {
-            await tx.update(material)
-              .set({ quantity: mat.quantity - diff, updatedAt: new Date() })
-              .where(eq(material.id, mId));
-          }
-        }
-      }
-
       if (id) {
         await tx.update(builderComponent).set({
           type, name, unitPrice, stock, minQuantity, maxQuantity, isAvailable, imageUrl,
@@ -99,7 +65,7 @@ export async function saveBuilderComponent(formData: FormData) {
 
     revalidatePath('/admin/builder');
     revalidatePath('/custom-bouquet');
-    
+
     await recordAuditLog({
       action: id ? 'UPDATE' : 'CREATE',
       target: 'BUILDER_COMPONENT',
@@ -109,7 +75,7 @@ export async function saveBuilderComponent(formData: FormData) {
     return { success: true };
   } catch (error) {
     console.error(error);
-    return { error: 'Failed to save builder component' };
+    return { error: error instanceof Error && error.message.startsWith('Stock changed') ? error.message : 'Failed to save builder component' };
   }
 }
 
@@ -120,7 +86,7 @@ export async function deleteBuilderComponent(id: string) {
     await db.delete(builderComponent).where(eq(builderComponent.id, id));
     revalidatePath('/admin/builder');
     revalidatePath('/custom-bouquet');
-    
+
     await recordAuditLog({
       action: 'DELETE',
       target: 'BUILDER_COMPONENT',
@@ -140,7 +106,7 @@ export async function toggleBuilderComponentAvailable(id: string, isAvailable: b
     await db.update(builderComponent).set({ isAvailable, updatedAt: new Date() }).where(eq(builderComponent.id, id));
     revalidatePath('/admin/builder');
     revalidatePath('/custom-bouquet');
-    
+
     await recordAuditLog({
       action: 'UPDATE',
       target: 'BUILDER_COMPONENT',
@@ -154,51 +120,20 @@ export async function toggleBuilderComponentAvailable(id: string, isAvailable: b
   }
 }
 
-export async function updateBuilderComponentStock(id: string, newStock: number) {
+export async function updateBuilderComponentStock(id: string, newStock: number, expectedStock: number) {
   await assertAdmin();
+  if (!Number.isSafeInteger(newStock) || newStock < 0 || newStock > 100000) return { error: 'Enter a nonnegative whole stock count.' };
   try {
     await db.transaction(async (tx) => {
-      const existing = await tx.query.builderComponent.findFirst({ where: eq(builderComponent.id, id) });
-      if (!existing) return;
-
-      const oldStock = existing.stock;
-      if (oldStock === newStock) return;
-
-      const materials = (existing.materials as { materialId: string; quantity: number }[]) || [];
-      
-      const oldUsage = new Map<string, number>();
-      for (const om of materials) {
-        oldUsage.set(om.materialId, oldStock * om.quantity);
-      }
-
-      const newUsage = new Map<string, number>();
-      for (const nm of materials) {
-        newUsage.set(nm.materialId, newStock * nm.quantity);
-      }
-
-      const allMatIds = new Set([...oldUsage.keys(), ...newUsage.keys()]);
-
-      for (const mId of allMatIds) {
-        const oldU = oldUsage.get(mId) ?? 0;
-        const newU = newUsage.get(mId) ?? 0;
-        const diff = newU - oldU;
-
-        if (diff !== 0) {
-          const mat = await tx.query.material.findFirst({ where: eq(material.id, mId) });
-          if (mat) {
-            await tx.update(material)
-              .set({ quantity: mat.quantity - diff, updatedAt: new Date() })
-              .where(eq(material.id, mId));
-          }
-        }
-      }
-
-      await tx.update(builderComponent).set({ stock: newStock, updatedAt: new Date() }).where(eq(builderComponent.id, id));
+      const [existing] = await tx.select().from(builderComponent).where(eq(builderComponent.id, id)).for('update');
+      if (!existing) throw new Error('Component not found.');
+      if (existing.stock !== expectedStock) throw new Error('Stock changed. Refresh and try again.');
+      await tx.update(builderComponent).set({ stock: newStock, isAvailable: newStock > 0, updatedAt: new Date() }).where(eq(builderComponent.id, id));
     });
 
     revalidatePath('/admin/builder');
     revalidatePath('/custom-bouquet');
-    
+
     await recordAuditLog({
       action: 'UPDATE',
       target: 'BUILDER_COMPONENT',

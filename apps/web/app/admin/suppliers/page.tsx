@@ -1,9 +1,11 @@
+import { assertAdmin } from '@/lib/user-sync';
 import React from 'react';
 import { db, supplier } from '@stemory/database';
 import { asc } from 'drizzle-orm';
 import { AdminSuppliersClient } from './AdminSuppliersClient';
 
 export default async function AdminSuppliersPage() {
+  await assertAdmin();
   const suppliers = await db.query.supplier.findMany({
     orderBy: [asc(supplier.name)],
   });

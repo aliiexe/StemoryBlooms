@@ -1,9 +1,10 @@
-import { db, eq, sql, announcement, announcementBarSettings, announcementTemplate, asc, desc } from '@stemory/database';
+import { assertAdmin } from '@/lib/user-sync';
+import { db, eq, announcement, announcementTemplate, asc, desc } from '@stemory/database';
 import Link from 'next/link';
 import styles from '../dashboard.module.css';
 import {
   publishAnnouncement, pauseAnnouncement,
-  archiveAnnouncement, duplicateAnnouncement, seedTemplatesIfEmpty
+  archiveAnnouncement, duplicateAnnouncement
 } from './actions';
 import DeleteButton from './DeleteButton';
 
@@ -16,14 +17,8 @@ const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   ARCHIVED:  { bg: '#ECEFF1', color: '#37474F' },
 };
 
-export default async function Page(props: { searchParams: { page?: string, limit?: string } }) {
-  const page = Number(props.searchParams.page) || 1;
-  const limit = Number(props.searchParams.limit) || 10;
-  const offset = (page - 1) * limit;
-
-  // Seed templates if needed
-  await seedTemplatesIfEmpty();
-
+export default async function Page() {
+  await assertAdmin();
   const [announcements, settings, templates] = await Promise.all([
     db.query.announcement.findMany({ orderBy: [asc(announcement.order), desc(announcement.createdAt)] }),
     db.query.announcementBarSettings.findFirst(),
@@ -64,8 +59,8 @@ export default async function Page(props: { searchParams: { page?: string, limit
         <h3 style={{ fontSize: '1.1rem', color: '#3A3531', marginBottom: '1rem', fontWeight: 600 }}>Event Templates</h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
           {templates.map((tpl) => (
-            <Link 
-              key={tpl.id} 
+            <Link
+              key={tpl.id}
               href={`/admin/announcements/new?templateId=${tpl.id}`}
               className={`${styles.card} ${styles.templateCard}`}
               style={{ padding: '1.25rem', textDecoration: 'none', display: 'flex', gap: '1rem', alignItems: 'center' }}

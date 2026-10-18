@@ -1,24 +1,26 @@
+import { assertAdmin } from '@/lib/user-sync';
 import React from 'react';
-import { db, eq, product, deliveryZone, builderComponent, siteSettings } from '@stemory/database';
+import { db, eq, and, sql, product, deliveryZone, builderComponent } from '@stemory/database';
 import styles from '../../dashboard.module.css';
 import NewAssistedOrderForm from './NewAssistedOrderForm';
 
 export default async function NewAssistedOrderPage() {
+  await assertAdmin();
   const [products, components, deliveryZones, settings] = await Promise.all([
-    db.query.product.findMany({ where: eq(product.isAvailable, true) }),
-    db.query.builderComponent.findMany({ where: eq(builderComponent.isAvailable, true) }),
+    db.query.product.findMany({ where: and(eq(product.isAvailable, true), eq(product.status, 'PUBLISHED'), sql`${product.stock} > 0`) }),
+    db.query.builderComponent.findMany({ where: and(eq(builderComponent.isAvailable, true), sql`${builderComponent.stock} > 0`) }),
     db.query.deliveryZone.findMany({ where: eq(deliveryZone.isActive, true) }),
     db.query.siteSettings.findFirst()
   ]);
 
-  const baseFee = (settings?.config as any)?.customBouquetBaseFee ?? 19;
+  const baseFee = (settings?.config as { customBouquetBaseFee?: number } | null)?.customBouquetBaseFee ?? 19;
 
   // Map products to the type expected by the form
   const serializedProducts = products.map(p => ({
     id: p.id,
     name: p.name,
     basePrice: p.basePrice,
-    salePrice: p.salePrice,
+    salePrice: p.isSaleEnabled ? p.salePrice : null,
     image: p.images?.[0] || null
   }));
 
@@ -45,10 +47,10 @@ export default async function NewAssistedOrderPage() {
         </p>
       </header>
 
-      <NewAssistedOrderForm 
-        products={serializedProducts} 
+      <NewAssistedOrderForm
+        products={serializedProducts}
         components={serializedComponents}
-        deliveryZones={serializedDeliveryZones} 
+        deliveryZones={serializedDeliveryZones}
         baseFee={baseFee}
       />
     </div>

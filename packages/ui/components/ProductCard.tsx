@@ -1,68 +1,24 @@
 "use client";
-
-import React from 'react';
+import Link from 'next/link';
 import styles from './ProductCard.module.css';
 import { useCartStore } from '../store/useCartStore';
 
 interface ProductCardProps {
-  title: string;
-  price: number;
-  salePrice?: number | null;
-  id?: string;
-  imageUrl?: string;
-  images?: string[] | null;
+  title: string; price: number; salePrice?: number | null; id?: string; imageUrl?: string; images?: string[] | null;
+  stock?: number; isAvailable?: boolean;
 }
-
-import Link from 'next/link';
-
-export function ProductCard({ title, price, salePrice, id, imageUrl, images }: ProductCardProps) {
-  const addItem = useCartStore((state) => state.addItem);
-
-  const handleAddToCart = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation(); // prevent navigation if clicking "Add"
-    addItem({
-      id: id || `prod-${Math.random().toString(36).substr(2, 9)}`,
-      name: title,
-      price: salePrice || price,
-      imageUrl: imageUrl || (images && images[0]) || "/hero-bouquet.png",
-      quantity: 1
-    });
-  };
-
-  const primaryImage = imageUrl || (images && images[0]) || "/hero-bouquet.png";
-  const hoverImage = images && images.length > 1 ? images[1] : null;
-
-  const cardContent = (
-    <div className={styles.card}>
-      <div className={styles.imageWrap}>
-        <img src={primaryImage} alt={title} className={styles.primaryImg} />
-        {hoverImage && (
-          <img src={hoverImage} alt={`${title} hover`} className={styles.hoverImg} />
-        )}
-      </div>
-      <div className={styles.info}>
-        <h4 className={styles.title}>{title}</h4>
-        <div className={styles.bottomRow}>
-          <span className={styles.price} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {salePrice ? (
-              <>
-                <span style={{ fontWeight: 'bold', fontSize: '1.2em' }}>{salePrice} MAD</span>
-                <span style={{ textDecoration: 'line-through', color: '#888', fontSize: '0.8em' }}>{price} MAD</span>
-              </>
-            ) : (
-              <span style={{ fontWeight: 'bold', fontSize: '1.2em' }}>{price} MAD</span>
-            )}
-          </span>
-          <button className={styles.viewBtn} onClick={handleAddToCart}>+ Add</button>
-        </div>
+export function ProductCard({ title, price, salePrice, id, imageUrl, images, stock = 0, isAvailable = false }: ProductCardProps) {
+  const addItem = useCartStore(state => state.addItem);
+  const available = Boolean(id && isAvailable && stock > 0);
+  const primary = imageUrl || images?.[0] || '/hero-bouquet.png';
+  const photo = <div className={styles.imageWrap}><img src={primary} alt={title} className={styles.primaryImg} loading="lazy" />{images?.[1] && <img src={images[1]} alt="" className={styles.hoverImg} loading="lazy" />}</div>;
+  return <article className={styles.card}>
+    {id ? <Link href={`/shop/${id}`} aria-label={`View ${title}`}>{photo}</Link> : photo}
+    <div className={styles.info}><h3 className={styles.title}>{id ? <Link href={`/shop/${id}`} style={{ color: 'inherit', textDecoration: 'none' }}>{title}</Link> : title}</h3>
+      <div className={styles.bottomRow}><span className={styles.price}>{salePrice !== null && salePrice !== undefined ? <><strong>{salePrice} MAD</strong> <s style={{ fontSize: '0.8em' }}>{price} MAD</s></> : <strong>{price} MAD</strong>}</span>
+        <button type="button" className={styles.viewBtn} disabled={!available} aria-label={available ? `Add ${title} to cart` : `${title} is out of stock`}
+          onClick={() => { if (available && id) addItem({ id, productId: id, kind: 'PRODUCT', name: title, price: salePrice ?? price, quantity: 1, maxQuantity: Math.min(stock, 100), imageUrl: primary }); }}>{available ? '+ Add' : 'Out of stock'}</button>
       </div>
     </div>
-  );
-
-  if (id) {
-    return <Link href={`/shop/${id}`} style={{ textDecoration: 'none', color: 'inherit' }}>{cardContent}</Link>;
-  }
-
-  return cardContent;
+  </article>;
 }

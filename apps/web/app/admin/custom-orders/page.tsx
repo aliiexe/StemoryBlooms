@@ -1,3 +1,4 @@
+import { assertAdmin } from '@/lib/user-sync';
 import React from 'react';
 import { db } from '@stemory/database';
 import styles from '../dashboard.module.css';
@@ -5,6 +6,7 @@ import styles from '../dashboard.module.css';
 
 
 export default async function AdminCustomOrdersPage() {
+  await assertAdmin();
   const draftOrders = await db.query.draftOrder.findMany({
     orderBy: (table, { desc }) => [desc(table.createdAt)]
   });

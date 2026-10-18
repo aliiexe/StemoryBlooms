@@ -1,3 +1,4 @@
+import { assertAdmin } from '@/lib/user-sync';
 import React from 'react';
 import { db, material, supplier } from '@stemory/database';
 import { asc } from 'drizzle-orm';
@@ -7,6 +8,7 @@ import { InventoryTableClient } from './InventoryTableClient';
 export const dynamic = 'force-dynamic';
 
 export default async function AdminInventoryPage() {
+  await assertAdmin();
   const materials = await db.query.material.findMany({
     orderBy: [asc(material.name)],
     with: {
@@ -19,20 +21,14 @@ export default async function AdminInventoryPage() {
     orderBy: [asc(supplier.name)],
   });
 
-  const { expense } = await import('@stemory/database');
   const expenses = await db.query.expense.findMany({
     where: (table, { isNotNull }) => isNotNull(table.relatedMaterialId)
   });
 
   const totalUnits = materials.reduce((sum, item) => sum + item.quantity, 0);
 
-  // Sum all material-related expenses (tracks every purchase/restock)
-  const expensedMaterialIds = new Set(expenses.map(e => e.relatedMaterialId));
-  const expensesTotal = expenses.reduce((sum, e) => sum + e.amount, 0);
-  // For materials that pre-date expense tracking, fall back to current stock value
-  const untracked = materials.filter(m => !expensedMaterialIds.has(m.id));
-  const untrackedValue = untracked.reduce((sum, m) => sum + ((m.quantity || 0) * (m.cost || 0)), 0);
-  const totalExpense = expensesTotal + untrackedValue;
+  const totalExpense = expenses.reduce((sum, entry) => sum + entry.amount, 0);
+  const negativeStockCount = materials.filter(item => item.quantity < 0).length;
 
   const lowStockCount = materials.filter((item) => item.lowStockThreshold !== null && item.quantity <= item.lowStockThreshold).length;
 
@@ -45,7 +41,7 @@ export default async function AdminInventoryPage() {
         </p>
       </header>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+      <div className={styles.inventorySummary}>
         <div className={styles.card} style={{ padding: '1.25rem' }}>
           <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#7A7571', marginBottom: '0.5rem' }}>Tracked materials</div>
           <div style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--brand-primary)' }}>{materials.length}</div>
@@ -55,7 +51,7 @@ export default async function AdminInventoryPage() {
           <div style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--brand-primary)' }}>{totalUnits}</div>
         </div>
         <div className={styles.card} style={{ padding: '1.25rem' }}>
-          <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#7A7571', marginBottom: '0.5rem' }}>Total Expense</div>
+          <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#7A7571', marginBottom: '0.5rem' }}>Recorded purchases</div>
           <div style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--brand-primary)' }}>{totalExpense.toFixed(2)} MAD</div>
         </div>
         <div className={styles.card} style={{ padding: '1.25rem' }}>
@@ -64,9 +60,10 @@ export default async function AdminInventoryPage() {
         </div>
       </div>
 
-      <InventoryTableClient 
-        initialMaterials={materials.map(m => ({...m, cost: m.cost ? Number(m.cost) : null}))} 
-        suppliers={suppliers} 
+      {negativeStockCount > 0 && <p role="status" style={{ padding: '1rem', border: '1px solid #D49B46', borderRadius: 12, marginBottom: 16 }}>{negativeStockCount} materials have historical negative stock. Recount these materials and record a stock correction before using their balances for purchasing decisions.</p>}
+      <InventoryTableClient key={materials.map(m => `${m.id}:${m.updatedAt.getTime()}`).join('|')}
+        initialMaterials={materials.map(m => ({...m, cost: m.cost === null ? null : Number(m.cost)}))}
+        suppliers={suppliers}
       />
     </div>
   );

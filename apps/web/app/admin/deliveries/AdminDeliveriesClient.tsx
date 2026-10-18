@@ -2,6 +2,8 @@
 
 import React, { useState, useTransition } from 'react';
 import Link from 'next/link';
+import { toast } from 'sonner';
+import { nextOrderStatuses, ORDER_STATUS_LABELS } from '@/lib/commerce/order-status';
 import { updateOrderStatus, createDeliveryHandoff } from './actions';
 import styles from '../dashboard.module.css';
 import { CustomSelect } from '../../../components/ui/CustomSelect';
@@ -33,7 +35,7 @@ const STATUS_CONFIG: Record<string, { bg: string; color: string; dot: string }> 
   CANCELLED:  { bg: '#FEE2E2', color: '#991B1B', dot: '#EF4444' },
 };
 
-const ALL_STATUSES = ['ALL', 'NEW', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
+const ALL_STATUSES = ['ALL', 'NEW', 'CONFIRMED', 'IN_PRODUCTION', 'READY', 'SHIPPED', 'DELIVERED', 'COMPLETED', 'CANCELLED'];
 
 export function AdminDeliveriesClient({ initialOrders, deliveryCompany }: { initialOrders: OrderDeliveryItem[], deliveryCompany?: DeliveryCompany | null }) {
   const [orders, setOrders] = useState<OrderDeliveryItem[]>(initialOrders);
@@ -133,6 +135,7 @@ export function AdminDeliveriesClient({ initialOrders, deliveryCompany }: { init
                 {/* Actions */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
                   <button
+                    disabled={o.status !== 'READY' || !deliveryCompany}
                     onClick={() => setHandoffOrder(o)}
                     style={{ padding: '0.5rem 0.9rem', borderRadius: '8px', border: '1px solid #D6CFE6', background: '#FDFBF7', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600, color: '#3A3531', whiteSpace: 'nowrap' }}
                   >
@@ -143,11 +146,12 @@ export function AdminDeliveriesClient({ initialOrders, deliveryCompany }: { init
                       value={o.status}
                       onChange={(newSt) => {
                         startTransition(async () => {
-                          await updateOrderStatus(o.id, newSt);
+                          const result = await updateOrderStatus(o.id, newSt);
+                          if (result.error) { toast.error(result.error); return; }
                           setOrders(prev => prev.map(item => item.id === o.id ? { ...item, status: newSt } : item));
                         });
                       }}
-                      options={ALL_STATUSES.slice(1).map(s => ({ value: s, label: s }))}
+                      options={[o.status, ...nextOrderStatuses(o.status)].map(s => ({ value: s, label: ORDER_STATUS_LABELS[s] || s }))}
                       style={{ minWidth: '100px' }}
                     />
                   </div>
@@ -170,6 +174,7 @@ export function AdminDeliveriesClient({ initialOrders, deliveryCompany }: { init
               const ref = fd.get('reference') as string;
               startTransition(async () => {
                 const res = await createDeliveryHandoff(handoffOrder.id, deliveryCompany?.id || 'default', ref);
+                if (res?.error) toast.error(res.error);
                 if (res?.success) {
                   setOrders(prev => prev.map(o => o.id === handoffOrder.id ? { ...o, status: 'SHIPPED', deliveryHandoff: { reference: ref } } : o));
                   setHandoffOrder(null);
@@ -178,7 +183,7 @@ export function AdminDeliveriesClient({ initialOrders, deliveryCompany }: { init
             }} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.85rem', fontWeight: 500, color: '#5A5551' }}>Tracking Reference (optional)</label>
-                <input name="reference" placeholder="e.g. INF-994821" style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid #D6CFE6', fontSize: '0.9rem', boxSizing: 'border-box' }} />
+                <input name="reference" required maxLength={150} placeholder="e.g. INF-994821" style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid #D6CFE6', fontSize: '0.9rem', boxSizing: 'border-box' }} />
               </div>
               <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
                 <button type="button" onClick={() => setHandoffOrder(null)} style={{ padding: '0.7rem 1.25rem', borderRadius: '10px', border: '1px solid #EAE6DF', background: '#F8F6F2', cursor: 'pointer', fontSize: '0.9rem' }}>Cancel</button>

@@ -17,22 +17,22 @@ export async function savePromoCode(formData: FormData) {
   const usageLimit = usageLimitStr ? parseIntegerInput(usageLimitStr) : null;
   const isActive = formData.get('isActive') === 'on';
 
-  if (!code || value === null) {
+  if (!code?.trim() || !/^[A-Za-z0-9_-]{3,64}$/.test(code.trim()) || value === null || value < 0 || !['PERCENTAGE', 'FIXED'].includes(type) || (type === 'PERCENTAGE' && value > 100) || (usageLimit !== null && usageLimit < 1)) {
     return { error: 'Code and valid value are required' };
   }
 
   try {
     if (id) {
       await db.update(promoCode)
-        .set({ code: code.toUpperCase(), type, value, usageLimit, isActive, updatedAt: new Date() })
+        .set({ code: code.trim().toUpperCase(), type, value, usageLimit, isActive, updatedAt: new Date() })
         .where(eq(promoCode.id, id));
     } else {
       await db.insert(promoCode).values({
         id: crypto.randomUUID(),
-        code: code.toUpperCase(), type, value, usageLimit, isActive, updatedAt: new Date()
+        code: code.trim().toUpperCase(), type, value, usageLimit, isActive, updatedAt: new Date()
       });
     }
-    
+
     revalidatePath('/admin/content');
     await recordAuditLog({
       action: id ? 'UPDATE' : 'CREATE',
@@ -50,7 +50,7 @@ export async function savePromoCode(formData: FormData) {
 export async function deletePromoCode(id: string) {
   await assertAdmin();
   try {
-    await db.delete(promoCode).where(eq(promoCode.id, id));
+    await db.update(promoCode).set({ isActive: false, updatedAt: new Date() }).where(eq(promoCode.id, id));
     revalidatePath('/admin/content');
     await recordAuditLog({
       action: 'DELETE',
@@ -73,22 +73,24 @@ export async function saveGiftCard(formData: FormData) {
   const currentBalance = currentBalanceStr ? parseIntegerInput(currentBalanceStr) : initialBalance;
   const isActive = formData.get('isActive') === 'on';
 
-  if (!code || initialBalance === null || currentBalance === null) {
+  if (!code?.trim() || !/^[A-Za-z0-9_-]{3,64}$/.test(code.trim()) || initialBalance === null || currentBalance === null || initialBalance <= 0 || currentBalance < 0 || currentBalance > initialBalance) {
     return { error: 'Code and valid balance are required' };
   }
 
   try {
     if (id) {
+      const existing = await db.query.giftCard.findFirst({ where: eq(giftCard.id, id) });
+      if (!existing || initialBalance !== existing.initialBalance) return { error: 'An issued card’s value cannot be changed. Create a new card instead.' };
       await db.update(giftCard)
-        .set({ code: code.toUpperCase(), initialBalance, currentBalance, isActive, updatedAt: new Date() })
+        .set({ code: code.trim().toUpperCase(), isActive, updatedAt: new Date() })
         .where(eq(giftCard.id, id));
     } else {
       await db.insert(giftCard).values({
         id: crypto.randomUUID(),
-        code: code.toUpperCase(), initialBalance, currentBalance, isActive, updatedAt: new Date()
+        code: code.trim().toUpperCase(), initialBalance, currentBalance, isActive, updatedAt: new Date()
       });
     }
-    
+
     revalidatePath('/admin/content');
     await recordAuditLog({
       action: id ? 'UPDATE' : 'CREATE',
@@ -106,7 +108,7 @@ export async function saveGiftCard(formData: FormData) {
 export async function deleteGiftCard(id: string) {
   await assertAdmin();
   try {
-    await db.delete(giftCard).where(eq(giftCard.id, id));
+    await db.update(giftCard).set({ isActive: false, updatedAt: new Date() }).where(eq(giftCard.id, id));
     revalidatePath('/admin/promotions');
     await recordAuditLog({
       action: 'DELETE',

@@ -18,9 +18,9 @@ async function getOrCreateRole(roleName: string) {
     id: crypto.randomUUID(),
     name: roleName,
     updatedAt: new Date(),
-  }).returning();
+  }).onConflictDoNothing({ target: roleTable.name }).returning();
 
-  return createdRole;
+  return createdRole || (await db.query.role.findFirst({ where: eq(roleTable.name, roleName) }))!;
 }
 
 export async function getUserRoleName(clerkUserId: string) {
@@ -42,6 +42,9 @@ export async function assertAdmin() {
   if (roleName !== ADMIN_ROLE_NAME) {
     throw new Error('Forbidden: You do not have permission to perform this action.');
   }
+  const actor = await db.query.user.findFirst({ where: eq(userTable.clerkId, userId) });
+  if (!actor) throw new Error('Unauthorized');
+  return { id: actor.id, clerkId: userId };
 }
 
 export async function syncClerkUserToDatabase(clerkUserId: string) {
@@ -52,7 +55,6 @@ export async function syncClerkUserToDatabase(clerkUserId: string) {
   const lastName = clerkUser.lastName ?? '';
 
   const customerRole = await getOrCreateRole(CUSTOMER_ROLE_NAME);
-  const adminRole = await getOrCreateRole(ADMIN_ROLE_NAME);
 
   const existingUser = await db.query.user.findFirst({
     where: eq(userTable.clerkId, clerkUserId),
@@ -67,25 +69,17 @@ export async function syncClerkUserToDatabase(clerkUserId: string) {
       lastName,
       roleId: customerRole.id,
       updatedAt: new Date(),
-    });
-    return { roleName: CUSTOMER_ROLE_NAME };
+    }).onConflictDoUpdate({ target: userTable.clerkId, set: { email: primaryEmail, firstName, lastName, updatedAt: new Date() } });
+    return { roleName: await getUserRoleName(clerkUserId) };
   }
 
-  const currentRoleName = await getUserRoleName(clerkUserId);
-  const requestedRoleName = clerkUser.publicMetadata?.role === 'ADMIN'
-    ? ADMIN_ROLE_NAME
-    : currentRoleName === ADMIN_ROLE_NAME
-      ? ADMIN_ROLE_NAME
-      : CUSTOMER_ROLE_NAME;
-  const requestedRoleId = requestedRoleName === ADMIN_ROLE_NAME ? adminRole.id : customerRole.id;
-
+  // Database roles are authoritative. Profile/webhook synchronization must never grant or restore access.
   await db.update(userTable).set({
     email: primaryEmail,
     firstName,
     lastName,
-    roleId: requestedRoleId,
     updatedAt: new Date(),
   }).where(eq(userTable.clerkId, clerkUserId));
 
-  return { roleName: requestedRoleName };
+  return { roleName: await getUserRoleName(clerkUserId) };
 }

@@ -1,5 +1,6 @@
+import { assertAdmin } from '@/lib/user-sync';
 import React from 'react';
-import { db, deliveryCompany } from '@stemory/database';
+import { db, deliveryCompany, notificationOutbox, sql } from '@stemory/database';
 import { asc } from 'drizzle-orm';
 import styles from '../dashboard.module.css';
 import { deleteDeliveryCompany, saveDeliveryCompany, setSiteMode } from './actions';
@@ -13,11 +14,15 @@ const MODE_CONFIG = {
 } as const;
 
 export default async function AdminSettingsPage() {
+  await assertAdmin();
   const settings = await db.query.siteSettings.findFirst();
   const currentMode = (settings?.mode ?? 'WAITLIST') as keyof typeof MODE_CONFIG;
   const companies = await db.query.deliveryCompany.findMany({
     orderBy: [asc(deliveryCompany.name)],
   });
+
+  const notificationCounts = await db.select({ status: notificationOutbox.status, count: sql<number>`count(*)::int` }).from(notificationOutbox).groupBy(notificationOutbox.status);
+  const countFor = (status: string) => notificationCounts.find(row => row.status === status)?.count || 0;
 
   return (
     <div className={styles.dashboard}>
@@ -77,13 +82,19 @@ export default async function AdminSettingsPage() {
         </p>
       </div>
 
+      <section className={styles.card}>
+        <h2 className={styles.cardTitle}>Order notifications</h2>
+        <p>Pending: {countFor('PENDING')} · Processing: {countFor('PROCESSING')} · Failed: {countFor('FAILED')} · Sent: {countFor('SENT')}</p>
+        <p style={{ color: '#7A7571', marginTop: 12 }}>Orders stay saved when email or carrier updates fail. Pending and failed jobs retry through the secured notification worker. Jobs stop after five unsuccessful attempts and need operator review.</p>
+      </section>
+
       {/* Hero Slideshow Configuration */}
-      <HeroSettingsForm 
-        initialImages={((settings?.config as any)?.heroImages as string[]) || ['/hero-bouquet.png']} 
-        initialFadeSpeed={((settings?.config as any)?.heroFadeSpeed as number) || 5} 
+      <HeroSettingsForm
+        initialImages={((settings?.config as any)?.heroImages as string[]) || ['/hero-bouquet.png']}
+        initialFadeSpeed={((settings?.config as any)?.heroFadeSpeed as number) || 5}
       />
 
-      <CustomBuilderSettingsForm 
+      <CustomBuilderSettingsForm
         initialBaseFee={((settings?.config as any)?.customBouquetBaseFee as number) ?? 19}
       />
 

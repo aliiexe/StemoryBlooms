@@ -1,3 +1,4 @@
+import { assertAdmin } from '@/lib/user-sync';
 import React from 'react';
 import styles from '../../dashboard.module.css';
 import { ProductForm } from '../ProductForm';
@@ -7,6 +8,7 @@ import { db } from '@stemory/database';
 export const dynamic = 'force-dynamic';
 
 export default async function NewProductPage() {
+  await assertAdmin();
   const materials = await db.query.material.findMany({ orderBy: (table, { asc }) => [asc(table.name)] });
   const builderComponents = await db.query.builderComponent.findMany({ orderBy: (table, { asc }) => [asc(table.name)] });
   const categories = await db.query.category.findMany({ orderBy: (table, { asc }) => [asc(table.name)] });

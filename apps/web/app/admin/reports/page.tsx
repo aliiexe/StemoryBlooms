@@ -1,3 +1,4 @@
+import { assertAdmin } from '@/lib/user-sync';
 import React from 'react';
 import { db, order } from '@stemory/database';
 import { gte } from 'drizzle-orm';
@@ -5,6 +6,7 @@ import { ReportsClient } from './ReportsClient';
 import styles from '../dashboard.module.css';
 
 export default async function ReportsPage() {
+  await assertAdmin();
   // Fetch orders from the last 30 days
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -21,17 +23,17 @@ export default async function ReportsPage() {
 
   // Group by date for the line chart (Revenue & Orders over time)
   const groupedByDate: Record<string, { date: string; revenue: number; orders: number }> = {};
-  
+
   // Group by status for the pie chart
   const statusCounts: Record<string, number> = {};
 
   for (const o of recentOrders) {
     const dString = o.createdAt.toISOString().split('T')[0];
-    
+
     if (!groupedByDate[dString]) {
       groupedByDate[dString] = { date: dString, revenue: 0, orders: 0 };
     }
-    
+
     if (o.status !== 'CANCELLED') {
       groupedByDate[dString].revenue += Math.max(0, o.subtotal - o.discount);
     }
@@ -41,7 +43,7 @@ export default async function ReportsPage() {
   }
 
   const lineChartData = Object.values(groupedByDate).sort((a, b) => a.date.localeCompare(b.date));
-  
+
   const pieChartData = Object.entries(statusCounts).map(([name, value]) => ({ name, value }));
 
   return (
@@ -49,13 +51,13 @@ export default async function ReportsPage() {
       <div className={styles.pageHeader}>
         <div>
           <h1 className={styles.pageTitle}>Reports & Analytics</h1>
-          <p className={styles.pageSubtitle}>Overview of your store's performance over the last 30 days.</p>
+          <p className={styles.pageSubtitle}>Booked order value over the last 30 days excludes cancellations and delivery. Finance tracks actual cash collection.</p>
         </div>
       </div>
 
       <div className={styles.statsRow}>
         <div className={styles.statCard}>
-          <div className={styles.statTitle}>Total Revenue (30d)</div>
+          <div className={styles.statTitle}>Booked Sales (30d)</div>
           <div className={styles.statValue}>{totalRevenue.toFixed(2)} MAD</div>
         </div>
         <div className={styles.statCard}>

@@ -1,3 +1,4 @@
+import { assertAdmin } from '@/lib/user-sync';
 import { db } from '@stemory/database';
 import { notFound } from 'next/navigation';
 import styles from '../../dashboard.module.css';
@@ -5,6 +6,7 @@ import { updateAnnouncement } from '../actions';
 import AnnouncementEditorForm from '../AnnouncementEditorForm';
 
 export default async function EditAnnouncementPage({ params }: { params: Promise<{ id: string }> }) {
+  await assertAdmin();
   const { id } = await params;
   const [ann, templates] = await Promise.all([
     db.query.announcement.findFirst({ where: (table, { eq }) => eq(table.id, id) }),

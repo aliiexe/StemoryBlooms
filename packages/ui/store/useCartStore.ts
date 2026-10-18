@@ -3,12 +3,15 @@ import { persist } from 'zustand/middleware';
 
 export interface CartItem {
   id: string; // unique string (can be a product ID or a custom bouquet ID)
+  kind?: 'PRODUCT' | 'CUSTOM';
+  productId?: string;
+  maxQuantity?: number;
   name: string;
   price: number;
   quantity: number;
   imageUrl?: string;
   description?: string;
-  configuration?: any;
+  configuration?: unknown;
 }
 
 interface CartState {
@@ -28,13 +31,16 @@ export const useCartStore = create<CartState>()(
       isCartOpen: false,
 
       addItem: (newItem) => set((state) => {
+        if (!Number.isSafeInteger(newItem.quantity ?? 1) || (newItem.quantity ?? 1) <= 0) return state;
+        const maximum = Math.min(100, newItem.maxQuantity ?? 100);
+        if (maximum <= 0) return state;
         const existingItem = state.items.find(item => item.id === newItem.id);
         if (existingItem) {
           // If item already exists, increase its quantity
           return {
             items: state.items.map(item =>
               item.id === newItem.id
-                ? { ...item, quantity: item.quantity + (newItem.quantity || 1) }
+                ? { ...item, ...newItem, quantity: Math.min(maximum, item.quantity + (newItem.quantity || 1)) }
                 : item
             ),
             isCartOpen: true, // open cart when adding item
@@ -42,7 +48,7 @@ export const useCartStore = create<CartState>()(
         } else {
           // Otherwise, add new item to cart
           return {
-            items: [...state.items, { ...newItem, quantity: newItem.quantity || 1 }],
+            items: [...state.items, { ...newItem, quantity: Math.min(maximum, newItem.quantity || 1) }],
             isCartOpen: true,
           };
         }
@@ -53,9 +59,9 @@ export const useCartStore = create<CartState>()(
       })),
 
       updateQuantity: (id, quantity) => set((state) => ({
-        items: quantity <= 0 
+        items: !Number.isSafeInteger(quantity) ? state.items : quantity <= 0
           ? state.items.filter(item => item.id !== id) // remove if quantity drops to 0
-          : state.items.map(item => item.id === id ? { ...item, quantity } : item)
+          : state.items.map(item => item.id === id ? { ...item, quantity: Math.min(100, item.maxQuantity ?? 100, quantity) } : item)
       })),
 
       clearCart: () => set({ items: [] }),

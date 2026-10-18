@@ -242,3 +242,19 @@
   font-size: 0.9rem;
   margin-bottom: var(--space-4);
 }
+
+.consent { position: relative; display: flex; align-items: center; gap: 0.75rem; min-height: 44px; cursor: pointer; }
+.consent input { position: absolute; opacity: 0; width: 22px; height: 22px; margin: 0; }
+.checkmark { flex: 0 0 22px; height: 22px; border: 2px solid var(--brand-primary); border-radius: 5px; display: grid; place-items: center; }
+.consent input:checked + .checkmark { background: var(--brand-primary); color: white; }
+.consent input:focus-visible + .checkmark { outline: 3px solid #8b65bc; outline-offset: 3px; }
+.checkboxGroup { flex-wrap: wrap; }
+.codeRow { display: flex; gap: 0.5rem; }
+.codeRow input { min-width: 0; flex: 1; }
+.codeRow button { border: 1px solid var(--brand-primary); border-radius: 8px; background: white; color: var(--brand-primary); min-height: 44px; padding: 0.5rem 0.75rem; }
+.summaryItem { gap: 1rem; }
+.summaryItem > span:first-child { overflow-wrap: anywhere; }
+.summaryItem > span:last-child { white-space: nowrap; }
+.formLayout > * { min-width: 0; }
+.section h2, .summaryCard h2 { font: 600 1.2rem var(--font-primary); margin: 0 0 1rem; }
+@media (max-width: 480px) { .section, .summaryCard { padding: 1rem; } .summaryLine { gap: 1rem; } }

@@ -1,3 +1,4 @@
+import { assertAdmin } from '@/lib/user-sync';
 import React from 'react';
 import { db, deliveryZone } from '@stemory/database';
 import { asc } from 'drizzle-orm';
@@ -18,6 +19,7 @@ const inputStyle = {
 };
 
 export default async function DeliveryZonesPage() {
+  await assertAdmin();
   const zones = await db.query.deliveryZone.findMany({
     orderBy: [asc(deliveryZone.name)],
   });

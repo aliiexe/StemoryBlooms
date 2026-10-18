@@ -5,7 +5,7 @@ import { deleteOrder } from '../actions';
 import ConfirmModal from '../../components/ConfirmModal';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Trash2 } from 'lucide-react';
+import { Archive } from 'lucide-react';
 
 export default function DeleteOrderButton({ orderId }: { orderId: string }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -15,34 +15,37 @@ export default function DeleteOrderButton({ orderId }: { orderId: string }) {
   const confirmDelete = async () => {
     setShowConfirm(false);
     setIsSubmitting(true);
-    await deleteOrder(orderId);
-    toast.success('Order deleted');
-    setIsSubmitting(false);
-    router.push('/admin/orders');
+    try {
+      const result = await deleteOrder(orderId);
+      if (result?.error) { toast.error(result.error); return; }
+      toast.success('Order archived');
+      router.push('/admin/orders');
+    } catch { toast.error('Could not archive this order. Try again.'); }
+    finally { setIsSubmitting(false); }
   };
 
   return (
     <>
-      <button 
-        type="button" 
-        onClick={() => setShowConfirm(true)} 
+      <button
+        type="button"
+        onClick={() => setShowConfirm(true)}
         disabled={isSubmitting}
-        style={{ 
+        style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          width: '36px', height: '36px', 
-          border: '1px solid #FEE2E2', backgroundColor: '#FEF2F2', 
-          color: '#DC2626', borderRadius: '6px', cursor: 'pointer' 
+          width: '36px', height: '36px',
+          border: '1px solid #FEE2E2', backgroundColor: '#FEF2F2',
+          color: '#DC2626', borderRadius: '6px', cursor: 'pointer'
         }}
-        title="Delete Order"
+        title="Archive Order"
       >
-        <Trash2 size={16} />
+        <Archive size={16} />
       </button>
 
       <ConfirmModal
         isOpen={showConfirm}
-        title="Delete Order"
-        message="Are you sure you want to delete this order? All related items will be deleted and this action cannot be undone."
-        confirmText="Delete Order"
+        title="Archive Order"
+        message="Hide this completed or cancelled order from active lists? Its items, stock movements, and financial history will be retained."
+        confirmText="Archive Order"
         onConfirm={confirmDelete}
         onCancel={() => setShowConfirm(false)}
       />

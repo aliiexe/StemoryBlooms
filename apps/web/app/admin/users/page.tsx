@@ -1,3 +1,4 @@
+import { assertAdmin } from '@/lib/user-sync';
 import { auth } from '@clerk/nextjs/server';
 import { db, eq, user as userTable, role as roleTable } from '@stemory/database';
 import { redirect } from 'next/navigation';
@@ -12,6 +13,7 @@ async function getUsers() {
 }
 
 export default async function AdminUsersPage() {
+  await assertAdmin();
   const { userId } = await auth();
 
   if (!userId) {

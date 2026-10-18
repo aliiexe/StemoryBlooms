@@ -27,15 +27,18 @@ export function AdminProductsClient({ initialProducts }: { initialProducts: Prod
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
 
   const handleUpdate = (id: string, updates: Partial<Product>) => {
+    const previous = products.find(p => p.id === id);
     // Optimistic UI update
     setProducts(current =>
       current.map(p => (p.id === id ? { ...p, ...updates } : p))
     );
     startTransition(async () => {
-      const res = await quickUpdateProduct(id, updates);
+      const res = await quickUpdateProduct(id, { ...updates, ...(updates.stock !== undefined ? { expectedStock: previous?.stock } : {}) });
       if (res?.error) {
+        if (previous) setProducts(current => current.map(p => p.id === id ? previous : p));
         toast.error(res.error);
       } else {
+        if (res.product) setProducts(current => current.map(p => p.id === id ? res.product : p));
         toast.success('Product updated');
       }
     });
@@ -95,7 +98,7 @@ export function AdminProductsClient({ initialProducts }: { initialProducts: Prod
 
             <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', flex: 1 }}>
               <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem', color: '#3A3531' }}>{p.name}</h3>
-              
+
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
                 {p.isSaleEnabled && p.salePrice ? (
                   <>
@@ -112,11 +115,11 @@ export function AdminProductsClient({ initialProducts }: { initialProducts: Prod
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   <span style={{ fontSize: '0.85rem', color: '#5A5551', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Stock</span>
                   <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #D6CFE6', overflow: 'hidden' }}>
-                    <button 
+                    <button
                       onClick={() => handleUpdate(p.id, { stock: Math.max(0, p.stock - 1) })}
                       style={{ padding: '0.4rem 0.6rem', border: 'none', background: 'transparent', cursor: 'pointer', color: '#5A5551' }}
                     >-</button>
-                    <input 
+                    <input
                       type="number"
                       min="0"
                       className="no-spinners"
@@ -130,7 +133,7 @@ export function AdminProductsClient({ initialProducts }: { initialProducts: Prod
                       }}
                       style={{ width: '100%', textAlign: 'center', padding: '0.4rem 0', border: 'none', fontSize: '0.9rem', outline: 'none' }}
                     />
-                    <button 
+                    <button
                       onClick={() => handleUpdate(p.id, { stock: p.stock + 1 })}
                       style={{ padding: '0.4rem 0.6rem', border: 'none', background: 'transparent', cursor: 'pointer', color: '#5A5551' }}
                     >+</button>
@@ -151,7 +154,7 @@ export function AdminProductsClient({ initialProducts }: { initialProducts: Prod
                   {p.isSaleEnabled ? (
                     <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #F57F17', overflow: 'hidden' }}>
                       <span style={{ paddingLeft: '0.6rem', color: '#5A5551', fontSize: '0.9rem' }}>MAD</span>
-                      <input 
+                      <input
                         type="number"
                         className="no-spinners"
                         value={p.salePrice || ''}
@@ -173,20 +176,20 @@ export function AdminProductsClient({ initialProducts }: { initialProducts: Prod
               </div>
 
               <div style={{ marginTop: 'auto', display: 'flex', gap: '0.5rem' }}>
-                <Link 
-                  href={`/shop/${p.id}`} 
-                  target="_blank" 
+                <Link
+                  href={`/shop/${p.id}`}
+                  target="_blank"
                   style={{ flex: 1, textAlign: 'center', padding: '0.5rem', borderRadius: '8px', border: '1px solid #D6CFE6', color: '#5A5551', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 500 }}
                 >
                   Preview
                 </Link>
-                <Link 
-                  href={`/admin/products/${p.id}`} 
+                <Link
+                  href={`/admin/products/${p.id}`}
                   style={{ flex: 1, textAlign: 'center', padding: '0.5rem', borderRadius: '8px', backgroundColor: 'var(--brand-primary)', color: '#fff', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 500 }}
                 >
                   Edit all
                 </Link>
-                <button 
+                <button
                   onClick={() => setItemToDelete(p.id)}
                   style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid #FFCDD2', backgroundColor: '#FFEBEE', color: '#C62828', cursor: 'pointer' }}
                   title="Delete Product"

@@ -1,3 +1,4 @@
+import { assertAdmin } from '@/lib/user-sync';
 import { db } from '@stemory/database';
 import { order, material, adminInboxEvent, orderItem, customer } from '@stemory/database/schema';
 import { count, sum, eq, gte, lt, desc, inArray, sql } from 'drizzle-orm';
@@ -12,6 +13,7 @@ const formatMoney = (amount: number) => {
 };
 
 export default async function AdminDashboardPage() {
+  await assertAdmin();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -27,9 +29,9 @@ export default async function AdminDashboardPage() {
     db.select({ count: count() }).from(order).where(eq(order.status, 'READY')),
     db.select({ count: count() }).from(order).where(inArray(order.status, ['COMPLETED', 'DELIVERED'])),
     db.select({ count: count() }).from(customer),
-    db.select({ 
-      count: count(), 
-      totalRevenue: sql<number>`SUM(GREATEST(0, ${order.total} - ${order.deliveryFee}))` 
+    db.select({
+      count: count(),
+      totalRevenue: sql<number>`SUM(GREATEST(0, ${order.total} - ${order.deliveryFee}))`
     }).from(order).where(sql`${order.status} != 'CANCELLED'`)
   ]);
   const awaitingCount = awaitingResult[0].count;
@@ -52,7 +54,7 @@ export default async function AdminDashboardPage() {
   const revenueToday = ordersToday.reduce((sum, order) => sum + Math.max(0, order.total - order.deliveryFee), 0);
 
   const metrics = [
-    { label: 'Revenue Today', value: formatMoney(revenueToday), sub: 'Live', positive: true },
+    { label: 'Booked Sales Today', value: formatMoney(revenueToday), sub: 'Live', positive: true },
     { label: 'Orders Today', value: ordersTodayCount.toString(), sub: 'Live', positive: true },
     { label: 'AOV', value: formatMoney(aov) },
     { label: 'Customers', value: totalCustomers.toString() },
@@ -91,7 +93,7 @@ export default async function AdminDashboardPage() {
   sevenDaysAgo.setHours(0, 0, 0, 0);
 
   const recentSales = await db.query.order.findMany({
-    where: (table, { gte }) => gte(table.createdAt, sevenDaysAgo),
+    where: (table, { and, gte, ne }) => and(gte(table.createdAt, sevenDaysAgo), ne(table.status, 'CANCELLED')),
     columns: { createdAt: true, total: true, deliveryFee: true }
   });
 
@@ -100,9 +102,9 @@ export default async function AdminDashboardPage() {
     const d = new Date();
     d.setDate(d.getDate() - i);
     const dayStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    
+
     // Find all orders that fall on this day
-    const daySales = recentSales.filter(o => 
+    const daySales = recentSales.filter(o =>
       new Date(o.createdAt).toDateString() === d.toDateString()
     ).reduce((sum, o) => sum + Math.max(0, o.total - o.deliveryFee), 0);
 
@@ -130,6 +132,8 @@ export default async function AdminDashboardPage() {
     quantity: sum(orderItem.quantity)
   })
   .from(orderItem)
+  .innerJoin(order, eq(orderItem.orderId, order.id))
+  .where(sql`${order.status} != 'CANCELLED' AND ${orderItem.productName} NOT LIKE '[Element]%'`)
   .groupBy(orderItem.productName)
   .orderBy(desc(sum(orderItem.quantity)))
   .limit(5);
@@ -140,7 +144,7 @@ export default async function AdminDashboardPage() {
   }));
 
   return (
-    <DashboardClient 
+    <DashboardClient
       metrics={metrics}
       recentOrders={recentOrders}
       salesData={salesData}
