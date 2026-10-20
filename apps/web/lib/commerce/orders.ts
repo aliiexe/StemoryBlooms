@@ -1,15 +1,15 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { db, eq, and, inArray, sql, product, builderComponent, deliveryZone, promoCode, giftCard,
   customer, order, orderItem, notificationOutbox, adminNotification, orderStatusHistory } from '@stemory/database';
-import { AssistedOrderSchema, CheckoutPayloadSchema, CheckoutQuoteSchema } from '@stemory/contracts';
-import type { CheckoutCartItem } from '@stemory/contracts';
+import { AssistedOrderSchema, AssistedQuoteSchema, CheckoutPayloadSchema, CheckoutQuoteSchema } from '@stemory/contracts';
+import type { AssistedQuoteInput, CheckoutCartItem } from '@stemory/contracts';
 import { CommerceError } from './errors';
 import { getReceiptSecret, receiptUrl } from './receipt-access';
 import type { OrderAddress } from './receipt-access';
 
 export type CommerceDatabase = typeof db;
-type Transaction = Parameters<Parameters<CommerceDatabase['transaction']>[0]>[0];
-type Reader = CommerceDatabase | Transaction;
+export type CommerceTransaction = Parameters<Parameters<CommerceDatabase['transaction']>[0]>[0];
+type Reader = CommerceDatabase | CommerceTransaction;
 type ManualLine = { kind: 'MANUAL'; cartLineId: string; name: string; unitPrice: number; quantity: number };
 type OrderLine = CheckoutCartItem | ManualLine;
 type QuoteInput = { cartItems: OrderLine[]; city: string; deliveryZoneId?: string; promoCode?: string; giftCardCode?: string; manualDiscount?: number; handDelivered?: boolean };
@@ -128,7 +128,7 @@ export async function quoteCheckout(payload: unknown, database: CommerceDatabase
   return publicQuote(await priceOrder(database, parsed.data, false, true));
 }
 
-async function resolveCustomer(tx: Transaction, name: string, email: string | null, phone: string) {
+async function resolveCustomer(tx: CommerceTransaction, name: string, email: string | null, phone: string) {
   // Serialize both identifiers in a stable order to prevent duplicate customer inserts.
   for (const key of [`phone:${phone}`, ...(email ? [`email:${email}`] : [])].sort()) {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`);
@@ -142,13 +142,16 @@ async function resolveCustomer(tx: Transaction, name: string, email: string | nu
   return created;
 }
 
-type CreateInput = QuoteInput & { customerName: string; email?: string; phoneNumber: string; address: string; notes?: string; source: string; expectedTotal?: number; ownerClerkId?: string | null; idempotencyKey: string };
+type CreateInput = QuoteInput & { customerName: string; email?: string; phoneNumber: string; address: string; notes?: string; source: string; expectedTotal?: number; quoteVersion?: string; recipientName?: string; recipientPhone?: string; manualDiscountReason?: string; actorId?: string; ownerClerkId?: string | null; idempotencyKey: string };
 
 async function commitOrder(input: CreateInput, database: CommerceDatabase) {
+  return database.transaction(tx => commitOrderInTransaction(input, tx));
+}
+
+async function commitOrderInTransaction(input: CreateInput, tx: CommerceTransaction) {
   getReceiptSecret();
   if (!/^[A-Za-z0-9_-]{16,128}$/.test(input.idempotencyKey)) fail('A valid checkout attempt key is required.');
   const fingerprint = createHash('sha256').update(JSON.stringify(input)).digest('hex');
-  return database.transaction(async tx => {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${input.idempotencyKey}, 0))`);
     const previous = await tx.query.order.findFirst({ where: eq(order.idempotencyKey, input.idempotencyKey) });
     if (previous) {
@@ -158,10 +161,13 @@ async function commitOrder(input: CreateInput, database: CommerceDatabase) {
     }
     const quote = await priceOrder(tx, input, true, input.source === 'WEBSITE');
     if (input.expectedTotal !== undefined && quote.total !== input.expectedTotal) fail('Your order total has changed. Review the updated total before placing your order.', 'PRICE_CHANGED', 409);
+    if (input.quoteVersion && input.quoteVersion !== staffQuoteVersion(quote)) fail('Prices or discounts changed. Review a fresh quote before creating this order.', 'PRICE_CHANGED', 409);
     const normalizedEmail = input.email?.trim().toLowerCase() || null;
     const phone = normalizePhone(input.phoneNumber);
     const buyer = await resolveCustomer(tx, input.customerName, normalizedEmail, phone);
     const address: OrderAddress = { city: quote.city, addressLine1: input.handDelivered ? 'Hand delivered' : input.address,
+      recipientSnapshot: input.recipientName && input.recipientPhone ? { name: input.recipientName, phone: normalizePhone(input.recipientPhone) } : undefined,
+      manualDiscountReason: input.manualDiscountReason, manualDiscount: input.manualDiscount,
       deliveryZoneId: input.deliveryZoneId, deliveryEstimate: quote.deliveryEstimate,
       customerSnapshot: { firstName: input.customerName, lastName: '', email: normalizedEmail, phone },
       ownerClerkId: input.ownerClerkId || null, receiptNonce: randomBytes(32).toString('hex'), requestFingerprint: fingerprint,
@@ -195,12 +201,11 @@ async function commitOrder(input: CreateInput, database: CommerceDatabase) {
         .where(and(eq(giftCard.id, quote.giftCardId), eq(giftCard.isActive, true), sql`${giftCard.currentBalance} >= ${quote.giftAmount}`)).returning({ id: giftCard.id });
       if (updated.length !== 1) fail('This gift card balance has changed.', 'INVALID_GIFT', 409);
     }
-    await tx.insert(orderStatusHistory).values({ id: randomUUID(), orderId: created.id, status: created.status, note: 'Order created', createdAt: now });
+    await tx.insert(orderStatusHistory).values({ id: randomUUID(), orderId: created.id, status: created.status, note: input.manualDiscount ? `Order created; manual discount ${input.manualDiscount} MAD: ${input.manualDiscountReason}` : 'Order created', actorId: input.actorId, createdAt: now });
     await tx.insert(adminNotification).values({ id: randomUUID(), type: 'ORDER_NEW', title: 'New order received', message: `Order ${created.orderNumber} — ${created.total} MAD`, isRead: false, createdAt: now });
     await tx.insert(notificationOutbox).values({ id: randomUUID(), type: 'ORDER_CONFIRMATION', recipient: normalizedEmail || 'MERCHANT',
       payload: { orderId: created.id }, status: 'PENDING', updatedAt: now });
     return { id: created.id, orderNumber: created.orderNumber, total: created.total, receiptUrl: receiptUrl(created.orderNumber, address), replayed: false };
-  });
 }
 
 export async function createCheckout(payload: unknown, idempotencyKey: string, ownerClerkId: string | null = null, database: CommerceDatabase = db) {
@@ -209,17 +214,35 @@ export async function createCheckout(payload: unknown, idempotencyKey: string, o
   return commitOrder({ ...parsed.data, notes: parsed.data.deliveryInstructions, source: 'WEBSITE', ownerClerkId, idempotencyKey }, database);
 }
 
-export async function createStaffOrder(payload: unknown, database: CommerceDatabase = db) {
-  const parsed = AssistedOrderSchema.safeParse(payload);
-  if (!parsed.success) fail(parsed.error.issues[0]?.message || 'Please check the order details.');
-  const { items, isHandDelivered, ...input } = parsed.data;
+function staffPricingInput(input: AssistedQuoteInput): QuoteInput {
+  const { items, isHandDelivered, ...pricing } = input;
   const cartItems: OrderLine[] = [];
   const components: Record<string, number> = {};
   items.forEach((line, index) => {
     if (line.productId === 'CUSTOM') cartItems.push({ kind: 'MANUAL', cartLineId: `manual-${index}`, name: line.customName!, unitPrice: line.customPrice!, quantity: line.quantity });
+    else if (line.productId === 'BOUQUET') cartItems.push({ kind: 'CUSTOM', cartLineId: `bouquet-${index}`, quantity: line.quantity, configuration: line.configuration! });
     else if (line.productId.startsWith('COMPONENT_')) { const id = line.productId.slice(10); components[id] = (components[id] || 0) + line.quantity; }
     else cartItems.push({ kind: 'PRODUCT', cartLineId: `product-${index}`, productId: line.productId, quantity: line.quantity });
   });
   if (Object.keys(components).length) cartItems.push({ kind: 'CUSTOM', cartLineId: 'staff-bouquet', quantity: 1, configuration: { components } });
-  return commitOrder({ ...input, cartItems, handDelivered: isHandDelivered }, database);
+  return { ...pricing, city: isHandDelivered ? 'In person' : pricing.city, cartItems, handDelivered: isHandDelivered };
+}
+function staffQuoteVersion(quote: InternalQuote) {
+  return createHash('sha256').update(JSON.stringify({ ...publicQuote(quote), promoId: quote.promoId, giftCardId: quote.giftCardId })).digest('hex');
+}
+export async function quoteStaffOrder(payload: unknown, database: CommerceDatabase = db) {
+  const parsed = AssistedQuoteSchema.safeParse(payload);
+  if (!parsed.success) fail(parsed.error.issues[0]?.message || 'Check the items and delivery details.');
+  const quote = await priceOrder(database, staffPricingInput(parsed.data), false, false);
+  return { ...publicQuote(quote), quoteVersion: staffQuoteVersion(quote) };
+}
+export type StaffOrderQuote = Awaited<ReturnType<typeof quoteStaffOrder>>;
+
+export async function createStaffOrderInTransaction(payload: unknown, tx: CommerceTransaction, actorId?: string) {
+  const parsed = AssistedOrderSchema.safeParse(payload);
+  if (!parsed.success) fail(parsed.error.issues[0]?.message || 'Please check the order details.');
+  return commitOrderInTransaction({ ...parsed.data, ...staffPricingInput(parsed.data), actorId }, tx);
+}
+export async function createStaffOrder(payload: unknown, database: CommerceDatabase = db, actorId?: string) {
+  return database.transaction(tx => createStaffOrderInTransaction(payload, tx, actorId));
 }

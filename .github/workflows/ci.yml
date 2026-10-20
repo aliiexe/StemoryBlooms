@@ -19,7 +19,7 @@ jobs:
       - run: pnpm --filter web test
       - name: Lint commerce and permission boundaries
         working-directory: apps/web
-        run: pnpm exec eslint lib/commerce app/api/v1/orders/route.ts app/api/v1/orders/quote/route.ts app/api/internal/notifications/route.ts app/admin/orders/actions.ts app/admin/materials/actions.ts
+        run: pnpm exec eslint lib/commerce app/api/v1/orders/route.ts app/api/v1/orders/quote/route.ts app/api/internal/notifications/route.ts app/admin/orders/actions.ts app/admin/materials/actions.ts app/admin/custom-orders app/admin/orders/new app/admin/components/ConfirmModal.tsx
       - name: Check migration metadata drift
         run: |
           pnpm --filter @stemory/database db:generate

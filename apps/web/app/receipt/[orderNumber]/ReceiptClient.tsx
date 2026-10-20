@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 type ReceiptProps = {
   order: {
     orderNumber: string; createdAt: string; subtotal: number; deliveryFee: number; discount: number; total: number; paymentStatus: string;
-    deliveryAddress: { city?: string; addressLine1?: string };
+    deliveryAddress: { city?: string; addressLine1?: string; recipient?: { name: string; phone: string } };
     customer: { firstName: string; lastName: string; email: string | null; phone: string };
     items: { id: string; productName: string; quantity: number; unitPrice: number; totalPrice: number }[];
   };
@@ -86,6 +86,7 @@ export default function ReceiptClient({ order }: ReceiptProps) {
           </div>
           <div>
             <h3 style={{ fontSize: '0.9rem', textTransform: 'uppercase', color: '#9CA3AF', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Delivery Address</h3>
+            {order.deliveryAddress.recipient && <><p style={{ fontWeight: 600, margin: 0 }}>{order.deliveryAddress.recipient.name}</p><p>{order.deliveryAddress.recipient.phone}</p></>}
             <p style={{ margin: 0, color: '#4B5563', fontSize: '0.9rem' }}>{order.deliveryAddress?.addressLine1 || 'TBD'}</p>
             <p style={{ margin: '0.25rem 0 0 0', color: '#4B5563', fontSize: '0.9rem' }}>{order.deliveryAddress?.city || 'TBD'}</p>
           </div>

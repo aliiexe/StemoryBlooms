@@ -6,6 +6,9 @@ export type OrderAddress = {
   deliveryZoneId?: string;
   deliveryEstimate?: string | null;
   customerSnapshot?: { firstName: string; lastName: string; email: string | null; phone: string };
+  recipientSnapshot?: { name: string; phone: string };
+  manualDiscount?: number;
+  manualDiscountReason?: string;
   ownerClerkId?: string | null;
   receiptNonce?: string;
   requestFingerprint?: string;

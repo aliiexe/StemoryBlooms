@@ -4,7 +4,7 @@ import { db, eq, sql, order } from '@stemory/database';
 import { revalidatePath } from 'next/cache';
 import { assertAdmin } from '@/lib/user-sync';
 import { recordAuditLog } from '@/lib/audit';
-import { createStaffOrder } from '@/lib/commerce/orders';
+import { createStaffOrder, quoteStaffOrder } from '@/lib/commerce/orders';
 import { transitionOrder, archiveOrder, recordCashCollection } from '@/lib/commerce/order-lifecycle';
 import { publicError } from '@/lib/commerce/errors';
 import { receiptUrl, type OrderAddress } from '@/lib/commerce/receipt-access';
@@ -33,13 +33,21 @@ export async function updateOrderStatus(orderId: string, status: string) {
 
 export type AssistedOrderPayload = z.infer<typeof AssistedOrderSchema>;
 
-export async function createAssistedOrder(payload: unknown) {
+export async function getAssistedOrderQuote(payload: unknown) {
   await assertAdmin();
-  const created = await createStaffOrder(payload);
-  after(() => processNotificationOutbox(2, created.id).catch(console.error));
-  refreshOrders();
-  await recordAuditLog({ action: 'CREATE', target: 'ORDER', summary: `Created assisted order ${created.orderNumber}`, details: { orderId: created.id } });
-  return { success: true, orderId: created.id, orderNumber: created.orderNumber, receiptUrl: created.receiptUrl };
+  try { return { success: true as const, quote: await quoteStaffOrder(payload) }; }
+  catch (error) { return { success: false as const, ...publicError(error) }; }
+}
+
+export async function createAssistedOrder(payload: unknown) {
+  const actor = await assertAdmin();
+  try {
+    const created = await createStaffOrder(payload, db, actor.id);
+    after(() => processNotificationOutbox(2, created.id).catch(console.error));
+    refreshOrders();
+    await recordAuditLog({ action: 'CREATE', target: 'ORDER', summary: `Created assisted order ${created.orderNumber}`, details: { orderId: created.id } });
+    return { success: true as const, orderId: created.id, orderNumber: created.orderNumber, receiptUrl: created.receiptUrl };
+  } catch (error) { return { success: false as const, ...publicError(error) }; }
 }
 
 // Retain the exported action name for existing clients; business records are archived, never destroyed.
@@ -89,9 +97,9 @@ export async function pushOrderToInfinidis(orderId: string) {
       const address = current.deliveryAddress as OrderAddress;
       if (address.archivedAt || current.status !== 'READY') return { success: false, error: 'Only ready orders can be dispatched.' };
       const buyer = address.customerSnapshot || current.customer;
-      const success = await sendOrderToInfinidis({ fullname: `${buyer.firstName} ${buyer.lastName}`.trim(),
+      const success = await sendOrderToInfinidis({ fullname: address.recipientSnapshot?.name || `${buyer.firstName} ${buyer.lastName}`.trim(),
         code: current.orderNumber, product: current.orderItems.map(item => `${item.quantity}x ${item.productName}`).join(', '),
-        qty: current.orderItems.reduce((sum, item) => sum + item.quantity, 0), phone: buyer.phone,
+        qty: current.orderItems.reduce((sum, item) => sum + item.quantity, 0), phone: address.recipientSnapshot?.phone || buyer.phone,
         address: address.addressLine1 || '', city: address.city || '', price: current.total, note: current.notes || undefined });
       if (!success) return { success: false, error: 'The carrier did not confirm this order. Review the carrier dashboard before retrying.' };
       await tx.update(order).set({ sentToInfinidis: true, updatedAt: new Date() }).where(eq(order.id, orderId));

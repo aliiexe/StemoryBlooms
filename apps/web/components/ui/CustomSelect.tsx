@@ -49,14 +49,14 @@ export function CustomSelect({ options, value, onChange, placeholder = 'Select a
       event.preventDefault(); if (!open) show(); else if (filtered[active]) choose(filtered[active]);
     }
   };
-  return <div ref={root} className={className} style={{ position: 'relative', width: '100%', ...style }} onKeyDown={keyDown}>
+  return <div ref={root} className={className} style={{ position: 'relative', width: '100%', minWidth: 0, ...style }} onKeyDown={keyDown}>
     {name && <input type="hidden" name={name} value={value} />}
     <button ref={trigger} type="button" role="combobox" aria-label={label || name || placeholder} aria-expanded={open}
       aria-controls={`${id}-list`} aria-haspopup="listbox" aria-activedescendant={open && filtered[active] ? `${id}-option-${active}` : undefined}
       disabled={disabled} onClick={() => open ? setOpen(false) : show()}
-      style={{ width: '100%', minHeight: 44, padding: '0.75rem 1rem', border: '1px solid #D6CFE6', borderRadius: 10,
+      style={{ width: '100%', minWidth: 0, minHeight: 44, padding: '0.75rem 1rem', border: '1px solid #D6CFE6', borderRadius: 10,
         background: disabled ? '#F5F5F5' : '#fff', color: '#3A3531', font: 'inherit', textAlign: 'left', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selected?.label || placeholder}</span><span aria-hidden="true">{open ? '▴' : '▾'}</span>
+      <span style={{ overflow: 'hidden', minWidth: 0, textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selected?.label || placeholder}</span><span aria-hidden="true">{open ? '▴' : '▾'}</span>
     </button>
     {open && <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 100, background: '#fff', border: '1px solid #D6CFE6', borderRadius: 10, boxShadow: '0 8px 24px #0002', padding: 4 }}>
       {searchable && <input ref={search} aria-label={`Search ${label || 'options'}`} aria-controls={`${id}-list`}

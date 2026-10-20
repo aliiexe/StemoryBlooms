@@ -42,7 +42,7 @@ export default async function ReceiptPage({ params, searchParams }: {
     createdAt: orderRecord.createdAt.toISOString(),
     subtotal: orderRecord.subtotal, deliveryFee: orderRecord.deliveryFee,
     discount: orderRecord.discount, total: orderRecord.total, paymentStatus: orderRecord.paymentStatus,
-    deliveryAddress: { city: address.city, addressLine1: address.addressLine1 },
+    deliveryAddress: { city: address.city, addressLine1: address.addressLine1, recipient: address.recipientSnapshot },
     customer: customerData,
     items: items.map(({ id, productName, quantity, unitPrice, totalPrice }) => ({ id, productName, quantity, unitPrice, totalPrice })),
   };

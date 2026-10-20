@@ -1,58 +1,13 @@
 import { assertAdmin } from '@/lib/user-sync';
-import React from 'react';
-import { db, eq, and, sql, product, deliveryZone, builderComponent } from '@stemory/database';
+import { loadAssistedCatalog } from '@/lib/commerce/assisted-catalog';
 import styles from '../../dashboard.module.css';
 import NewAssistedOrderForm from './NewAssistedOrderForm';
 
 export default async function NewAssistedOrderPage() {
   await assertAdmin();
-  const [products, components, deliveryZones, settings] = await Promise.all([
-    db.query.product.findMany({ where: and(eq(product.isAvailable, true), eq(product.status, 'PUBLISHED'), sql`${product.stock} > 0`) }),
-    db.query.builderComponent.findMany({ where: and(eq(builderComponent.isAvailable, true), sql`${builderComponent.stock} > 0`) }),
-    db.query.deliveryZone.findMany({ where: eq(deliveryZone.isActive, true) }),
-    db.query.siteSettings.findFirst()
-  ]);
-
-  const baseFee = (settings?.config as { customBouquetBaseFee?: number } | null)?.customBouquetBaseFee ?? 19;
-
-  // Map products to the type expected by the form
-  const serializedProducts = products.map(p => ({
-    id: p.id,
-    name: p.name,
-    basePrice: p.basePrice,
-    salePrice: p.isSaleEnabled ? p.salePrice : null,
-    image: p.images?.[0] || null
-  }));
-
-  const serializedComponents = components.map(c => ({
-    id: c.id,
-    name: c.name,
-    price: (c.type === 'WRAPPING' || c.type === 'CARD') ? 0 : c.unitPrice,
-    type: c.type,
-    image: c.imageUrl || null
-  }));
-
-  const serializedDeliveryZones = deliveryZones.map(z => ({
-    id: z.id,
-    name: z.name,
-    fee: z.fee
-  }));
-
-  return (
-    <div className={styles.dashboard}>
-      <header className={styles.shopHeader} style={{ padding: '0', marginBottom: '2rem' }}>
-        <h1 className={styles.shopTitle} style={{ fontSize: '1.75rem' }}>Create Assisted Order</h1>
-        <p style={{ color: '#5A5551', marginTop: '0.5rem' }}>
-          Record an order taken over the phone, Instagram, or in person.
-        </p>
-      </header>
-
-      <NewAssistedOrderForm
-        products={serializedProducts}
-        components={serializedComponents}
-        deliveryZones={serializedDeliveryZones}
-        baseFee={baseFee}
-      />
-    </div>
-  );
+  const catalog = await loadAssistedCatalog();
+  return <div className={styles.dashboard}>
+    <header className={styles.pageHeader}><div><h1 className={styles.pageTitle}>Create assisted order</h1><p>Record a phone, social, or in-person order. Save unfinished work as a draft.</p></div></header>
+    <NewAssistedOrderForm catalog={catalog} />
+  </div>;
 }

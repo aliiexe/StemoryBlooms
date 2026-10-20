@@ -5,10 +5,13 @@ import { PGlite } from '@electric-sql/pglite';
 import { drizzle } from 'drizzle-orm/pglite';
 import * as tables from '../../../../packages/database/schema';
 import * as relations from '../../../../packages/database/relations';
-import { createCheckout, createStaffOrder, quoteCheckout, type CommerceDatabase } from './orders';
+import { createCheckout, createStaffOrder, quoteCheckout, quoteStaffOrder, type CommerceDatabase } from './orders';
 import { transitionOrder, archiveOrder, recordCashCollection } from './order-lifecycle';
 import { receiptToken, verifyReceiptToken } from './receipt-access';
 import { checkoutCartLines } from './cart-lines';
+import { saveOrderDraft, convertOrderDraft, setDraftArchived, readDraftPayload } from './drafts';
+import { AssistedDraftDataSchema } from '@stemory/contracts';
+import { randomUUID } from 'node:crypto';
 import { purchaseMaterial, saveInventoryMaterial, correctMaterial } from './inventory';
 
 let pg: PGlite;
@@ -28,8 +31,9 @@ before(async () => {
   database = drizzle(pg, { schema: { ...tables, ...relations } }) as unknown as CommerceDatabase;
 });
 beforeEach(async () => {
-  await pg.exec('TRUNCATE "Order", "Customer", "Product", "BuilderComponent", "DeliveryZone", "PromoCode", "GiftCard", "SiteSettings", "AdminNotification", "NotificationOutbox", "User", "Material", "Supplier", "Expense", "StockMovement" CASCADE');
+  await pg.exec('TRUNCATE "Order", "Customer", "Product", "BuilderComponent", "DeliveryZone", "PromoCode", "GiftCard", "SiteSettings", "AdminNotification", "NotificationOutbox", "User", "Material", "Supplier", "Expense", "StockMovement", "DraftOrder", "AuditLog" CASCADE');
   const now = new Date();
+  await database.insert(tables.user).values({ id: 'test-admin', clerkId: 'test-clerk-admin', email: 'admin@example.com', updatedAt: now });
   await database.insert(tables.siteSettings).values({ id: 'settings', mode: 'LIVE', config: { customBouquetBaseFee: 19 }, updatedAt: now });
   await database.insert(tables.product).values({ id: 'product', name: 'Trusted product name', basePrice: 100, stock: 1, status: 'PUBLISHED', isAvailable: true, updatedAt: now });
   await database.insert(tables.deliveryZone).values({ id: 'zone', name: 'Casablanca', fee: 20, isActive: true, updatedAt: now });
@@ -138,9 +142,11 @@ test('cancellation reverses stock and benefits once; archival retains records an
 
 test('staff orders use the same stock protections and reject malformed or negative input', async () => {
   const input = { source: 'PHONE', customerName: 'Staff buyer', phoneNumber: '0612345678', city: 'Casablanca', address: 'Test address 10', deliveryZoneId: 'zone', manualDiscount: 0, items: [{ productId: 'product', quantity: 1 }], idempotencyKey: key('staff') };
-  const created = await createStaffOrder(input, database); assert.equal(created.total, 120);
-  await assert.rejects(createStaffOrder({ ...input, idempotencyKey: key('staff-again') }, database), /available|stock/);
-  await assert.rejects(createStaffOrder({ ...input, manualDiscount: -1 }, database));
+  const quote = await quoteStaffOrder(inputForQuote(input), database);
+  const approved = { ...input, expectedTotal: quote.total, quoteVersion: quote.quoteVersion };
+  const created = await createStaffOrder(approved, database); assert.equal(created.total, 120);
+  await assert.rejects(createStaffOrder({ ...approved, idempotencyKey: key('staff-again') }, database), /available|stock/);
+  await assert.rejects(createStaffOrder({ ...approved, manualDiscount: -1 }, database));
 });
 
 test('receipt tokens are bound to both the order and its revocable nonce', () => {
@@ -205,4 +211,151 @@ test('failed purchase expenses roll back restocked quantity and its movement', a
     assert.equal((await database.query.material.findFirst())?.quantity, 0);
     assert.equal((await database.query.stockMovement.findMany()).length, 0);
   } finally { await pg.exec('DROP TRIGGER reject_expense ON "Expense"; DROP FUNCTION reject_expense()'); }
+});
+
+function staffData() {
+  return AssistedDraftDataSchema.parse({ source: 'PHONE', customerName: 'Staff buyer', phoneNumber: '0612345678',
+    city: 'Casablanca', address: 'Test address 10', deliveryZoneId: 'zone', items: [{ productId: 'product', quantity: 1 }] });
+}
+function inputForQuote(data: Record<string, unknown>) {
+  return Object.fromEntries(['source', 'city', 'deliveryZoneId', 'manualDiscount', 'manualDiscountReason', 'promoCode', 'isHandDelivered', 'items'].filter(name => data[name] !== undefined).map(name => [name, data[name]]));
+}
+function newDraft(data = staffData()) { return { id: randomUUID(), expectedRevision: 0, title: 'Custom request', data }; }
+
+test('staff quote applies current promo, manual discount, and delivery without reserving anything', async () => {
+  await database.insert(tables.promoCode).values({ id: 'promo', code: 'TEN', type: 'PERCENTAGE', value: 10, updatedAt: new Date() });
+  const data = { ...staffData(), promoCode: 'TEN', manualDiscount: 5, manualDiscountReason: 'Agreed loyalty discount' };
+  const quote = await quoteStaffOrder(inputForQuote(data), database);
+  assert.equal(quote.total, 105); assert.equal(quote.promoDiscount, 10);
+  assert.equal((await database.query.product.findFirst())?.stock, 1);
+  assert.equal((await database.query.promoCode.findFirst())?.usageCount, 0);
+  assert.equal((await database.query.customer.findMany()).length, 0);
+  assert.equal((await database.query.notificationOutbox.findMany()).length, 0);
+  await assert.rejects(quoteStaffOrder(inputForQuote({ ...data, manualDiscountReason: '' }), database), /reason/);
+  await assert.rejects(quoteStaffOrder(inputForQuote({ ...data, isHandDelivered: true }), database), /in-person/);
+});
+
+test('staff creation requires a reviewed quote and catches price changes even when the final total is unchanged', async () => {
+  const data = staffData(); const quote = await quoteStaffOrder(inputForQuote(data), database);
+  await assert.rejects(createStaffOrder({ ...data, idempotencyKey: key('unquoted') }, database));
+  await pg.exec('UPDATE "Product" SET "basePrice" = 110; UPDATE "DeliveryZone" SET fee = 10');
+  await assert.rejects(createStaffOrder({ ...data, expectedTotal: 120, quoteVersion: quote.quoteVersion, idempotencyKey: key('stale-quote') }, database), /fresh quote/);
+  assert.equal((await database.query.order.findMany()).length, 0);
+  assert.equal((await database.query.product.findFirst())?.stock, 1);
+});
+
+test('multiple bouquet recipes preserve card text, component stock, and included packaging per bouquet', async () => {
+  const data = { ...staffData(), items: [
+    { productId: 'BOUQUET', quantity: 2, configuration: { components: { flower: 2, wrap: 1, card: 1 }, cardMessage: 'First recipient' } },
+    { productId: 'BOUQUET', quantity: 1, configuration: { components: { flower: 1 }, cardMessage: 'Second recipient' } },
+  ] };
+  const quote = await quoteStaffOrder(inputForQuote(data), database); assert.equal(quote.total, 227);
+  const created = await createStaffOrder({ ...data, expectedTotal: quote.total, quoteVersion: quote.quoteVersion, idempotencyKey: key('recipes') }, database);
+  const lines = await database.query.orderItem.findMany();
+  assert.equal(lines.length, 2); assert.equal(created.total, 227);
+  assert.ok(lines.some(line => (line.configuration as { cardMessage: string }).cardMessage === 'Second recipient'));
+  const stock = await database.query.builderComponent.findMany();
+  assert.equal(stock.find(line => line.id === 'flower')?.stock, 5); assert.equal(stock.find(line => line.id === 'wrap')?.stock, 8);
+});
+
+test('incomplete draft saves replay safely and never become sales or reservations', async () => {
+  const input = newDraft(AssistedDraftDataSchema.parse({ customerName: 'Partial buyer' }));
+  const first = await saveOrderDraft(input, 'test-admin', database);
+  const retry = await saveOrderDraft(input, 'test-admin', database);
+  assert.equal(first.id, retry.id); assert.equal(first.revision, retry.revision);
+  assert.equal((await database.query.draftOrder.findMany()).length, 1);
+  assert.equal((await database.query.auditLog.findMany()).length, 1);
+  assert.equal((await database.query.order.findMany()).length, 0);
+  assert.equal((await database.query.customer.findMany()).length, 0);
+  assert.equal((await database.query.product.findFirst())?.stock, 1);
+});
+
+test('concurrent draft edits reject the stale writer instead of overwriting the saved version', async () => {
+  const input = newDraft(); const saved = await saveOrderDraft(input, 'test-admin', database);
+  const results = await Promise.allSettled(['First change', 'Other change'].map(title => saveOrderDraft({ ...input, title, expectedRevision: saved.revision }, 'test-admin', database)));
+  assert.equal(results.filter(result => result.status === 'fulfilled').length, 1);
+  const failed = results.find(result => result.status === 'rejected');
+  assert.match(String(failed?.status === 'rejected' && failed.reason), /Another administrator/);
+  assert.equal(readDraftPayload((await database.query.draftOrder.findFirst())?.payload)?.revision, 2);
+});
+
+test('concurrent conversions create one order and preserve recipient and discount snapshots', async () => {
+  const input = newDraft({ ...staffData(), recipientName: 'Gift recipient', recipientPhone: '0712345678', manualDiscount: 5, manualDiscountReason: 'Loyalty' });
+  const saved = await saveOrderDraft(input, 'test-admin', database);
+  const quote = await quoteStaffOrder(inputForQuote(input.data), database);
+  const request = { ...input, expectedRevision: saved.revision, expectedTotal: quote.total, quoteVersion: quote.quoteVersion };
+  const results = await Promise.all([convertOrderDraft(request, 'test-admin', database), convertOrderDraft(request, 'test-admin', database)]);
+  assert.equal(results[0].id, results[1].id); assert.ok(results.some(result => result.replayed));
+  assert.equal((await database.query.order.findMany()).length, 1);
+  assert.equal((await database.query.notificationOutbox.findMany()).length, 1);
+  const envelope = readDraftPayload((await database.query.draftOrder.findFirst())?.payload)!;
+  assert.equal(envelope.status, 'CONVERTED'); assert.equal(envelope.convertedOrderId, results[0].id);
+  const address = (await database.query.order.findFirst())?.deliveryAddress as { recipientSnapshot: { name: string; phone: string }; manualDiscountReason: string };
+  assert.deepEqual(address.recipientSnapshot, { name: 'Gift recipient', phone: '+212712345678' }); assert.equal(address.manualDiscountReason, 'Loyalty');
+  await assert.rejects(saveOrderDraft({ ...input, title: 'Changed after conversion', expectedRevision: 1 }, 'test-admin', database), /Only active/);
+});
+
+test('conversion rolls back the new order when the final draft update fails', async () => {
+  const input = newDraft(); const saved = await saveOrderDraft(input, 'test-admin', database);
+  const quote = await quoteStaffOrder(inputForQuote(input.data), database);
+  await pg.exec(`CREATE FUNCTION reject_conversion() RETURNS trigger AS $$ BEGIN IF NEW.payload->>'status' = 'CONVERTED' THEN RAISE EXCEPTION 'test conversion failure'; END IF; RETURN NEW; END $$ LANGUAGE plpgsql;
+    CREATE TRIGGER reject_conversion BEFORE UPDATE ON "DraftOrder" FOR EACH ROW EXECUTE FUNCTION reject_conversion();`);
+  try {
+    await assert.rejects(convertOrderDraft({ ...input, expectedRevision: saved.revision, expectedTotal: quote.total, quoteVersion: quote.quoteVersion }, 'test-admin', database));
+    assert.equal((await database.query.order.findMany()).length, 0); assert.equal((await database.query.customer.findMany()).length, 0);
+    assert.equal((await database.query.product.findFirst())?.stock, 1); assert.equal((await database.query.notificationOutbox.findMany()).length, 0);
+    assert.equal(readDraftPayload((await database.query.draftOrder.findFirst())?.payload)?.status, 'DRAFT');
+    assert.equal((await database.query.auditLog.findMany()).length, 1);
+  } finally { await pg.exec('DROP TRIGGER reject_conversion ON "DraftOrder"; DROP FUNCTION reject_conversion()'); }
+});
+
+test('archiving is reversible and archived drafts cannot be converted or edited', async () => {
+  const input = newDraft(); const saved = await saveOrderDraft(input, 'test-admin', database);
+  const quote = await quoteStaffOrder(inputForQuote(input.data), database);
+  const archived = await setDraftArchived(input.id, saved.revision, true, 'test-admin', database);
+  await assert.rejects(convertOrderDraft({ ...input, expectedRevision: archived.revision, expectedTotal: quote.total, quoteVersion: quote.quoteVersion }, 'test-admin', database), /Restore/);
+  await assert.rejects(saveOrderDraft({ ...input, expectedRevision: archived.revision }, 'test-admin', database), /Only active/);
+  const restored = await setDraftArchived(input.id, archived.revision, false, 'test-admin', database);
+  assert.equal(restored.status, 'DRAFT'); assert.equal((await database.query.product.findFirst())?.stock, 1);
+});
+
+test('legacy form drafts can resume; unknown payloads are retained without guessing their meaning', async () => {
+  const legacy = readDraftPayload({ ...staffData(), items: [{ id: 'local-row', productId: 'COMPONENT_flower', quantity: 2 }] });
+  assert.equal(legacy?.revision, 0); assert.deepEqual(legacy?.data.items, [{ productId: 'BOUQUET', quantity: 1, configuration: { components: { flower: 2 } } }]);
+  const id = randomUUID(); const original = { unknown: 'preserve this' };
+  await database.insert(tables.draftOrder).values({ id, payload: original, updatedAt: new Date() });
+  await assert.rejects(saveOrderDraft({ id, expectedRevision: 0, title: 'Overwrite', data: staffData() }, 'test-admin', database), /unsupported format/);
+  assert.deepEqual((await database.query.draftOrder.findFirst())?.payload, original);
+});
+
+
+test('hand-delivered staff orders quote and commit the same city and require a complete recipient', async () => {
+  const data = { ...staffData(), source: 'IN_PERSON', city: '', deliveryZoneId: undefined, isHandDelivered: true };
+  const quote = await quoteStaffOrder(inputForQuote(data), database); assert.equal(quote.total, 100);
+  await assert.rejects(createStaffOrder({ ...data, recipientName: 'Only name', expectedTotal: 100, quoteVersion: quote.quoteVersion, idempotencyKey: key('partial-recipient') }, database), /both recipient/);
+  const created = await createStaffOrder({ ...data, expectedTotal: 100, quoteVersion: quote.quoteVersion, idempotencyKey: key('hand-delivery') }, database);
+  assert.equal(created.total, 100);
+  assert.equal(((await database.query.order.findFirst())?.deliveryAddress as { city: string }).city, 'In person');
+});
+
+test('an incomplete or stale draft conversion leaves its saved work and all order records unchanged', async () => {
+  const input = newDraft(); const saved = await saveOrderDraft(input, 'test-admin', database);
+  const quote = await quoteStaffOrder(inputForQuote(input.data), database);
+  const request = { ...input, expectedRevision: saved.revision, expectedTotal: quote.total, quoteVersion: quote.quoteVersion };
+  await assert.rejects(convertOrderDraft({ ...request, data: { ...input.data, phoneNumber: '' } }, 'test-admin', database));
+  await saveOrderDraft({ ...input, title: 'Changed by another admin', expectedRevision: saved.revision }, 'test-admin', database);
+  await assert.rejects(convertOrderDraft(request, 'test-admin', database), /Another administrator/);
+  const current = readDraftPayload((await database.query.draftOrder.findFirst())?.payload)!;
+  assert.equal(current.title, 'Changed by another admin'); assert.equal(current.status, 'DRAFT');
+  assert.equal((await database.query.order.findMany()).length, 0); assert.equal((await database.query.product.findFirst())?.stock, 1);
+});
+
+test('a draft cannot reserve stock that sold after its quote', async () => {
+  const input = newDraft(); const saved = await saveOrderDraft(input, 'test-admin', database);
+  const quote = await quoteStaffOrder(inputForQuote(input.data), database);
+  await createCheckout(payload(), key('other-buyer'), null, database);
+  await assert.rejects(convertOrderDraft({ ...input, expectedRevision: saved.revision, expectedTotal: quote.total, quoteVersion: quote.quoteVersion }, 'test-admin', database), /available|stock/);
+  assert.equal((await database.query.order.findMany()).length, 1);
+  assert.equal(readDraftPayload((await database.query.draftOrder.findFirst())?.payload)?.revision, 1);
+  assert.equal((await database.query.product.findFirst())?.stock, 0);
 });
