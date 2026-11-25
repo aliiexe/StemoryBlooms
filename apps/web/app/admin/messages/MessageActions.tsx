@@ -1,41 +1,17 @@
 'use client';
-
-import React from 'react';
-import { markMessageRead, markMessageResolved } from './actions';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { updateMessageStatus } from './actions';
 import styles from '../dashboard.module.css';
-import { toast } from 'sonner';
-
-export function MessageActions({ id, status }: { id: string, status: string }) {
-  const handleRead = async () => {
-    await markMessageRead(id);
-    toast.success('Message marked as read');
-  };
-
-  const handleResolve = async () => {
-    await markMessageResolved(id);
-    toast.success('Message marked as resolved');
-  };
-
-  return (
-    <div className={styles.actionRow}>
-      {status === 'UNREAD' && (
-        <button
-          type="button"
-          onClick={handleRead}
-          className={styles.actionButton}
-        >
-          Mark Read
-        </button>
-      )}
-      {status !== 'RESOLVED' && (
-        <button
-          type="button"
-          onClick={handleResolve}
-          className={styles.actionButtonSecondary}
-        >
-          Resolve
-        </button>
-      )}
-    </div>
-  );
+export function MessageActions({ id, status }: { id: string; status: string }) {
+  const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const router = useRouter();
+  async function change(next: string) {
+    setBusy(true); setError('');
+    try { const result = await updateMessageStatus({ id, expectedStatus: status, status: next }); if (result.error) setError(result.error); else router.refresh(); }
+    catch { setError('The update failed. Try again.'); } finally { setBusy(false); }
+  }
+  return <div><div className={styles.actionRow}>
+    {status === 'UNREAD' && <button disabled={busy} className={styles.secondaryAction} onClick={() => change('READ')}>Mark read</button>}
+    {status !== 'RESOLVED' ? <button disabled={busy} className={styles.primaryAction} onClick={() => change('RESOLVED')}>Resolve</button> : <button disabled={busy} className={styles.secondaryAction} onClick={() => change('READ')}>Reopen</button>}
+    </div>{error && <p role="alert">{error}</p>}</div>;
 }

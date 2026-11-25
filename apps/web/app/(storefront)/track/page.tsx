@@ -1,13 +1,14 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { getOrderStatus } from './actions';
 import { Package, Hammer, Truck, CheckCircle2, AlertCircle } from 'lucide-react';
 import styles from './track.module.css';
 
 const STATUS_STEPS = [
   { id: 'NEW', title: 'Order Placed', desc: 'We have received your order.', icon: Package },
+  { id: 'CONFIRMED', title: 'Confirmed', desc: 'Our team has confirmed your order.', icon: CheckCircle2 },
   { id: 'IN_PRODUCTION', title: 'In Production', desc: 'We are hand-crafting your everlasting bouquet.', icon: Hammer },
   { id: 'READY', title: 'Ready for Dispatch', desc: 'Your order is packed and waiting for the courier.', icon: Package },
   { id: 'SHIPPED', title: 'On the Way', desc: 'Your order is out for delivery.', icon: Truck },
@@ -16,56 +17,31 @@ const STATUS_STEPS = [
 
 export default function TrackOrderPage() {
   const searchParams = useSearchParams();
-  const router = useRouter();
+  const requestId=useRef(0);const lastAutomatic=useRef('');
   
   const [orderNumber, setOrderNumber] = useState(searchParams.get('order') || '');
-  const [order, setOrder] = useState<any>(null);
+  const [order, setOrder] = useState<{orderNumber:string;status:string;createdAt:Date;infinidisState:string|null;fulfillment:string}|null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // If order number is in URL, fetch it automatically
-  useEffect(() => {
-    const initialOrder = searchParams.get('order');
-    if (initialOrder) {
-      handleSearch(initialOrder);
-    }
-  }, [searchParams]);
-
-  const handleSearch = async (searchOrderNumber: string) => {
-    if (!searchOrderNumber) return;
-    
-    setLoading(true);
-    setError(null);
-    setOrder(null);
-    
-    const res = await getOrderStatus(searchOrderNumber);
-    
-    if (res.error) {
-      setError(res.error);
-    } else if (res.order) {
-      setOrder(res.order);
-      // Update URL without full reload
-      const newUrl = new URL(window.location.href);
-      newUrl.searchParams.set('order', searchOrderNumber);
-      window.history.pushState({}, '', newUrl);
-    }
-    setLoading(false);
-  };
+  const handleSearch = useCallback(async (value:string,updateUrl=true) => {
+    const reference=value.trim().toUpperCase();if(!reference)return;
+    const attempt=++requestId.current;setLoading(true);setError(null);setOrder(null);
+    try{const result=await getOrderStatus(reference);if(attempt!==requestId.current)return;
+      if(result.error)setError(result.error);else if(result.order){setOrder(result.order);if(updateUrl){lastAutomatic.current=reference;const url=new URL(window.location.href);url.searchParams.set('order',reference);window.history.replaceState({},'',url);}}
+    }catch{if(attempt===requestId.current)setError('Tracking could not be loaded. Please try again.');}finally{if(attempt===requestId.current)setLoading(false);}
+  },[]);
+  const reference=searchParams.get('order')||'';
+  useEffect(()=>{if(!reference||lastAutomatic.current===reference)return;lastAutomatic.current=reference;void handleSearch(reference,false);},[reference,handleSearch]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     handleSearch(orderNumber);
   };
 
-  const getCurrentStepIndex = () => {
-    if (!order) return -1;
-    if (order.status === 'COMPLETED') return 4;
-    if (order.status === 'PROCESSING') return 2;
-    return STATUS_STEPS.findIndex(s => s.id === order.status);
-  };
-
-  const currentStep = getCurrentStepIndex();
-  const fillPercentage = currentStep >= 0 ? (currentStep / (STATUS_STEPS.length - 1)) * 100 : 0;
+  const steps=STATUS_STEPS.filter(step=>order?.fulfillment==='DELIVERY'||step.id!=='SHIPPED').map(step=>order?.fulfillment==='PICKUP'&&step.id==='READY'?{...step,title:'Ready for pickup',desc:'Your order is ready. Contact us to arrange collection.'}:order?.fulfillment==='PICKUP'&&step.id==='DELIVERED'?{...step,title:'Picked up',desc:'Your order has been collected. Enjoy your bouquet!'}:order?.fulfillment==='HAND_DELIVERY'&&step.id==='READY'?{...step,title:'Ready for handover',desc:'Your order is ready. We’ll arrange the handover with you.'}:step);
+  const currentStep=order?order.status==='COMPLETED'?steps.length-1:steps.findIndex(step=>step.id===(order.status==='PROCESSING'?'IN_PRODUCTION':order.status)):-1;
+  const fillPercentage=currentStep>=0?(currentStep/(steps.length-1))*100:0;
 
   return (
     <div className={styles.container}>
@@ -122,7 +98,7 @@ export default function TrackOrderPage() {
                 <div className={styles.timelineLine} />
                 <div className={styles.timelineLineFill} style={{ height: `calc(${fillPercentage}% - 0px)` }} />
                 
-                {STATUS_STEPS.map((step, index) => {
+                {steps.map((step, index) => {
                   const isCompleted = index < currentStep || order.status === 'COMPLETED';
                   const isActive = index === currentStep && order.status !== 'COMPLETED';
                   const Icon = step.icon;

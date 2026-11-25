@@ -2,8 +2,9 @@
 
 import { useUser } from "@clerk/nextjs";
 import { SignInButton, UserButton } from "@clerk/nextjs";
-import { User } from "lucide-react";
+import { User,LayoutDashboard } from "lucide-react";
 import Link from "next/link";
+import styles from './auth-slot.module.css';
 
 export function ClerkAuthSlot({ isAdmin }: { isAdmin?: boolean }) {
   const { isSignedIn, isLoaded } = useUser();
@@ -12,11 +13,10 @@ export function ClerkAuthSlot({ isAdmin }: { isAdmin?: boolean }) {
 
   if (isSignedIn) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+      <div className={styles.accountActions}>
+        <Link href="/account" className={styles.accountLink} aria-label="My orders" title="My orders"><User size={18} strokeWidth={1.5}/></Link>
         {isAdmin && (
-          <Link href="/admin" style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-secondary)', textDecoration: 'none' }}>
-            Dashboard
-          </Link>
+          <Link href="/admin" className={styles.accountLink} aria-label="Staff dashboard" title="Staff dashboard"><LayoutDashboard size={18} strokeWidth={1.5}/></Link>
         )}
         <UserButton
           appearance={{ elements: { avatarBox: { width: 28, height: 28 } } }}

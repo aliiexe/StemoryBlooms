@@ -1,6 +1,11 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
 export type OrderAddress = {
+  fulfillmentMethod?: 'DELIVERY' | 'PICKUP' | 'HAND_DELIVERY';
+  stockReserved?: boolean;
+  carrierBalanceReviewRequired?: boolean;
+  priceOverrides?: { line: number; unitPrice: number; reason: string }[];
+  paymentRecords?: { id: string; amountCents: number; method: 'CARD' | 'CASH' | 'BANK_TRANSFER'; allocation: 'ORDER' | 'ITEMS' | 'DELIVERY'; channel: 'DIRECT' | 'CARRIER'; reference: string; reason: string; actorId: string; at: string; requestHash: string }[];
   city?: string;
   addressLine1?: string;
   deliveryZoneId?: string;
@@ -13,6 +18,7 @@ export type OrderAddress = {
   receiptNonce?: string;
   requestFingerprint?: string;
   redemptions?: { promoId?: string; giftCardId?: string; giftAmount: number; promoAmount: number };
+  carrierHandoff?: { companyId: string; companyName: string; reference: string; at: string };
   archivedAt?: string;
 };
 

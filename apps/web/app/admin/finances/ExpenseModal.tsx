@@ -1,13 +1,14 @@
 'use client';
 
 import React from 'react';
+import type { ComponentProps } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ExpenseForm } from './ExpenseForm';
 
 interface ExpenseModalProps {
   isOpen: boolean;
   onClose: () => void;
-  expense?: any;
+  expense?: ComponentProps<typeof ExpenseForm>['expense'];
 }
 
 export function ExpenseModal({ isOpen, onClose, expense }: ExpenseModalProps) {

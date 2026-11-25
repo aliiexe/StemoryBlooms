@@ -40,3 +40,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .prisma/
+
+# Local development media; production uses object storage.
+/public/uploads/
+
+# Recoverable local build cache during workspace repair.
+/.next-before-refresh/

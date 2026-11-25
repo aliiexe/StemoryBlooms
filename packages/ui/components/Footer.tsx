@@ -17,7 +17,7 @@ export const Footer: React.FC = () => {
             <ul className={styles.colLinks}>
               <li><Link href="/shop">All Bouquets</Link></li>
               <li><Link href="/custom-bouquet">Custom Bouquet</Link></li>
-              <li><Link href="/shop">Best Sellers</Link></li>
+              <li><Link href="/shop?sort=BEST_SELLERS">Best Sellers</Link></li>
             </ul>
           </div>
 
@@ -37,6 +37,9 @@ export const Footer: React.FC = () => {
               <li><Link href="/track">Track Order</Link></li>
               <li><Link href="/shipping">Shipping</Link></li>
               <li><Link href="/returns">Returns</Link></li>
+              <li><Link href="/terms">Ordering terms</Link></li>
+              <li><Link href="/privacy">Privacy</Link></li>
+              <li><Link href="/cash-on-delivery">Cash on delivery</Link></li>
             </ul>
           </div>
         </div>
@@ -46,7 +49,7 @@ export const Footer: React.FC = () => {
           <div className={styles.socials}>
             <a href="https://instagram.com/stemory.blooms" aria-label="Instagram">Instagram</a>
             <a href="https://tiktok.com/@stemory.blooms" aria-label="TikTok">TikTok</a>
-            <a href="#" aria-label="WhatsApp">WhatsApp</a>
+            <Link href="/contact">Support</Link>
           </div>
         </div>
       </div>

@@ -30,10 +30,12 @@ type ProductFormValue = {
   id?: string;
   name?: string;
   description?: string | null;
+  processingEstimate?:string|null;
   basePrice?: number;
   salePrice?: number | null;
   status?: string;
   isAvailable?: boolean;
+  isSaleEnabled?: boolean;
   isFeatured?: boolean;
   stock?: number;
   images?: string[] | null;
@@ -57,10 +59,10 @@ export function ProductForm({
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  const [status, setStatus] = useState(product?.status || 'PUBLISHED');
+  const [status, setStatus] = useState(product?.status || 'DRAFT');
   const [isAvailable, setIsAvailable] = useState(product ? product.isAvailable : true);
   const [isFeatured, setIsFeatured] = useState(product ? product.isFeatured : false);
-  const [isOnSale, setIsOnSale] = useState(!!product?.salePrice);
+  const [isOnSale, setIsOnSale] = useState(Boolean(product?.isSaleEnabled));
 
   // Parse existing BOM
   const [bom, setBom] = useState<{materialId: string, quantity: number}[]>(
@@ -116,6 +118,7 @@ export function ProductForm({
           const formData = new FormData(e.currentTarget);
           setIsSubmitting(true);
           React.startTransition(async () => {
+            try {
             const res = await saveProduct(formData);
             if (res?.error) {
               setError(res.error);
@@ -125,6 +128,7 @@ export function ProductForm({
               toast.success(product?.id ? 'Product updated' : 'Product created');
               router.push('/admin/products');
             }
+            } catch { setError('The save could not be confirmed. Your product fields are preserved.'); } finally { setIsSubmitting(false); }
           });
         }}
       >
@@ -151,7 +155,7 @@ export function ProductForm({
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#5A5551', fontSize: '0.95rem' }}>Product Name</label>
                   <input
                     type="text"
-                    name="name"
+                    name="name" aria-label="Product name"
                     defaultValue={product?.name || ''}
                     required
                     placeholder="e.g., The Velvet Rose Bouquet"
@@ -162,7 +166,7 @@ export function ProductForm({
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#5A5551', fontSize: '0.95rem' }}>Description</label>
                   <textarea
-                    name="description"
+                    name="description" aria-label="Product description"
                     defaultValue={product?.description || ''}
                     rows={5}
                     required
@@ -172,6 +176,7 @@ export function ProductForm({
                 </div>
               </div>
 
+              <label>Preparation estimate (optional)<input name="processingEstimate" maxLength={300} defaultValue={product?.processingEstimate||''} placeholder="Your actual preparation time" className={styles.input}/></label>
               <div style={{ marginTop: '1.5rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: 500, color: '#5A5551', fontSize: '0.95rem' }}>Categories</label>
                 {categories.length === 0 ? (
@@ -240,12 +245,12 @@ export function ProductForm({
             <div className={styles.card}>
               <h3 style={{ margin: '0 0 1.5rem 0', color: '#3A3531', fontSize: '1.25rem' }}>Pricing</h3>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '2rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: '2rem' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#5A5551', fontSize: '0.95rem' }}>Base Price (MAD)</label>
                   <input
                     type="number"
-                    name="basePrice"
+                    name="basePrice" aria-label="Base price in MAD"
                     defaultValue={product?.basePrice ?? ''}
                     required
                     placeholder="0.00"
@@ -260,7 +265,7 @@ export function ProductForm({
                   </div>
                   <input
                     type="number"
-                    name="salePrice"
+                    name="salePrice" aria-label="Sale price in MAD"
                     defaultValue={product?.salePrice ?? ''}
                     disabled={!isOnSale}
                     placeholder={isOnSale ? "0.00" : "Enable sale to set price"}
@@ -268,24 +273,15 @@ export function ProductForm({
                   />
                 </div>
 
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#5A5551', fontSize: '0.95rem' }}>Initial Stock</label>
-                  <input
-                    type="number"
-                    name="stock"
-                    defaultValue={product?.stock ?? 1}
-                    required
-                    min="1"
-                    style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #D6CFE6', fontSize: '1rem' }}
-                  />
-                </div>
+                <input type="hidden" name="stock" value={product?.stock??0}/>
+
               </div>
             </div>
 
             {/* Recipe / BOM Card */}
-            <div className={styles.card}>
+            <details className={styles.card}><summary>Production recipe · optional stock tools</summary>
               <h3 style={{ margin: '0 0 0.5rem 0', color: '#3A3531', fontSize: '1.25rem' }}>Recipe (Bill of Materials)</h3>
-              <p style={{ color: '#9A9591', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Define exactly which items are consumed when this bouquet is manufactured/sold.</p>
+              <p style={{ color: '#9A9591', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Optional: record ingredients used when making this product. Leave this empty if you are not using production or material tracking.</p>
 
               <div style={{ marginBottom: '2rem' }}>
                 <h4 style={{ margin: '0 0 1rem 0', color: '#5A5551', fontSize: '1.05rem' }}>Raw Materials</h4>
@@ -374,7 +370,7 @@ export function ProductForm({
                   + Add Custom Flower
                 </button>
               </div>
-            </div>
+            </details>
           </div>
 
           {/* Sidebar Column */}
@@ -388,7 +384,7 @@ export function ProductForm({
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#5A5551', fontSize: '0.95rem' }}>Status</label>
                   <CustomSelect
-                    name="status"
+                    name="status" label="Product status"
                     options={STATUS_OPTIONS}
                     value={status}
                     onChange={setStatus}
@@ -398,7 +394,7 @@ export function ProductForm({
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingTop: '1rem', borderTop: '1px solid #EAE6DF' }}>
                   <ToggleSwitch
                     name="isAvailable"
-                    label="Available in stock"
+                    label="Available to order"
                     checked={isAvailable ?? false}
                     onChange={setIsAvailable}
                   />

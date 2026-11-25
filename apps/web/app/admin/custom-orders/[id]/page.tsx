@@ -25,6 +25,6 @@ export default async function CustomOrderDraftPage({ params }: { params: Promise
   const catalog = await loadAssistedCatalog();
   return <div className={styles.dashboard}>
     <header className={styles.pageHeader}><div><Link href="/admin/custom-orders">← Order drafts</Link><h1 className={styles.pageTitle}>Resume order draft</h1><p>Drafts do not reserve stock. Review a fresh quote before creating the order.</p></div></header>
-    <NewAssistedOrderForm catalog={catalog} initialDraft={draftEditor(id, draft)} />
+    <NewAssistedOrderForm catalog={catalog} draftId={id} initialDraft={draftEditor(id, draft)} />
   </div>;
 }

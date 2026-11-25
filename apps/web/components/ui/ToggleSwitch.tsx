@@ -1,50 +1,5 @@
 'use client';
-
-import React from 'react';
-import { motion } from 'framer-motion';
-
-interface ToggleSwitchProps {
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-  name?: string;
-  label?: string;
-}
-
-export function ToggleSwitch({ checked, onChange, name, label }: ToggleSwitchProps) {
-  return (
-    <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', userSelect: 'none' }}>
-      {name && <input type="hidden" name={name} value={checked ? 'on' : 'off'} />}
-      
-      <div
-        onClick={() => onChange(!checked)}
-        style={{
-          width: '44px',
-          height: '24px',
-          backgroundColor: checked ? 'var(--brand-primary)' : '#EAE6DF',
-          borderRadius: '50px',
-          position: 'relative',
-          transition: 'background-color 0.3s',
-          display: 'flex',
-          alignItems: 'center',
-          padding: '2px'
-        }}
-      >
-        <motion.div
-          layout
-          initial={false}
-          animate={{ x: checked ? 20 : 0 }}
-          transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-          style={{
-            width: '20px',
-            height: '20px',
-            backgroundColor: '#FFFFFF',
-            borderRadius: '50%',
-            boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
-          }}
-        />
-      </div>
-      
-      {label && <span style={{ fontSize: '0.95rem', color: '#3A3531', fontWeight: 500 }}>{label}</span>}
-    </label>
-  );
+interface ToggleSwitchProps{checked:boolean;onChange:(checked:boolean)=>void;name?:string;label?:string;disabled?:boolean}
+export function ToggleSwitch({checked,onChange,name,label,disabled=false}:ToggleSwitchProps){
+ return <div style={{display:'inline-flex',alignItems:'center'}}>{name&&<input type="hidden" name={name} value={checked?'on':'off'}/>}<button type="button" role="switch" aria-checked={checked} aria-label={label||name||'Enable option'} disabled={disabled} onClick={()=>onChange(!checked)} style={{display:'flex',alignItems:'center',gap:12,minHeight:44,padding:'8px 0',border:0,background:'transparent',font:'inherit',color:'#3a3531',cursor:disabled?'not-allowed':'pointer'}}><span aria-hidden="true" style={{display:'inline-block',width:44,height:24,borderRadius:24,background:checked?'var(--brand-primary)':'#d4d1ca',position:'relative'}}><span style={{position:'absolute',width:20,height:20,left:checked?22:2,top:2,borderRadius:'50%',background:'white',boxShadow:'0 1px 4px #0003'}}/></span>{label&&<span>{label}</span>}</button></div>;
 }

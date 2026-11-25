@@ -1,11 +1,13 @@
 'use client';
 
 import React from 'react';
+import { formatPaymentMoney } from '@/lib/commerce/payment-state';
 import { Printer, Share, ChevronLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 type ReceiptProps = {
   order: {
+    payment: { label:string; collected:number; remaining:number; itemsRemaining:number; deliveryRemaining:number };
     orderNumber: string; createdAt: string; subtotal: number; deliveryFee: number; discount: number; total: number; paymentStatus: string;
     deliveryAddress: { city?: string; addressLine1?: string; recipient?: { name: string; phone: string } };
     customer: { firstName: string; lastName: string; email: string | null; phone: string };
@@ -133,10 +135,12 @@ export default function ReceiptClient({ order }: ReceiptProps) {
               <span>Total</span>
               <span>{order.total} MAD</span>
             </div>
+            <div style={{display:'flex',justifyContent:'space-between',padding:'0.5rem 0'}}><span>Received</span><span>{formatPaymentMoney(order.payment.collected)}</span></div>
+            <div style={{display:'flex',justifyContent:'space-between',padding:'0.5rem 0',fontWeight:600}}><span>Remaining balance</span><span>{formatPaymentMoney(order.payment.remaining)}</span></div>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', color: '#4B5563', fontSize: '0.9rem' }}>
-              <span>Payment Status</span>
+              <span>Payment status</span>
               <span style={{ fontWeight: 600, color: order.paymentStatus === 'PAID' ? '#059669' : '#D97706' }}>
-                {order.paymentStatus === 'PAID' ? 'PAID' : 'CASH ON DELIVERY'}
+                {order.payment.label}
               </span>
             </div>
           </div>

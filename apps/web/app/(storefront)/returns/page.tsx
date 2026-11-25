@@ -1,19 +1,3 @@
-import SupportPage from '../support/SupportPage';
-
-export default function ReturnsPage() {
-  return (
-    <SupportPage
-      eyebrow="Support"
-      title="Returns and replacements"
-      intro="Because our flowers are handcrafted, we review return or replacement requests on a case-by-case basis."
-      bullets={['Please contact us as soon as possible if something arrives damaged.', 'Include a photo and your order details when reaching out.', 'Custom pieces may require a different resolution path.']}
-      panels={[
-        { title: 'Damaged on arrival', body: 'If an item is damaged during delivery, send us a photo and your order number so we can review the issue quickly.' },
-        { title: 'Custom orders', body: 'Custom arrangements are made specifically for your request, so we handle those with a case-by-case resolution process.' },
-        { title: 'Need help fast?', body: 'Reach out through the contact page and we’ll reply using the same inbox the site notifications use.' },
-      ]}
-      ctaHref="/contact"
-      ctaLabel="Contact support"
-    />
-  );
-}
+import Link from 'next/link';
+import { publicSiteCopy } from '@/lib/site-content';
+export default async function Page(){const copy=await publicSiteCopy('returns');return <main style={{maxWidth:860,margin:'0 auto',padding:'4rem 1.25rem',overflowWrap:'anywhere'}}><h1>{copy.title}</h1><p style={{fontSize:'1.15rem',lineHeight:1.7}}>{copy.subtitle}</p>{copy.body.split(/\n\s*\n/).map((paragraph,index)=><p key={index} style={{whiteSpace:'pre-line',lineHeight:1.8,margin:'1.5rem 0'}}>{paragraph}</p>)}<Link href={copy.ctaHref}>{copy.ctaLabel}</Link></main>;}

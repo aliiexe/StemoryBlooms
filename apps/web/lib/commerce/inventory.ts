@@ -1,6 +1,7 @@
+import { beginStockOperation, finishStockOperation } from './stock-ledger';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
-import { db, eq, sql, material, supplier, stockMovement, expense } from '@stemory/database';
+import { db, eq, sql, material, supplier, expense } from '@stemory/database';
 import type { CommerceDatabase } from './orders';
 import { CommerceError } from './errors';
 
@@ -23,7 +24,12 @@ export async function saveInventoryMaterial(id: string | null, input: unknown, a
     const values = { ...data, supplierId: data.supplierId || null, updatedAt: now };
     const [saved] = previous ? await tx.update(material).set(values).where(eq(material.id, materialId)).returning() : await tx.insert(material).values({ ...values, id: materialId }).returning();
     const difference = saved.quantity - (previous?.quantity || 0);
-    if (difference) await tx.insert(stockMovement).values({ id: randomUUID(), materialId, quantity: difference, reason: previous ? 'Stock count correction' : 'Initial stock', actorId });
+    if (previous && difference) throw new CommerceError('Use a stock correction to change an existing material count.');
+    if (difference) {
+      const operationId = randomUUID();
+      const attempt = await beginStockOperation(tx, operationId, { materialId, quantity: saved.quantity, cost: data.cost }, actorId);
+      await finishStockOperation(tx, { id: operationId, type: 'PURCHASE', actorId, reason: 'Initial material purchase', requestHash: attempt.requestHash, subjectName: saved.name, finalQuantity: saved.quantity, changes: [{ kind: 'MATERIAL', id: materialId, name: saved.name, before: 0, after: saved.quantity, delta: saved.quantity }] });
+    }
     if (!previous && saved.quantity > 0) await tx.insert(expense).values({ id: randomUUID(), amount: Math.round(saved.quantity * data.cost * 100) / 100,
       description: `Initial stock: ${saved.quantity}× ${saved.name}`, category: 'SUPPLIES', relatedMaterialId: materialId, updatedAt: now });
     return saved;
@@ -38,22 +44,29 @@ export async function correctMaterial(id: string, input: unknown, actorId: strin
     if (!current) throw new CommerceError('Material not found.');
     const { expectedQuantity, ...values } = parsed.data;
     if (values.quantity !== undefined && current.quantity !== expectedQuantity) throw new CommerceError('Stock changed. Refresh and try again.', 'STOCK_CONFLICT', 409);
+    if (values.quantity !== undefined && values.quantity !== current.quantity) throw new CommerceError('Use a reasoned stock correction to change the count.');
     const [saved] = await tx.update(material).set({ ...values, updatedAt: new Date() }).where(eq(material.id, id)).returning();
-    if (values.quantity !== undefined && values.quantity !== current.quantity) await tx.insert(stockMovement).values({ id: randomUUID(), materialId: id, quantity: values.quantity - current.quantity, reason: 'Manual stock count correction', actorId });
     return saved;
   });
 }
 
-export async function purchaseMaterial(id: string, quantity: number, actorId: string, database: CommerceDatabase = db) {
+export async function purchaseMaterial(id: string, quantity: number, actorId: string, database: CommerceDatabase = db, operationId: string = randomUUID(), unitCost?: number, reason = 'Material purchase') {
   if (!Number.isSafeInteger(quantity) || quantity <= 0 || quantity > 100000) throw new CommerceError('Enter a positive whole restock quantity.');
+  if (unitCost !== undefined && (!Number.isFinite(unitCost) || unitCost < 0 || unitCost > 1000000 || Math.abs(unitCost * 100 - Math.round(unitCost * 100)) > 0.00001)) throw new CommerceError('Enter a nonnegative unit cost with at most two decimal places.');
+  if (typeof reason !== 'string' || reason.trim().length < 3 || reason.length > 500) throw new CommerceError('Enter a purchase note with at least three characters.');
   return database.transaction(async tx => {
+    const attempt = await beginStockOperation(tx, operationId, { id, quantity, unitCost, reason: reason.trim() }, actorId);
+    if (attempt.previous) return attempt.previous;
     const [current] = await tx.select().from(material).where(eq(material.id, id)).for('update');
-    if (!current || current.cost === null || current.cost < 0) throw new CommerceError('Set a valid purchase cost before restocking.');
+    const cost = unitCost ?? current?.cost;
+    if (!current || cost === null || cost === undefined || !Number.isFinite(cost) || cost < 0) throw new CommerceError('Set a valid purchase cost before restocking.');
+    if (current.quantity < 0 || current.quantity + quantity > 1000000) throw new CommerceError('Recount historical negative stock before recording this purchase.');
+    const roundedCost = Math.round(cost * 100) / 100;
     const now = new Date();
-    const [saved] = await tx.update(material).set({ quantity: sql`${material.quantity} + ${quantity}`, updatedAt: now }).where(eq(material.id, id)).returning();
-    await tx.insert(expense).values({ id: randomUUID(), amount: Math.round(quantity * current.cost * 100) / 100,
-      description: `Restock: ${quantity}× ${current.name}`, category: 'SUPPLIES', relatedMaterialId: id, updatedAt: now });
-    await tx.insert(stockMovement).values({ id: randomUUID(), materialId: id, quantity, reason: `Purchase at ${current.cost} MAD per unit`, actorId });
-    return saved;
+    await tx.update(material).set({ quantity: sql`${material.quantity} + ${quantity}`, cost: roundedCost, updatedAt: now }).where(eq(material.id, id));
+    await tx.insert(expense).values({ id: randomUUID(), amount: Math.round(quantity * roundedCost * 100) / 100,
+      description: `${reason.trim()}: ${quantity}× ${current.name} at ${roundedCost} MAD`, category: 'SUPPLIES', relatedMaterialId: id, updatedAt: now });
+    return finishStockOperation(tx, { id: operationId, type: 'PURCHASE', actorId, reason: `${reason.trim()} · ${quantity} units at ${roundedCost} MAD`, requestHash: attempt.requestHash, subjectName: current.name,
+      finalQuantity: current.quantity + quantity, changes: [{ kind: 'MATERIAL', id, name: current.name, before: current.quantity, after: current.quantity + quantity, delta: quantity }] });
   });
 }

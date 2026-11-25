@@ -22,7 +22,7 @@ export default async function AdminBuilderPage() {
     materials: c.materials as { materialId: string; quantity: number }[] | null | undefined,
   }));
 
-  const config = settings?.config as Record<string, any> | null;
+  const config = settings?.config as {builderSections?:Record<string,boolean>;inventoryTrackingEnabled?:boolean} | null;
   const builderSections: Record<string, boolean> = config?.builderSections ?? {
     Flowers: true,
     Leaves: true,
@@ -32,11 +32,12 @@ export default async function AdminBuilderPage() {
   };
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '1rem' }}>
+    <div>
       <AdminBuilderClient
         initialComponents={typedComponents}
         allMaterials={materials}
         initialSections={builderSections}
+        trackInventory={config?.inventoryTrackingEnabled!==false}
       />
     </div>
   );

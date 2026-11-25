@@ -1,4 +1,4 @@
-import { pgTable, foreignKey, text, timestamp, uniqueIndex, boolean, integer, jsonb, index, doublePrecision } from "drizzle-orm/pg-core"
+import { pgTable, check, foreignKey, text, timestamp, uniqueIndex, boolean, integer, jsonb, index, doublePrecision } from "drizzle-orm/pg-core"
 import { sql, relations } from "drizzle-orm"
 
 
@@ -80,7 +80,10 @@ export const product = pgTable("Product", {
 	isCustomBuilder: boolean().default(false).notNull(),
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
-});
+}, (table) => [
+	check("Product_stock_nonnegative", sql`${table.stock} >= 0`),
+	check("Product_prices_nonnegative", sql`${table.basePrice} >= 0 AND (${table.salePrice} IS NULL OR ${table.salePrice} >= 0)` ),
+	]);
 
 export const review = pgTable("Review", {
 	id: text().primaryKey().notNull(),
@@ -152,7 +155,10 @@ export const builderComponent = pgTable("BuilderComponent", {
 	materials: jsonb(),
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
-});
+}, (table) => [
+	check("BuilderComponent_stock_nonnegative", sql`${table.stock} >= 0`),
+	check("BuilderComponent_price_nonnegative", sql`${table.unitPrice} >= 0`),
+	]);
 
 export const cartItem = pgTable("CartItem", {
 	id: text().primaryKey().notNull(),
@@ -188,6 +194,8 @@ export const order = pgTable("Order", {
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 }, (table) => [
+	check("Order_money_nonnegative", sql`${table.subtotal} >= 0 AND ${table.deliveryFee} >= 0 AND ${table.discount} >= 0 AND ${table.total} >= 0`),
+
 	index("Order_createdAt_idx").on(table.createdAt.desc()),
 	index("Order_status_idx").on(table.status),
 	uniqueIndex("Order_idempotencyKey_key").using("btree", table.idempotencyKey.asc().nullsLast().op("text_ops")),
@@ -226,6 +234,8 @@ export const orderItem = pgTable("OrderItem", {
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 }, (table) => [
+	check("OrderItem_valid_amounts", sql`${table.quantity} > 0 AND ${table.unitPrice} >= 0 AND ${table.totalPrice} >= 0`),
+
 	foreignKey({
 			columns: [table.orderId],
 			foreignColumns: [order.id],
@@ -437,7 +447,12 @@ export const productBuilderComponent = pgTable("ProductBuilderComponent", {
 	productId: text().notNull(),
 	builderComponentId: text().notNull(),
 	quantity: integer().notNull(),
-});
+}, (table) => [
+	check("ProductBuilderComponent_quantity_positive", sql`${table.quantity} > 0`),
+	foreignKey({columns:[table.productId],foreignColumns:[product.id],name:"ProductBuilderComponent_product_fkey"}).onDelete("restrict"),
+	foreignKey({columns:[table.builderComponentId],foreignColumns:[builderComponent.id],name:"ProductBuilderComponent_component_fkey"}).onDelete("restrict"),
+	index("ProductBuilderComponent_product_idx").on(table.productId),
+	]);
 
 export const productBuilderComponentRelations = relations(productBuilderComponent, ({ one }) => ({
 	product: one(product, {
@@ -506,6 +521,8 @@ export const productMaterial = pgTable("ProductMaterial", {
 	materialId: text().notNull(),
 	quantity: integer().notNull(),
 }, (table) => [
+	check("ProductMaterial_quantity_positive", sql`${table.quantity} > 0`),
+
 	foreignKey({
 			columns: [table.productId],
 			foreignColumns: [product.id],
@@ -577,6 +594,8 @@ export const expense = pgTable("Expense", {
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 }, (table) => [
+	check("Expense_amount_valid", sql`${table.amount} >= 0 AND ${table.amount} < 1000000000000`),
+
 	foreignKey({
 			columns: [table.relatedMaterialId],
 			foreignColumns: [material.id],
@@ -598,6 +617,8 @@ export const giftCard = pgTable("GiftCard", {
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 }, (table) => [
+	check("GiftCard_balances_nonnegative", sql`${table.initialBalance} >= 0 AND ${table.currentBalance} >= 0`),
+
 	uniqueIndex("GiftCard_code_key").using("btree", table.code.asc().nullsLast().op("text_ops")),
 ]);
 
@@ -630,6 +651,9 @@ export const material = pgTable("Material", {
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 }, (table) => [
+	check("Material_quantity_nonnegative", sql`${table.quantity} >= 0`),
+	check("Material_cost_valid", sql`${table.cost} IS NULL OR (${table.cost} >= 0 AND ${table.cost} < 1000000000)`),
+
 	foreignKey({
 			columns: [table.supplierId],
 			foreignColumns: [supplier.id],
@@ -711,3 +735,63 @@ export const adminNotification = pgTable("AdminNotification", {
 	isRead: boolean().default(false).notNull(),
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
+
+export const inventoryOperation = pgTable('InventoryOperation', {
+  id: text().primaryKey().notNull(),
+  type: text().notNull(),
+  actorId: text().references(() => user.id, { onDelete: 'set null' }),
+  reason: text().notNull(),
+  requestHash: text().notNull(),
+  result: jsonb().notNull(),
+  createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, table => [index('InventoryOperation_createdAt_idx').on(table.createdAt.desc())]);
+
+export const inventoryMovement = pgTable('InventoryMovement', {
+  id: text().primaryKey().notNull(),
+  operationId: text().notNull().references(() => inventoryOperation.id, { onDelete: 'restrict' }),
+  subjectKind: text().notNull(),
+  subjectId: text().notNull(),
+  subjectName: text().notNull(),
+  quantity: integer().notNull(),
+  balanceBefore: integer().notNull(),
+  balanceAfter: integer().notNull(),
+  legacyMovementId: text().references(() => stockMovement.id, { onDelete: 'restrict' }),
+  createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, table => [
+	check("InventoryMovement_balance_nonnegative", sql`${table.balanceAfter} >= 0`),
+	index('InventoryMovement_subject_idx').on(table.subjectKind, table.subjectId), uniqueIndex('InventoryMovement_legacy_key').on(table.legacyMovementId)]);
+
+export const financeEntry = pgTable('FinanceEntry', {
+  id: text().primaryKey().notNull(),
+  orderId: text().notNull().references(() => order.id, { onDelete: 'restrict' }),
+  type: text().notNull(),
+  channel: text().notNull(),
+  amountCents: integer().notNull(),
+  reason: text().notNull(),
+  reference: text(),
+  actorId: text().references(() => user.id, { onDelete: 'set null' }),
+  requestHash: text().notNull(),
+  createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, table => [
+	check("FinanceEntry_amount_nonnegative", sql`${table.amountCents} >= 0`),
+	index('FinanceEntry_order_idx').on(table.orderId), index('FinanceEntry_createdAt_idx').on(table.createdAt.desc())]);
+
+export const orderReturn = pgTable('OrderReturn', {
+  id: text().primaryKey().notNull(),
+  orderId: text().notNull().references(() => order.id, { onDelete: 'restrict' }),
+  actorId: text().references(() => user.id, { onDelete: 'set null' }),
+  reason: text().notNull(),
+  items: jsonb().notNull(),
+  requestHash: text().notNull(),
+  createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, table => [index('OrderReturn_order_idx').on(table.orderId)]);
+
+export const communicationToken = pgTable('CommunicationToken', {
+  id: text().primaryKey().notNull(),
+  subscriberId: text().notNull().references(() => waitlistEntry.id, { onDelete: 'cascade' }),
+  purpose: text().notNull(),
+  tokenHash: text().notNull(),
+  expiresAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
+  usedAt: timestamp({ precision: 3, mode: 'date' }),
+  createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, table => [uniqueIndex('CommunicationToken_hash_key').on(table.tokenHash), index('CommunicationToken_subscriber_idx').on(table.subscriberId)]);

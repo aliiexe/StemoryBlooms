@@ -9,10 +9,10 @@ export default function MaintenancePage({ heroImages = [], heroFadeSpeed = 5 }: 
   return (
     <main className={styles.splitContainer}>
       <div className={styles.imageSide}>
-        <HeroSlideshow 
-          images={heroImages} 
-          fadeSpeedSeconds={heroFadeSpeed} 
-          priority 
+        <HeroSlideshow
+          images={heroImages}
+          fadeSpeedSeconds={heroFadeSpeed}
+          priority
         />
       </div>
 
@@ -21,13 +21,13 @@ export default function MaintenancePage({ heroImages = [], heroFadeSpeed = 5 }: 
           <div className={styles.logo}>
             <Image src="/logoSB.png" alt="Stemory Blooms" width={220} height={48} priority style={{ objectFit: 'contain' }} />
           </div>
-          
+
           <h1 className={styles.title}>
-            We'll be right back.
+            We&apos;ll be right back.
           </h1>
-          
+
           <p className={styles.subtitle}>
-            We're currently making some beautiful updates to our store to serve you better. 
+            We&apos;re currently making some beautiful updates to our store to serve you better.
             Please check back shortly. Thank you for your patience!
           </p>
 

@@ -1,7 +1,7 @@
 import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
 import AdminLayoutUI from './AdminLayoutUI';
-import { getUserRoleName, syncClerkUserToDatabase } from '@/lib/user-sync';
+import { getUserRoleName } from '@/lib/user-sync';
 import { db } from '@stemory/database';
 import { Toaster } from 'sonner';
 
@@ -13,7 +13,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
 
   try {
-    await syncClerkUserToDatabase(userId);
     const roleName = await getUserRoleName(userId);
 
     if (roleName !== 'ADMIN') {

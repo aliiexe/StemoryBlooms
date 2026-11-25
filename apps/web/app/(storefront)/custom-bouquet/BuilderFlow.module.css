@@ -323,3 +323,36 @@
 
 .currentStepLabel { display: none; }
 @media (max-width: 600px) { .currentStepLabel { display: block; font-weight: 600; color: #395236; } }
+
+/* Bouquet studio: visible names, consistent controls, and a stable review total. */
+.builderFlow { max-width:1100px; margin:0 auto; padding-bottom:110px; }
+.stepper { justify-content:flex-start; padding:18px 0 24px; margin:0 0 20px; overflow-x:auto; gap:18px; }
+.stepIndicator { flex-shrink:0; gap:9px; }
+.stepCircle { width:32px; height:32px; padding:0; border:1px solid #ccd5ca; background:#fff; color:#778173; font:inherit; font-size:13px; cursor:pointer; }
+.stepCircle.activeStep { background:#314d3d; color:#fff; border-color:#314d3d; }
+.stepCircle:disabled { opacity:.5; cursor:not-allowed; }
+.stepCircle:focus-visible { outline:3px solid #8ba680; outline-offset:3px; }
+.stepLabel { font-size:13px; white-space:nowrap; }
+.stepLine { display:none; }
+.stepContent { border:0; background:transparent; box-shadow:none; padding:0; min-height:360px; }
+.itemList { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+.itemCardContainer { min-width:0; border:1px solid #e0e5db; border-radius:8px; background:#fff; overflow:hidden; }
+.itemCard { display:flex; align-items:center; gap:12px; flex-wrap:nowrap; padding:16px; }
+.itemInfo { display:flex; align-items:center; gap:14px; min-width:0; flex:1; }
+.itemImageWrapper { width:72px; height:88px; flex-shrink:0; border-radius:5px; overflow:hidden; }
+.itemDetails { min-width:0; }
+.itemName { font-size:15px; line-height:1.45; white-space:normal; text-overflow:clip; color:#344335; font-family:var(--font-sans); font-weight:500; }
+.itemPrice { font-size:13px; color:#65765f; margin-top:5px; }
+.quantityPill { display:flex; align-items:center; gap:3px; border:1px solid #d8e0d2; border-radius:6px; padding:0; background:white; }
+.qtyBtn { width:34px; height:40px; border:0; border-radius:4px; color:#3b5636; background:none; font-size:18px; }
+.qtyBtn:disabled { opacity:.3; cursor:not-allowed; }
+.qtyValue { min-width:24px; font-size:14px; text-align:center; }
+.reviewItem { border-radius:6px; font-size:14px; padding:16px; }
+.stickyFooter { padding:15px 24px calc(15px + env(safe-area-inset-bottom)); background:#fffffff5; box-shadow:none; border-top:1px solid #d8e0d2; }
+.footerContent { max-width:1100px; }
+.nextBtn { border-radius:6px; padding:13px 22px; box-shadow:none; font-size:14px; }
+.subtotal span:first-child { text-transform:none; letter-spacing:0; font-size:12px; }
+.subtotalValue { font-family:var(--font-sans); font-size:21px; font-weight:500; margin-top:4px; }
+.currentStepLabel { display:block; color:#6b7665; font-size:13px; margin:0 0 16px; }
+@media(max-width:720px) { .itemList { grid-template-columns:1fr; } .itemInfo { flex:1; } .quantityPill { margin-left:0; } .itemCard { padding:14px; } .stickyFooter { padding-left:16px; padding-right:16px; } .footerContent { gap:10px; } .nextBtn { padding:12px 14px; } .subtotal { min-width:0; } .subtotal span:first-child { font-size:11px; } .subtotalValue { font-size:18px; } }
+@media(prefers-reduced-motion:reduce) { .nextBtn:hover { transform:none; } }

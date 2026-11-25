@@ -15,10 +15,10 @@ import styles from './page.module.css';
 const DRAFT = 'checkout_form_draft_v2';
 const ATTEMPT = 'stemory-checkout-attempt';
 const consentFields = [
-  ['termsAccepted', 'I accept the Terms and Conditions'],
-  ['deliveryPolicyAccepted', 'I accept the Delivery Policy'],
-  ['privacyNoticeAccepted', 'I accept the Privacy Notice'],
-  ['codConditionsAccepted', 'I accept the Cash on Delivery Conditions'],
+  ['termsAccepted', 'I accept the Terms and ordering information', '/terms'],
+  ['deliveryPolicyAccepted', 'I accept the Delivery Policy', '/shipping'],
+  ['privacyNoticeAccepted', 'I accept the Privacy Notice', '/privacy'],
+  ['codConditionsAccepted', 'I accept the Cash on Delivery Conditions', '/cash-on-delivery'],
 ] as const;
 const draftFields = ['customerName', 'email', 'phoneNumber', 'city', 'address', 'deliveryInstructions', 'deliveryZoneId'] as const;
 const subscribe = () => () => {};
@@ -41,7 +41,7 @@ export default function CheckoutPage() {
   const attemptRef = useRef<CheckoutAttempt | null>(null);
   const [previousAttempt, setPreviousAttempt] = useState<CheckoutAttempt | null>(null);
   const [recovering, setRecovering] = useState(false);
-  const { register, handleSubmit, setValue, control, watch, formState: { errors, isSubmitting } } = useForm<CheckoutPayload>({
+  const { register, handleSubmit, setValue, control, subscribe:subscribeForm, formState: { errors, isSubmitting } } = useForm<CheckoutPayload>({
     resolver: zodResolver(CheckoutPayloadSchema),
     defaultValues: { customerName: '', email: '', phoneNumber: '', city: '', address: '', deliveryInstructions: '',
       deliveryZoneId: '', cartItems: [], expectedTotal: 0,
@@ -51,7 +51,8 @@ export default function CheckoutPage() {
   const values = useWatch({ control });
   const cartItems = checkoutCartLines(items);
   const cartJson = JSON.stringify(cartItems);
-  const quoteBody = JSON.stringify({ cartItems, city: values.city || '', deliveryZoneId: values.deliveryZoneId || '',
+  const pickup = values.fulfillmentMethod === 'PICKUP';
+  const quoteBody = JSON.stringify({ fulfillmentMethod: values.fulfillmentMethod, cartItems, city: values.city || '', deliveryZoneId: values.deliveryZoneId || '',
     promoCode: values.promoCode || undefined, giftCardCode: values.giftCardCode || undefined });
   const needsQuote = items.length > 0 && Boolean(values.deliveryZoneId);
   const quote = quoteState.body === quoteBody ? quoteState.quote : undefined;
@@ -70,12 +71,12 @@ export default function CheckoutPage() {
         queueMicrotask(() => setPreviousAttempt(previous));
       }
     } catch { /* Storage is optional. */ }
-    const subscription = watch(value => {
+    const unsubscribe = subscribeForm({formState:{values:true},callback:({values:value}) => {
       const fields = Object.fromEntries(draftFields.map(field => [field, value[field] || '']));
       try { sessionStorage.setItem(DRAFT, JSON.stringify({ values: fields, expires: Date.now() + 86400000 })); } catch { /* Storage is optional. */ }
-    });
-    return () => subscription.unsubscribe();
-  }, [setValue, watch]);
+    }});
+    return unsubscribe;
+  }, [setValue, subscribeForm]);
 
   useEffect(() => { setValue('cartItems', JSON.parse(cartJson), { shouldValidate: false }); }, [cartJson, setValue]);
   useEffect(() => {
@@ -152,14 +153,15 @@ export default function CheckoutPage() {
   return <div className={styles.container}>
     {previousAttempt && <section className={styles.section} aria-label="Previous checkout attempt"><h2>Previous checkout attempt</h2><p>If your last confirmation was interrupted, retry it safely here. This uses the same checkout attempt and original details ({previousAttempt.payload.expectedTotal} MAD).</p><button type="button" className={styles.placeOrderBtn} disabled={recovering || isSubmitting} onClick={recover}>{recovering ? 'Checking previous order…' : 'Retry previous checkout'}</button></section>}
     <header className={styles.checkoutHeader}><h1>Checkout</h1><Link href="/shop">Continue shopping</Link></header>
-    <form onSubmit={handleSubmit(submit)} className={styles.formLayout}>
+    <form onSubmit={event=>{void handleSubmit(submit)(event);}} className={styles.formLayout}>
       <div>
         <section className={styles.section}><h2>Contact</h2>{fields.map(([name, label, type, complete]) =>
           <div key={name} className={styles.fieldGroup}><label htmlFor={name}>{label}</label>
             <input id={name} type={type} autoComplete={complete} {...register(name)} aria-invalid={Boolean(errors[name])} aria-describedby={errors[name] ? `${name}-error` : undefined} />
             {errors[name] && <span id={`${name}-error`} className={styles.errorText}>{errors[name]?.message}</span>}
           </div>)}</section>
-        <section className={styles.section}><h2>Delivery address</h2>
+        <section className={styles.section}><h2>Delivery or pickup</h2><div className={styles.fulfillmentChoice}><button type="button" aria-pressed={!pickup} onClick={() => { setValue('fulfillmentMethod','DELIVERY'); if(pickup) { setValue('deliveryZoneId',''); setValue('city',''); setValue('address',''); } }}>Courier delivery</button><button type="button" aria-pressed={pickup} onClick={() => { setValue('fulfillmentMethod','PICKUP'); setValue('deliveryZoneId','PICKUP'); setValue('city','Customer pickup'); setValue('address','Customer pickup'); }}>Customer pickup · no delivery fee</button></div>{pickup ? <p>Collect your order in person. We will confirm pickup arrangements with you before it is ready.</p> : <>
+
           <div className={styles.fieldGroup}><label>City / delivery zone</label>
             <CustomSelect label="Delivery city" searchable value={values.deliveryZoneId || ''} options={zones.map(zone => ({ value: zone.id, label: `${zone.name} — ${zone.fee} MAD` }))}
               disabled={!zones.length} placeholder="Choose your city" onChange={id => { const zone = zones.find(value => value.id === id); if (zone) { setValue('deliveryZoneId', id, { shouldValidate: true }); setValue('city', zone.name, { shouldValidate: true }); } }} />
@@ -168,14 +170,11 @@ export default function CheckoutPage() {
           </div>
           <div className={styles.fieldGroup}><label htmlFor="address">Complete address</label><input id="address" autoComplete="street-address" {...register('address')} aria-invalid={Boolean(errors.address)} />{errors.address && <span className={styles.errorText}>{errors.address.message}</span>}</div>
           <div className={styles.fieldGroup}><label htmlFor="deliveryInstructions">Delivery notes (optional)</label><input id="deliveryInstructions" maxLength={1000} {...register('deliveryInstructions')} /></div>
-          <p>Allow 2–3 days for production, plus {quote?.deliveryEstimate || 'your city’s delivery time'}. <Link href="/shipping">Delivery policy</Link></p>
+          </>}<p>Preparation depends on your arrangement. {quote?.deliveryEstimate?`Estimated delivery transit: ${quote.deliveryEstimate}.`:'Choose your city for delivery information.'} <Link href="/shipping">Delivery policy</Link></p>
         </section>
-        <section className={styles.section}><h2>Payment</h2><p><strong>Cash on delivery</strong><br />Pay the full amount shown when your order arrives.</p></section>
+        <section className={styles.section}><h2>Payment</h2><p><strong>{pickup ? 'Pay at pickup' : 'Cash on delivery'}</strong><br />{pickup ? 'Pay when you collect your order.' : 'Pay the amount shown when your order arrives.'}</p></section>
         <section className={styles.section}><h2>Terms and policies</h2>
-          {consentFields.map(([field, label]) => <div key={field} className={styles.checkboxGroup}>
-            <label className={styles.consent}><input type="checkbox" {...register(field)} /><span className={styles.checkmark} aria-hidden="true">{values[field] ? '✓' : ''}</span><span>{label}</span></label>
-            {errors[field] && <span className={styles.errorText}>{errors[field]?.message}</span>}
-          </div>)}
+          <div className={styles.checkboxGroup}><label className={styles.consent}><input type="checkbox" checked={Boolean(values.termsAccepted && values.deliveryPolicyAccepted && values.privacyNoticeAccepted && values.codConditionsAccepted)} onChange={event => { for (const [field] of consentFields) setValue(field,event.target.checked as true,{shouldValidate:true}); }} /><span className={styles.checkmark} aria-hidden="true">{values.termsAccepted ? '✓' : ''}</span><span>I have read and accept the ordering terms, delivery policy, privacy notice, and payment conditions.</span></label><div className={styles.policyLinks}>{consentFields.map(([,label,href]) => <Link key={href} href={href} target="_blank" rel="noopener noreferrer">{label.replace('I accept the ','')}</Link>)}</div>{consentFields.some(([field]) => errors[field]) && <p role="alert" className={styles.errorText}>Please review and accept the ordering information before placing your order.</p>}</div>
           <p><Link href="/shipping">Shipping</Link> · <Link href="/returns">Returns and replacements</Link></p>
         </section>
       </div>
@@ -194,7 +193,7 @@ export default function CheckoutPage() {
             <button type="button" disabled={!(index ? giftInput : promoInput).trim()} onClick={() => setValue(field, (index ? giftInput : promoInput).trim())}>Apply</button></div>
           {values[field] && quote && <span role="status">Applied</span>}
         </div>)}
-        <div className={`${styles.summaryLine} ${styles.totalLine}`}><span>Amount due on delivery</span><span>{quote ? `${quote.total} MAD` : '—'}</span></div>
+        <div className={`${styles.summaryLine} ${styles.totalLine}`}><span>{pickup ? 'Due at pickup' : 'Due on delivery'}</span><span>{quote ? `${quote.total} MAD` : '—'}</span></div>
         <div aria-live="polite">{needsQuote && !quote && !quoteError && <p>Checking prices and availability…</p>}{quoteError && <p role="alert" className={styles.globalError}>{quoteError} <button type="button" onClick={() => retryQuote(value => value + 1)}>Retry</button></p>}</div>
         {error && <p role="alert" className={styles.globalError}>{error}</p>}
         <button className={styles.placeOrderBtn} type="submit" disabled={isSubmitting || !quote}>{isSubmitting ? 'Placing order…' : 'Place order'}</button>

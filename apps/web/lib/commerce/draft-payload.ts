@@ -32,4 +32,3 @@ export function readDraftPayload(payload: unknown): DraftEnvelope | null {
   const data = AssistedDraftDataSchema.safeParse({ ...legacy.data, items });
   return data.success ? { schemaVersion: 1, title: legacy.data.customerName || 'Earlier draft', data: data.data, revision: 0, status: 'DRAFT', updatedBy: '' } : null;
 }
-

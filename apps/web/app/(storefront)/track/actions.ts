@@ -1,7 +1,7 @@
 'use server';
 
 import { db, order } from '@stemory/database';
-import { eq } from 'drizzle-orm';
+import { eq,sql } from 'drizzle-orm';
 import { headers } from 'next/headers';
 import { enforceSubmissionLimit } from '@/lib/commerce/rate-limit';
 import { publicError } from '@/lib/commerce/errors';
@@ -16,26 +16,19 @@ export async function getOrderStatus(orderNumber: string) {
 
   try {
     await enforceSubmissionLimit('tracking', await headers(), 15);
-    const foundOrder = await db.query.order.findFirst({
-      where: eq(order.orderNumber, cleanOrderNumber),
-      columns: {
-        orderNumber: true,
-        status: true,
-        createdAt: true,
-      }
-    });
+    const [foundOrder] = await db.select({orderNumber:order.orderNumber,status:order.status,createdAt:order.createdAt,sentToInfinidis:order.sentToInfinidis,fulfillment:sql<string>`COALESCE(${order.deliveryAddress}->>'fulfillmentMethod',CASE WHEN ${order.deliveryAddress}->>'addressLine1'='Hand delivered' THEN 'HAND_DELIVERY' ELSE 'DELIVERY' END)`}).from(order).where(eq(order.orderNumber,cleanOrderNumber)).limit(1);
 
     if (!foundOrder) {
       return { error: 'Order not found. Please check your order number and try again.' };
     }
 
     // Try to fetch live tracking from Infinidis
-    const infinidisState = await getInfinidisTrackingState(cleanOrderNumber);
+    const infinidisState = foundOrder.fulfillment==='DELIVERY'&&foundOrder.sentToInfinidis ? await getInfinidisTrackingState(cleanOrderNumber) : null;
 
     // We can inject the live state into the returned order object
     const finalOrder = {
-      ...foundOrder,
-      infinidisState: infinidisState || null
+      orderNumber:foundOrder.orderNumber,status:foundOrder.status,createdAt:foundOrder.createdAt,
+      fulfillment:foundOrder.fulfillment, infinidisState: infinidisState || null
     };
 
     return { success: true, order: finalOrder };

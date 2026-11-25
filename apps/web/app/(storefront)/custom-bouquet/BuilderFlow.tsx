@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useCartStore } from '@stemory/ui';
+import { useCartStore, StoreModal } from '@stemory/ui';
 import { ZoomIn, X } from 'lucide-react';
 import styles from './BuilderFlow.module.css';
 
@@ -10,7 +9,7 @@ type BuilderItem = {
   id: string;
   name: string;
   price: number;
-  minQuantity?: number;
+  stock?:number;minQuantity?: number;
   maxQuantity?: number | null;
   imageUrl?: string | null;
 };
@@ -29,86 +28,59 @@ export default function BuilderFlow({
 
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [cart, setCart] = useState<Record<string, number>>({});
+  const [selectionError,setSelectionError]=useState('');
   const [cardMessage, setCardMessage] = useState('');
   const [previewImage, setPreviewImage] = useState<{ url: string, name: string } | null>(null);
   const addItem = useCartStore((state) => state.addItem);
   const isCartOpen = useCartStore((state) => state.isCartOpen);
   const currentStep = STEPS[currentStepIndex];
 
-  const updateQuantity = (item: BuilderItem, delta: number, currentQty: number) => {
-    setCart((prev) => {
-      // If adding item for the first time, default to minQuantity or 1
-      if (currentQty === 0 && delta > 0) {
-        return { ...prev, [item.id]: Math.max(item.minQuantity ?? 1, 1) };
+  const updateQuantity = (item: BuilderItem, delta: number) => {
+    setSelectionError('');
+    setCart(previous => {
+      const current = previous[item.id] || 0;
+      const minimum = Math.max(1, item.minQuantity || 1);
+      const maximum = Math.min(100, item.maxQuantity ?? 100, item.stock ?? 100);
+      const nextQuantity = current === 0 && delta > 0 ? minimum : current + delta;
+      if (nextQuantity > maximum) return previous;
+      const next = { ...previous };
+      if (nextQuantity < minimum) delete next[item.id];
+      else {
+        if (currentStep === 'Wrapping' || currentStep === 'Cards') {
+          for (const option of initialData[currentStep] || []) delete next[option.id];
+        }
+        next[item.id] = currentStep === 'Wrapping' || currentStep === 'Cards' ? 1 : nextQuantity;
       }
-
-      const newQty = currentQty + delta;
-      const minQty = item.minQuantity ?? 0;
-      const maxQty = item.maxQuantity ?? Infinity;
-
-      // If they try to go below minQty, they probably want to remove it entirely
-      // Or we can just snap it to 0 if they hit minus while at minQty
-      if (newQty < minQty && newQty > 0) {
-        // Option 1: snap to 0
-        const next = { ...prev };
-        delete next[item.id];
-        return next;
-      }
-
-      if (newQty <= 0) {
-        const next = { ...prev };
-        delete next[item.id];
-        return next;
-      }
-
-      if (newQty > maxQty) {
-        return prev; // Ignore, can't go above max
-      }
-
-      return { ...prev, [item.id]: newQty };
+      return next;
     });
   };
-
   const getSubtotal = () => {
-    let total = 0;
-    Object.values(initialData).flat().forEach((item: BuilderItem) => {
-      total += (cart[item.id] || 0) * item.price;
-    });
-
-    const hasItems = Object.keys(cart).length > 0;
-
-    // Determine when to show the base fee
-    const wrappingIndex = STEPS.indexOf('Wrapping');
-    const cardsIndex = STEPS.indexOf('Cards');
-
-    const showFee = hasItems && (
-      currentStep === 'Review' ||
-      (wrappingIndex !== -1 && currentStepIndex >= wrappingIndex) ||
-      (wrappingIndex === -1 && cardsIndex !== -1 && currentStepIndex >= cardsIndex)
-    );
-
-    if (showFee) {
-      total += baseFee;
-    }
-    return total;
+    const selected = Object.keys(cart).length > 0;
+    return Object.values(initialData).flat().reduce((sum, item) => sum + (cart[item.id] || 0) * item.price, selected ? baseFee : 0);
   };
+  const hasFlowers = Object.entries(initialData).filter(([section]) => !['Cards','Wrapping'].includes(section)).flatMap(([,items]) => items).some(item => (cart[item.id] || 0) > 0);
 
   const handleNext = () => {
+    if ((currentStep === 'Flowers' || currentStep === 'Review') && !hasFlowers) { setSelectionError('Choose at least one flower or decorative detail for your bouquet.'); return; }
+    setSelectionError('');
     if (currentStepIndex < STEPS.length - 1) {
       setCurrentStepIndex(currentStepIndex + 1);
     } else {
       const total = getSubtotal();
       if (total === 0 && Object.keys(cart).length === 0) {
-        alert('Please select some items first.');
+        setSelectionError('Select at least one component before adding a bouquet.');
         return;
       }
 
+      setSelectionError('');
       addItem({
         id: `custom-${Date.now()}`,
         kind: 'CUSTOM',
         name: 'Custom Built Bouquet',
         price: total,
         quantity: 1,
+        description:Object.entries(cart).map(([id,count])=>`${count} × ${Object.values(initialData).flat().find(item=>item.id===id)?.name||'Selected component'}`).join(', '),
+        maxQuantity:Math.max(1,Math.min(100,...Object.entries(cart).map(([id,count])=>Math.floor((Object.values(initialData).flat().find(item=>item.id===id)?.stock||100)/count)))),
         imageUrl: '/hero-bouquet.png',
         configuration: { components: { ...cart }, cardMessage: cardMessage.trim() || undefined }
       });
@@ -136,10 +108,10 @@ export default function BuilderFlow({
             <div key={item.id} className={styles.itemCardContainer}>
               <div className={styles.itemCard}>
                 <div className={styles.itemInfo}>
-                  <div
+                  <button type="button" aria-label={`Preview ${item.name}`}
                     className={styles.itemImageWrapper}
                     onClick={() => setPreviewImage({ url: item.imageUrl || '/hero-bouquet.png', name: item.name })}
-                    style={{ cursor: 'pointer', position: 'relative' }}
+                    style={{ cursor: 'pointer', position: 'relative',border:0,padding:0 }}
                   >
                     <img
                       src={item.imageUrl || '/hero-bouquet.png'}
@@ -166,7 +138,7 @@ export default function BuilderFlow({
                     }}>
                       <ZoomIn size={14} color="#5A5551" />
                     </div>
-                  </div>
+                  </button>
                   <div className={styles.itemDetails}>
                     <h3 className={styles.itemName}>{item.name}</h3>
                     <p className={styles.itemPrice}>
@@ -174,15 +146,15 @@ export default function BuilderFlow({
                     </p>
                     {(item.minQuantity ?? 0) > 1 && (
                       <p style={{ fontSize: '0.8rem', color: '#9A9591', margin: '0.25rem 0 0 0' }}>
-                        Min. {item.minQuantity} required
+                        Minimum selection: {item.minQuantity}
                       </p>
                     )}
                   </div>
                 </div>
                 <div className={styles.quantityPill}>
-                  <button className={styles.qtyBtn} onClick={() => updateQuantity(item, -1, qty)} aria-label="Decrease">−</button>
+                  <button className={styles.qtyBtn} onClick={() => updateQuantity(item, -1)} disabled={qty === 0} aria-label={`Remove one ${item.name}`}>−</button>
                   <span className={styles.qtyValue}>{qty}</span>
-                  <button className={styles.qtyBtn} onClick={() => updateQuantity(item, 1, qty)} aria-label="Increase">+</button>
+                  <button className={styles.qtyBtn} onClick={() => updateQuantity(item, 1)} disabled={qty >= Math.min(item.maxQuantity ?? 100, item.stock ?? 100) || (['Cards','Wrapping'].includes(currentStep) && qty > 0)} aria-label={`Add one ${item.name}`}>+</button>
                 </div>
               </div>
 
@@ -254,9 +226,9 @@ export default function BuilderFlow({
       <div className={styles.stepper}>
         {STEPS.map((step, idx) => (
           <div key={step} className={styles.stepIndicator}>
-            <div className={`${styles.stepCircle} ${idx <= currentStepIndex ? styles.activeStep : ''}`}>
+            <button type="button" aria-label={`Go to ${step}`} aria-current={idx === currentStepIndex ? 'step' : undefined} disabled={idx > currentStepIndex && !hasFlowers} onClick={() => { setSelectionError(''); setCurrentStepIndex(idx); }} className={`${styles.stepCircle} ${idx <= currentStepIndex ? styles.activeStep : ''}`}>
               {idx + 1}
-            </div>
+            </button>
             <span className={`${styles.stepLabel} ${idx <= currentStepIndex ? styles.activeLabel : ''}`}>{step}</span>
             {idx < STEPS.length - 1 && (
               <div className={`${styles.stepLine} ${idx < currentStepIndex ? styles.activeLine : ''}`} />
@@ -265,104 +237,17 @@ export default function BuilderFlow({
         ))}
       </div>
 
+      {selectionError&&<p role="alert" style={{color:'#8c2635'}}>{selectionError}</p>}
       <p className={styles.currentStepLabel} aria-live="polite">{currentStep} — step {currentStepIndex + 1} of {STEPS.length}</p>
       <div className={styles.stepContent}>
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={currentStepIndex}
-            initial={{ opacity: 0, x: 10 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -10 }}
-            transition={{ duration: 0.2 }}
-          >
+        <div key={currentStepIndex}>
             {currentStep === 'Review'
               ? renderReview()
               : renderItems(initialData[currentStep] || [])}
-          </motion.div>
-        </AnimatePresence>
+        </div>
       </div>
 
-      <AnimatePresence>
-        {previewImage && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setPreviewImage(null)}
-            style={{
-              position: 'fixed',
-              inset: 0,
-              backgroundColor: 'rgba(0, 0, 0, 0.6)',
-              backdropFilter: 'blur(4px)',
-              zIndex: 100,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '2rem'
-            }}
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                backgroundColor: '#FFF',
-                borderRadius: '16px',
-                padding: '1rem',
-                maxWidth: '90vw',
-                maxHeight: '90vh',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '1rem',
-                position: 'relative'
-              }}
-            >
-              <button
-                onClick={() => setPreviewImage(null)}
-                style={{
-                  position: 'absolute',
-                  top: '-12px',
-                  right: '-12px',
-                  background: '#FFF',
-                  border: 'none',
-                  borderRadius: '50%',
-                  width: '32px',
-                  height: '32px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
-                }}
-              >
-                <X size={16} color="#3A3531" />
-              </button>
-              <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#3A3531', textAlign: 'center' }}>
-                {previewImage.name}
-              </h3>
-              <div style={{
-                width: '100%',
-                maxWidth: '400px',
-                aspectRatio: '1/1',
-                borderRadius: '8px',
-                overflow: 'hidden',
-                backgroundColor: '#F0ECE5'
-              }}>
-                <img
-                  src={previewImage.url}
-                  alt={previewImage.name}
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover'
-                  }}
-                />
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <StoreModal open={Boolean(previewImage)} label={previewImage?`Preview ${previewImage.name}`:'Image preview'} onClose={()=>setPreviewImage(null)}>{previewImage&&<div style={{minHeight:'100dvh',display:'grid',placeItems:'center',padding:24,boxSizing:'border-box'}} onClick={()=>setPreviewImage(null)}><article style={{padding:16,background:'white',borderRadius:16,maxWidth:440,width:'100%',boxSizing:'border-box'}} onClick={event=>event.stopPropagation()}><div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:16}}><h2 style={{fontSize:'1.2rem'}}>{previewImage.name}</h2><button type="button" aria-label="Close image preview" onClick={()=>setPreviewImage(null)} style={{minWidth:44,minHeight:44,border:0,borderRadius:24,background:'#f4f0e9'}}><X size={20}/></button></div><img src={previewImage.url} alt={previewImage.name} style={{width:'100%',maxHeight:'70dvh',objectFit:'contain'}}/></article></div>}</StoreModal>
 
       {!isCartOpen && (
         <div className={styles.stickyFooter}>
@@ -373,12 +258,12 @@ export default function BuilderFlow({
                 onClick={() => setCurrentStepIndex(i => i - 1)}
                 style={{ background: 'transparent', color: 'var(--brand-primary)', border: '1px solid var(--brand-primary)' }}
               >
-                ← Back
+                Back
               </button>
             )}
             <div className={styles.subtotal}>
-              <span>Subtotal</span>
-              <span className={styles.subtotalValue}>{getSubtotal()} MAD</span>
+              <span>Selected bouquet · packaging included</span>
+              <span className={styles.subtotalValue}>{Object.keys(cart).length?getSubtotal():`From ${baseFee}`} MAD</span>
             </div>
             <button className={styles.nextBtn} onClick={handleNext}>
               {currentStepIndex < STEPS.length - 1 ? `Next: ${STEPS[currentStepIndex + 1]}` : 'Add to Cart'}

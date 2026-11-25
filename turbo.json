@@ -5,8 +5,14 @@
   ],
   "tasks": {
     "build": {
-      "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"],
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        ".next/**",
+        "!.next/cache/**",
+        "dist/**"
+      ],
       "env": [
         "DATABASE_URL",
         "DIRECT_URL",
@@ -16,18 +22,32 @@
         "NEXT_PUBLIC_CLERK_SIGN_IN_URL",
         "NEXT_PUBLIC_CLERK_SIGN_UP_URL",
         "NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL",
-        "NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL"
+        "NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL",
+        "NEXT_PUBLIC_SITE_URL"
       ]
     },
     "lint": {
-      "dependsOn": ["^lint"]
+      "dependsOn": [
+        "^lint"
+      ]
     },
     "dev": {
       "cache": false,
       "persistent": true
     },
     "test": {
-      "dependsOn": ["^build"]
+      "dependsOn": [
+        "^build"
+      ]
     }
-  }
+  },
+  "globalPassThroughEnv": [
+    "RESEND_API_KEY",
+    "ORDER_EMAIL_FROM",
+    "ORDER_NOTIFICATION_EMAIL",
+    "INFINIDIS_ACCOUNT_EMAIL",
+    "BLOB_READ_WRITE_TOKEN",
+    "INTERNAL_JOB_SECRET",
+    "RECEIPT_SIGNING_SECRET"
+  ]
 }

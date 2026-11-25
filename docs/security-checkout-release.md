@@ -55,3 +55,6 @@ An isolated hosted staging environment, multi-instance PostgreSQL checks, screen
 ## Remaining work
 
 The [19 October assisted-order and draft follow-up](assisted-orders-and-drafts-2026-10-19.md) implements the server-quoted assisted preview and persisted custom drafts, with 36 passing tests and improved shared dialog/select behavior. Continue with explicit production/material consumption, a unified carrier handoff/reconciliation workflow, returns/refunds and courier remittances, connected storefront content editing, waitlist lifecycle, remaining accessibility work, complete policy content, image/list performance, and the remaining storefront/search work. Keep historical data reconciliation separate from functional code repair.
+
+
+The [20 October admin operations follow-up](admin-operations-2026-10-20.md) now implements production/stock history, carrier reconciliation, finance/refund/inspection records, connected content publishing, customer/support queues, notification retry, and waitlist verification/unsubscribe. Its rollout notes supersede the corresponding outstanding workflow descriptions above; provider/staging/deployment gates remain open.

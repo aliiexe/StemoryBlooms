@@ -5,7 +5,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: '*',
       allow: '/',
-      disallow: ['/admin/', '/api/', '/checkout/', '/receipt/', '/account', '/track'],
+      disallow: ['/admin/', '/api/', '/checkout/', '/receipt/', '/account', '/track', '/subscriptions/'],
     },
     sitemap: 'https://stemoryblooms.com/sitemap.xml',
   };

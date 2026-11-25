@@ -1,6 +1,6 @@
 'use server';
 
-import { db, eq, sql, order } from '@stemory/database';
+import { db, eq, order } from '@stemory/database';
 import { revalidatePath } from 'next/cache';
 import { assertAdmin } from '@/lib/user-sync';
 import { recordAuditLog } from '@/lib/audit';
@@ -8,7 +8,7 @@ import { createStaffOrder, quoteStaffOrder } from '@/lib/commerce/orders';
 import { transitionOrder, archiveOrder, recordCashCollection } from '@/lib/commerce/order-lifecycle';
 import { publicError } from '@/lib/commerce/errors';
 import { receiptUrl, type OrderAddress } from '@/lib/commerce/receipt-access';
-import { sendOrderToInfinidis } from '@/lib/infinidis';
+import { queueCarrierRegistration } from '@/lib/commerce/delivery';
 import { randomBytes } from 'node:crypto';
 import { AssistedOrderSchema } from '@stemory/contracts';
 import type { z } from 'zod';
@@ -86,26 +86,13 @@ export async function rotateReceiptLink(orderId: string) {
 }
 
 export async function pushOrderToInfinidis(orderId: string) {
-  await assertAdmin();
+  const actor = await assertAdmin();
   try {
-    const result = await db.transaction(async tx => {
-      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`dispatch:${orderId}`}, 0))`);
-      await tx.select({ id: order.id }).from(order).where(eq(order.id, orderId)).for('update');
-      const current = await tx.query.order.findFirst({ where: eq(order.id, orderId), with: { customer: true, orderItems: true } });
-      if (!current) return { success: false, error: 'Order not found.' };
-      if (current.sentToInfinidis) return { success: false, error: 'This order has already been sent to the carrier.' };
-      const address = current.deliveryAddress as OrderAddress;
-      if (address.archivedAt || current.status !== 'READY') return { success: false, error: 'Only ready orders can be dispatched.' };
-      const buyer = address.customerSnapshot || current.customer;
-      const success = await sendOrderToInfinidis({ fullname: address.recipientSnapshot?.name || `${buyer.firstName} ${buyer.lastName}`.trim(),
-        code: current.orderNumber, product: current.orderItems.map(item => `${item.quantity}x ${item.productName}`).join(', '),
-        qty: current.orderItems.reduce((sum, item) => sum + item.quantity, 0), phone: address.recipientSnapshot?.phone || buyer.phone,
-        address: address.addressLine1 || '', city: address.city || '', price: current.total, note: current.notes || undefined });
-      if (!success) return { success: false, error: 'The carrier did not confirm this order. Review the carrier dashboard before retrying.' };
-      await tx.update(order).set({ sentToInfinidis: true, updatedAt: new Date() }).where(eq(order.id, orderId));
-      return { success: true };
-    });
-    refreshOrders();
-    return result;
-  } catch { return { success: false, error: 'Dispatch could not be confirmed. Check the carrier dashboard before retrying.' }; }
+    const carriers = await db.query.deliveryCompany.findMany({ where: (table, { eq }) => eq(table.isActive, true) });
+    const matches = carriers.filter(value => value.name.toLowerCase().includes('infinidis'));
+    if (matches.length !== 1) return { success: false, error: 'Select an active Infinidis carrier in Deliveries before registering this order.' };
+    const result = await queueCarrierRegistration({ orderId, companyId: matches[0].id }, actor.id);
+    after(() => processNotificationOutbox(2, orderId).catch(console.error));
+    refreshOrders(); return { success: true, queued: result.status !== 'SENT', status: result.status };
+  } catch (error) { return { success: false, error: publicError(error).message }; }
 }

@@ -1,156 +1,31 @@
+import Link from 'next/link';
+import { Plus, MapPin, ShoppingBag, Wallet } from 'lucide-react';
 import { assertAdmin } from '@/lib/user-sync';
-import { db } from '@stemory/database';
-import { order, material, adminInboxEvent, orderItem, customer } from '@stemory/database/schema';
-import { count, sum, eq, gte, lt, desc, inArray, sql } from 'drizzle-orm';
-import DashboardClient from './DashboardClient';
-
-const formatMoney = (amount: number) => {
-  return new Intl.NumberFormat('en-MA', {
-    style: 'currency',
-    currency: 'MAD',
-    maximumFractionDigits: 0
-  }).format(amount);
-};
-
+import { db, order, and, sql, desc, inArray } from '@stemory/database';
+import { businessDay } from '@/lib/commerce/reporting';
+import { paymentRowsForOrders } from '@/lib/commerce/payments';
+import { paymentState, formatPaymentMoney, fulfillmentLabels } from '@/lib/commerce/payment-state';
+import type { OrderAddress } from '@/lib/commerce/receipt-access';
+import { ORDER_STATUS_LABELS } from '@/lib/commerce/order-status';
+import styles from './workspace.module.css';
 export default async function AdminDashboardPage() {
   await assertAdmin();
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  // Fetch actual data
-  const ordersTodayResult = await db.select({ count: count() }).from(order).where(
-    sql`${order.createdAt} >= ${today} AND ${order.status} != 'CANCELLED'`
-  );
-  const ordersTodayCount = ordersTodayResult[0].count;
-
-  const [awaitingResult, productionResult, readyResult, completedResult, customersResult, allOrdersResult] = await Promise.all([
-    db.select({ count: count() }).from(order).where(inArray(order.status, ['NEW', 'CONFIRMED'])),
-    db.select({ count: count() }).from(order).where(eq(order.status, 'IN_PRODUCTION')),
-    db.select({ count: count() }).from(order).where(eq(order.status, 'READY')),
-    db.select({ count: count() }).from(order).where(inArray(order.status, ['COMPLETED', 'DELIVERED'])),
-    db.select({ count: count() }).from(customer),
-    db.select({
-      count: count(),
-      totalRevenue: sql<number>`SUM(GREATEST(0, ${order.total} - ${order.deliveryFee}))`
-    }).from(order).where(sql`${order.status} != 'CANCELLED'`)
+  const visible = sql`${order.deliveryAddress}->>'archivedAt' IS NULL`;
+  const [counts, recent, open, today] = await Promise.all([
+    db.select({ status: order.status, count: sql<number>`count(*)::int` }).from(order).where(visible).groupBy(order.status),
+    db.query.order.findMany({ where: visible, orderBy: [desc(order.createdAt)], limit: 6, with: { customer: true } }),
+    db.select().from(order).where(and(visible, inArray(order.status, ['NEW', 'CONFIRMED', 'IN_PRODUCTION', 'PROCESSING', 'READY', 'SHIPPED']))),
+    db.select({ count: sql<number>`count(*)::int`, amount: sql<number>`coalesce(sum(${order.total}),0)::int` }).from(order).where(and(visible, sql`(${order.createdAt} AT TIME ZONE 'UTC' AT TIME ZONE 'Africa/Casablanca')::date = ${businessDay(new Date())}::date`, sql`${order.status}<>'CANCELLED'`)),
   ]);
-  const awaitingCount = awaitingResult[0].count;
-  const productionCount = productionResult[0].count;
-  const readyCount = readyResult[0].count;
-  const completedCount = completedResult[0].count;
-  const totalCustomers = customersResult[0].count;
-  const allTimeRevenue = Number(allOrdersResult[0].totalRevenue) || 0;
-  const allTimeCount = allOrdersResult[0].count;
-  const aov = allTimeCount > 0 ? allTimeRevenue / allTimeCount : 0;
-
-  const ordersToday = await db.query.order.findMany({
-    where: (table, { and, gte, ne }) => and(
-      gte(table.createdAt, today),
-      ne(table.status, 'CANCELLED')
-    ),
-    columns: { total: true, deliveryFee: true }
-  });
-
-  const revenueToday = ordersToday.reduce((sum, order) => sum + Math.max(0, order.total - order.deliveryFee), 0);
-
-  const metrics = [
-    { label: 'Booked Sales Today', value: formatMoney(revenueToday), sub: 'Live', positive: true },
-    { label: 'Orders Today', value: ordersTodayCount.toString(), sub: 'Live', positive: true },
-    { label: 'AOV', value: formatMoney(aov) },
-    { label: 'Customers', value: totalCustomers.toString() },
-    { label: 'Awaiting', value: awaitingCount.toString() },
-    { label: 'In Production', value: productionCount.toString() },
-    { label: 'Ready', value: readyCount.toString() },
-    { label: 'Completed', value: completedCount.toString() },
-  ];
-
-  const recentDbOrders = await db.query.order.findMany({
-    limit: 5,
-    orderBy: (table, { desc }) => [desc(table.createdAt)],
-    with: { customer: true }
-  });
-
-  const statusColors: any = {
-    'NEW': { bg: '#FFF8E1', fg: '#F57F17' },
-    'IN_PRODUCTION': { bg: '#FCE4EC', fg: '#880E4F' },
-    'READY': { bg: '#E8F5E9', fg: '#1B5E20' },
-    'COMPLETED': { bg: '#F5F5F5', fg: '#616161' }
-  };
-
-  const recentOrders = recentDbOrders.map(o => ({
-    id: o.orderNumber,
-    name: `${o.customer.firstName} ${o.customer.lastName}`,
-    total: formatMoney(Math.max(0, o.total - o.deliveryFee)),
-    status: o.status,
-    bg: statusColors[o.status]?.bg || '#E0F7FA',
-    fg: statusColors[o.status]?.fg || '#006064'
-  }));
-
-  // Calculate Trailing 7 days sales data
-  const salesData: { name: string; sales: number }[] = [];
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
-  sevenDaysAgo.setHours(0, 0, 0, 0);
-
-  const recentSales = await db.query.order.findMany({
-    where: (table, { and, gte, ne }) => and(gte(table.createdAt, sevenDaysAgo), ne(table.status, 'CANCELLED')),
-    columns: { createdAt: true, total: true, deliveryFee: true }
-  });
-
-  // Group by day
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    const dayStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-
-    // Find all orders that fall on this day
-    const daySales = recentSales.filter(o =>
-      new Date(o.createdAt).toDateString() === d.toDateString()
-    ).reduce((sum, o) => sum + Math.max(0, o.total - o.deliveryFee), 0);
-
-    salesData.push({ name: dayStr, sales: daySales });
-  }
-
-  // Get low stock materials
-  const lowStock = await db.query.material.findMany({
-    where: (table, { and, isNotNull, lte }) => and(isNotNull(table.lowStockThreshold), lte(table.quantity, table.lowStockThreshold!)),
-    limit: 5,
-    orderBy: (table, { asc }) => [asc(table.quantity)]
-  });
-
-  // Get active deliveries (orders that are SHIPPED or PROCESSING)
-  const activeDeliveries = await db.query.order.findMany({
-    where: (table, { inArray }) => inArray(table.status, ['PROCESSING', 'SHIPPED', 'READY']),
-    limit: 5,
-    orderBy: (table, { desc }) => [desc(table.updatedAt)],
-    with: { customer: true }
-  });
-
-  // Calculate top products by aggregating OrderItem
-  const orderItemsResult = await db.select({
-    productName: orderItem.productName,
-    quantity: sum(orderItem.quantity)
-  })
-  .from(orderItem)
-  .innerJoin(order, eq(orderItem.orderId, order.id))
-  .where(sql`${order.status} != 'CANCELLED' AND ${orderItem.productName} NOT LIKE '[Element]%'`)
-  .groupBy(orderItem.productName)
-  .orderBy(desc(sum(orderItem.quantity)))
-  .limit(5);
-
-  const topProducts = orderItemsResult.map(item => ({
-    name: item.productName,
-    sold: Number(item.quantity) || 0
-  }));
-
-  return (
-    <DashboardClient
-      metrics={metrics}
-      recentOrders={recentOrders}
-      salesData={salesData}
-      topProducts={topProducts}
-      lowStock={lowStock}
-      activeDeliveries={activeDeliveries}
-    />
-  );
+  const paymentRows = await paymentRowsForOrders([...recent, ...open.filter(value => !recent.some(row => row.id === value.id))]);
+  const count = (...statuses: string[]) => counts.filter(row => statuses.includes(row.status)).reduce((sum, row) => sum + row.count, 0);
+  const outstanding = open.reduce((sum, row) => sum + paymentState(row, paymentRows.get(row.id)).remaining, 0);
+  const tasks = [{ label: 'To confirm', count: count('NEW'), href: '/admin/orders?status=NEW', hint: 'Review incoming orders' }, { label: 'To prepare', count: count('CONFIRMED', 'IN_PRODUCTION', 'PROCESSING'), href: '/admin/orders?view=OPEN', hint: 'Your current production queue' }, { label: 'Ready to leave', count: count('READY'), href: '/admin/deliveries?status=READY', hint: 'Delivery and customer pickups' }, { label: 'With the carrier', count: count('SHIPPED'), href: '/admin/deliveries?status=SHIPPED', hint: 'Follow up on delivery' }];
+  return <div className={styles.page}><header className={styles.header}><div><h1>Overview</h1><p>A clear view of your day, and a place for everything.</p></div><Link href="/admin/orders/new" className={styles.primary}><Plus size={18} />Create order</Link></header>
+    <div className={styles.cards}><div className={styles.stat}><span>Orders today</span><strong>{today[0].count}</strong><small>Africa/Casablanca · {new Date().toLocaleDateString('en-GB', { timeZone: 'Africa/Casablanca', dateStyle: 'medium' })}</small></div><div className={styles.stat}><span>Order value today</span><strong>{formatPaymentMoney(today[0].amount * 100)}</strong><small>Order value, separate from money received</small></div><Link href="/admin/orders?view=OPEN" className={styles.stat}><span>Unpaid on open orders</span><strong>{formatPaymentMoney(outstanding)}</strong><small>Based on recorded payments</small></Link></div>
+    <section aria-label="Order workflow"><div className={styles.sectionTitle}><h2>What needs doing</h2><Link href="/admin/orders?view=OPEN">Open orders</Link></div><div className={styles.taskGrid}>{tasks.map(task => <Link key={task.label} href={task.href} className={styles.task}><span>{task.label}</span><strong>{task.count}</strong><small>{task.hint}</small></Link>)}</div></section>
+    <section className={`${styles.panel} ${styles.tablePanel}`}><div className={styles.sectionTitle}><h2>Recent orders</h2><Link href="/admin/orders?view=ALL">View all orders</Link></div><div className={styles.tableWrap}><table className={styles.table}><thead><tr><th>Order / customer</th><th>Fulfillment</th><th>Payment</th><th style={{textAlign:'right'}}>Still due</th></tr></thead><tbody>{recent.map(row => { const address = row.deliveryAddress as OrderAddress; const buyer = address.customerSnapshot || row.customer; const payment = paymentState(row, paymentRows.get(row.id)); return <tr key={row.id}><td><Link title={row.orderNumber} href={`/admin/orders/${row.id}`}>{row.orderNumber.length>18?`${row.orderNumber.slice(0,10)}…${row.orderNumber.slice(-4)}`:row.orderNumber}</Link><small>{buyer?.firstName} {buyer?.lastName}</small></td><td><span className={styles.status}>{ORDER_STATUS_LABELS[row.status] || row.status}</span><small>{fulfillmentLabels[payment.fulfillment]}</small></td><td><span className={styles.status} data-tone={payment.remaining===0?'paid':'unpaid'}>{payment.label}</span><small>{payment.methods.map(method => method.toLowerCase().replaceAll('_', ' ')).join(' + ')}</small></td><td style={{textAlign:'right'}}>{formatPaymentMoney(payment.remaining)}</td></tr>; })}{!recent.length && <tr><td colSpan={4} className={styles.empty}><strong>Your next order starts here</strong>Create an order for an Instagram, phone, or in-person customer.</td></tr>}</tbody></table></div></section>
+    <div className={styles.actions}><Link href="/admin/deliveries/zones" className={styles.secondary}><MapPin size={17} />Look up delivery prices</Link><Link href="/admin/finances" className={styles.secondary}><Wallet size={17} />Money & expenses</Link><Link href="/admin/custom-orders" className={styles.secondary}><ShoppingBag size={17} />Continue a saved draft</Link></div>
+    <p className={styles.subtle}>Your history is still available. Material purchases and stock tracking are optional tools, not prerequisites for taking orders.</p>
+  </div>;
 }

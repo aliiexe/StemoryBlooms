@@ -1,19 +1,3 @@
-import SupportPage from '../support/SupportPage';
-
-export default function ShippingPage() {
-  return (
-    <SupportPage
-      eyebrow="Support"
-      title="Shipping policy"
-      intro="We pack orders carefully and coordinate delivery to keep each arrangement looking polished when it arrives."
-      bullets={['We prepare each order with secure packaging.', 'Delivery timing depends on destination and order complexity.', 'If timing matters, add a note through the contact form.']}
-      panels={[
-        { title: 'Packaging', body: 'Each bouquet is packed to protect the shape, color, and finishing details during transit.' },
-        { title: 'Delivery timing', body: 'We coordinate delivery based on the destination and order volume. For time-sensitive requests, contact us before placing the order.' },
-        { title: 'Order updates', body: 'If we need clarification on delivery details, we’ll reach out using the email provided at checkout or through the contact form.' },
-      ]}
-      ctaHref="/shop"
-      ctaLabel="Continue shopping"
-    />
-  );
-}
+import Link from 'next/link';
+import { publicSiteCopy } from '@/lib/site-content';
+export default async function Page(){const copy=await publicSiteCopy('shipping');return <main style={{maxWidth:860,margin:'0 auto',padding:'4rem 1.25rem',overflowWrap:'anywhere'}}><h1>{copy.title}</h1><p style={{fontSize:'1.15rem',lineHeight:1.7}}>{copy.subtitle}</p>{copy.body.split(/\n\s*\n/).map((paragraph,index)=><p key={index} style={{whiteSpace:'pre-line',lineHeight:1.8,margin:'1.5rem 0'}}>{paragraph}</p>)}<Link href={copy.ctaHref}>{copy.ctaLabel}</Link></main>;}

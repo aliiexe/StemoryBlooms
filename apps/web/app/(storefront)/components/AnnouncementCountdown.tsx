@@ -19,9 +19,10 @@ export default function AnnouncementCountdown({ target, textColor, endBehavior, 
     const calc = () => {
       const diff = new Date(target).getTime() - Date.now();
       if (diff <= 0) {
-        setEnded(true);
+        setEnded(true);setTimeLeft({d:0,h:0,m:0,s:0});
         return;
       }
+      setEnded(false);
       const d = Math.floor(diff / 86400000);
       const h = Math.floor((diff % 86400000) / 3600000);
       const m = Math.floor((diff % 3600000) / 60000);

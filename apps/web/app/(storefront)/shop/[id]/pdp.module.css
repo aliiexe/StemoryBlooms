@@ -20,3 +20,9 @@
     top: 120px;
   }
 }
+.productLayout { grid-template-columns:minmax(0,1.1fr) minmax(0,1fr); gap:clamp(25px,5vw,70px); }
+.imageGallery>div:first-child { border-radius:5px!important; }
+.productLayout h1 { font-size:clamp(30px,3.4vw,48px)!important; font-weight:400!important; line-height:1.15; letter-spacing:-.035em; }
+.productLayout button { border-radius:4px!important; box-shadow:none!important; font-size:14px!important; }
+.productLayout p { line-height:1.8; }
+@media(max-width:760px) { .productLayout { grid-template-columns:1fr; }.imageGallery { position:static; max-width:none; } }

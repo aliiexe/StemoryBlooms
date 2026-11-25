@@ -1,23 +1,24 @@
+import { db, order, deliveryCompany, notificationOutbox, eq, sql, and, desc, asc, inArray } from '@stemory/database';
 import { assertAdmin } from '@/lib/user-sync';
-import React from 'react';
-import { db } from '@stemory/database';
-import { sql } from 'drizzle-orm';
+import type { OrderAddress } from '@/lib/commerce/receipt-access';
 import { AdminDeliveriesClient } from './AdminDeliveriesClient';
-
-export default async function AdminDeliveriesPage() {
+import Link from 'next/link';
+import { paymentRowsForOrders } from '@/lib/commerce/payments';
+import { paymentState } from '@/lib/commerce/payment-state';
+import styles from '../dashboard.module.css';
+export default async function AdminDeliveriesPage({ searchParams }: { searchParams: Promise<{ search?: string; status?: string; page?: string; fulfillment?: string }> }) {
   await assertAdmin();
-  const orders = await db.query.order.findMany({
-    where: (table) => sql`${table.deliveryAddress}->>'archivedAt' IS NULL`,
-    with: { customer: true, deliveryHandoff: true },
-    orderBy: (order, { desc }) => [desc(order.createdAt)],
-  });
-
-  const deliveryCompany = await db.query.deliveryCompany.findFirst({ where: (table, { eq }) => eq(table.isActive, true) });
-
-  return (
-    <AdminDeliveriesClient
-      initialOrders={orders}
-      deliveryCompany={deliveryCompany}
-    />
-  );
+  const filters = await searchParams; const search = (filters.search || '').trim().slice(0, 150); const status = ['ALL', 'READY', 'SHIPPED', 'DELIVERED', 'COMPLETED', 'CANCELLED', 'EXCEPTIONS'].includes(filters.status || '') ? filters.status! : 'READY'; const page = Math.max(1, Math.min(10000, Number.parseInt(filters.page || '1', 10) || 1));
+  const fulfillment = ['PICKUP','DELIVERY','HAND_DELIVERY'].includes(filters.fulfillment || '') ? filters.fulfillment! : '';
+  const pattern = `%${search.replace(/[\\%_]/g, value => `\\${value}`)}%`;
+  const where = and(sql`${order.deliveryAddress}->>'archivedAt' IS NULL`, fulfillment ? sql`COALESCE(${order.deliveryAddress}->>'fulfillmentMethod', CASE WHEN ${order.deliveryAddress}->>'addressLine1' = 'Hand delivered' THEN 'HAND_DELIVERY' ELSE 'DELIVERY' END) = ${fulfillment}` : undefined, status === 'EXCEPTIONS' ? sql`EXISTS (SELECT 1 FROM "NotificationOutbox" j WHERE j.type = 'COURIER_DISPATCH' AND j.payload->>'orderId' = ${order.id} AND (j.status IN ('FAILED','UNCERTAIN') OR (j.status='PROCESSING' AND j."lastAttempt" < NOW() - INTERVAL '10 minutes')))` : status === 'ALL' ? undefined : eq(order.status, status), search ? sql`(${order.orderNumber} ILIKE ${pattern} OR ${order.deliveryAddress}::text ILIKE ${pattern} OR EXISTS (SELECT 1 FROM "Customer" c WHERE c.id = ${order.customerId} AND (c."firstName" ILIKE ${pattern} OR c.phone ILIKE ${pattern})))` : undefined);
+  const [rows, totals, carriers] = await Promise.all([db.query.order.findMany({ where, with: { customer: true, deliveryHandoff: true }, orderBy: [desc(order.createdAt), desc(order.id)], limit: 20, offset: (page - 1) * 20 }), db.select({ count: sql<number>`count(*)::integer` }).from(order).where(where), db.select({ id: deliveryCompany.id, name: deliveryCompany.name }).from(deliveryCompany).where(eq(deliveryCompany.isActive, true)).orderBy(asc(deliveryCompany.name))]);
+  const jobs = rows.length ? await db.query.notificationOutbox.findMany({ where: and(eq(notificationOutbox.type, 'COURIER_DISPATCH'), inArray(sql`${notificationOutbox.payload}->>'orderId'`, rows.map(row => row.id))), orderBy: [desc(notificationOutbox.createdAt)], limit: 200 }) : [];
+  const paymentRows = await paymentRowsForOrders(rows);
+  const orders = rows.map(row => { const address = row.deliveryAddress as OrderAddress; const buyer = address.customerSnapshot || row.customer; const payment = paymentState(row, paymentRows.get(row.id)); return { fulfillment: payment.fulfillment, remainingCents: payment.remaining, paymentLabel: payment.label, carrierReview: Boolean(address.carrierBalanceReviewRequired), id: row.id, orderNumber: row.orderNumber, total: row.total, deliveryFee: row.deliveryFee, status: row.status, paymentStatus: row.paymentStatus, registered: row.sentToInfinidis,
+    recipient: address.recipientSnapshot?.name || `${buyer.firstName} ${buyer.lastName}`.trim(), phone: address.recipientSnapshot?.phone || buyer.phone, city: address.city || '', address: address.addressLine1 || '',
+    handoff: address.carrierHandoff || (row.deliveryHandoff ? { companyId: row.deliveryHandoff.companyId, companyName: carriers.find(value => value.id === row.deliveryHandoff?.companyId)?.name || 'Earlier carrier', reference: row.deliveryHandoff.reference || '' } : null),
+    jobs: jobs.filter(job => (job.payload as { orderId: string }).orderId === row.id).map(job => ({ id: job.id, status: job.status, companyName: (job.payload as { companyName: string }).companyName, error: job.error, interrupted: job.status === 'PROCESSING' && Boolean(job.lastAttempt && job.lastAttempt.getTime() < Date.now() - 600000) })) }; });
+  const count = totals[0].count; const pages = Math.max(1, Math.ceil(count / 20)); const url = (next: number) => `/admin/deliveries?${new URLSearchParams({ search, status, fulfillment, page: String(next) })}`;
+  return <div className={styles.dashboard}><AdminDeliveriesClient orders={orders} carriers={carriers} search={search} status={status} count={count} fulfillment={fulfillment} /><nav aria-label="Delivery pages" className={styles.filterBar}>{page > 1 && <Link href={url(page - 1)}>Previous</Link>}<span>Page {page} of {pages}</span>{page < pages && <Link href={url(page + 1)}>Next</Link>}</nav></div>;
 }

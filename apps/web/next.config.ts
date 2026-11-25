@@ -1,8 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  devIndicators: false,
   transpilePackages: ["@stemory/ui"],
   serverExternalPackages: [],
+  images:{remotePatterns:[{protocol:'https',hostname:'*.public.blob.vercel-storage.com',pathname:'/uploads/**'}]},
   experimental: {
     serverActions: {
       bodySizeLimit: "10mb",
@@ -35,6 +37,12 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      ...['/admin/:path*','/account/:path*','/checkout/:path*','/track'].map(source=>({source,headers:[{key:'Cache-Control',value:'private, no-store, max-age=0'},{key:'X-Robots-Tag',value:'noindex, nofollow, noarchive'},{key:'Referrer-Policy',value:'no-referrer'}]})),
+      { source: '/subscriptions/:path*', headers: [
+        { key: 'Cache-Control', value: 'private, no-store, max-age=0' },
+        { key: 'X-Robots-Tag', value: 'noindex, nofollow, noarchive' },
+        { key: 'Referrer-Policy', value: 'no-referrer' },
+      ] },
       { source: '/receipt/:path*', headers: [
         { key: 'Cache-Control', value: 'private, no-store, max-age=0' },
         { key: 'X-Robots-Tag', value: 'noindex, nofollow, noarchive' },

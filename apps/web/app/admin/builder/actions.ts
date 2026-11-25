@@ -1,8 +1,11 @@
 'use server';
+import {validateImageReferences} from '@/lib/image-references';
 
 import { revalidatePath } from 'next/cache';
-import { db, eq, builderComponent, material } from '@stemory/database';
+import { db, eq, builderComponent, material, sql } from '@stemory/database';
 import crypto from 'crypto';
+import { z } from 'zod';
+import { inArray } from 'drizzle-orm';
 import { parseIntegerInput } from '../../../lib/form-values';
 import { assertAdmin } from '../../../lib/user-sync';
 import { recordAuditLog } from '@/lib/audit';
@@ -23,34 +26,43 @@ export async function saveBuilderComponent(formData: FormData) {
   const materialsStr = formData.get('componentMaterials') as string;
   let materials: { materialId: string; quantity: number }[] = [];
   try {
-    if (materialsStr) materials = JSON.parse(materialsStr);
-  } catch { /* ignore */ }
+    materials = z.array(z.object({materialId:z.string().min(1).max(128),quantity:z.number().int().min(1).max(10000)}).strict()).max(100).parse(JSON.parse(materialsStr || '[]'));
+    if (new Set(materials.map(row=>row.materialId)).size !== materials.length) return {error:'List each raw ingredient once.'};
+  } catch { return {error:'Every recipe ingredient needs a positive whole quantity.'}; }
 
-  if (!name?.trim() || unitPrice === null || unitPrice < 0 || !Number.isSafeInteger(stock) || stock < 0 || minQuantity < 0 || (maxQuantity !== null && maxQuantity < Math.max(1, minQuantity)) || !['FLOWER', 'LEAF', 'ANIMAL_BUG', 'WRAPPING', 'CARD'].includes(type)) {
+  if (!name?.trim() || unitPrice === null || unitPrice < 0 || !Number.isSafeInteger(stock) || (!id && stock < 0) || minQuantity < 0 || (maxQuantity !== null && maxQuantity < Math.max(1, minQuantity)) || !['FLOWER', 'LEAF', 'ANIMAL_BUG', 'WRAPPING', 'CARD'].includes(type)) {
     return { error: 'Name and unit price are required' };
   }
 
   // Image: the ImageUploader sends all images as a JSON array via the hidden 'images' input
   // For single-image builder components we take the first one.
   let imageUrl: string | null = null;
+  let imageList:unknown=[];
   const imagesStr = formData.get('images') as string;
   try {
     if (imagesStr) {
-      const parsed = JSON.parse(imagesStr) as string[];
-      imageUrl = parsed[0] ?? null;
+      imageList=JSON.parse(imagesStr);
     }
-  } catch { /* ignore */ }
+  } catch { return {error:'Choose a valid uploaded image.'}; }
 
   try {
     await db.transaction(async (tx) => {
+      for (const materialId of materials.map(row=>row.materialId).sort()) await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`recipe-material:${materialId}`},0))`);
+      if (materials.length) {
+        const ingredients=await tx.select({id:material.id}).from(material).where(inArray(material.id,materials.map(row=>row.materialId)));
+        if(ingredients.length!==materials.length)throw new Error('A recipe ingredient no longer exists.');
+      }
       if (id) {
         const [existing] = await tx.select().from(builderComponent).where(eq(builderComponent.id, id)).for('update');
         if (!existing) throw new Error('Component not found.');
-        if (Number(formData.get('expectedStock')) !== existing.stock) throw new Error('Stock changed while editing. Refresh before saving.');
+        imageUrl=validateImageReferences(imageList,existing.imageUrl?[existing.imageUrl]:[],1)[0]||null;
+        // Metadata editing never overwrites counts changed by orders or corrections.
       }
+      if(!id)imageUrl=validateImageReferences(imageList,[],1)[0]||null;
+      if (!id && stock !== 0) throw new Error('New components start at zero. Record production or a count correction after saving.');
       if (id) {
         await tx.update(builderComponent).set({
-          type, name, unitPrice, stock, minQuantity, maxQuantity, isAvailable, imageUrl,
+          type, name: name.trim(), unitPrice, minQuantity, maxQuantity, isAvailable, imageUrl,
           materials: materials.length > 0 ? materials : null,
           updatedAt: new Date(),
         }).where(eq(builderComponent.id, id));
@@ -83,14 +95,14 @@ export async function saveBuilderComponent(formData: FormData) {
 export async function deleteBuilderComponent(id: string) {
   await assertAdmin();
   try {
-    await db.delete(builderComponent).where(eq(builderComponent.id, id));
+    await db.update(builderComponent).set({ isAvailable: false, updatedAt: new Date() }).where(eq(builderComponent.id, id));
     revalidatePath('/admin/builder');
     revalidatePath('/custom-bouquet');
 
     await recordAuditLog({
-      action: 'DELETE',
+      action: 'DISABLE',
       target: 'BUILDER_COMPONENT',
-      summary: `Deleted builder component`,
+      summary: `Disabled builder component`,
       details: { componentId: id },
     });
     return { success: true };
@@ -102,6 +114,7 @@ export async function deleteBuilderComponent(id: string) {
 
 export async function toggleBuilderComponentAvailable(id: string, isAvailable: boolean) {
   await assertAdmin();
+  if(typeof isAvailable!=='boolean')return {error:'Choose a valid availability state.'};
   try {
     await db.update(builderComponent).set({ isAvailable, updatedAt: new Date() }).where(eq(builderComponent.id, id));
     revalidatePath('/admin/builder');
@@ -120,29 +133,8 @@ export async function toggleBuilderComponentAvailable(id: string, isAvailable: b
   }
 }
 
-export async function updateBuilderComponentStock(id: string, newStock: number, expectedStock: number) {
+export async function updateBuilderComponentStock(_id: string, _newStock: number, _expectedStock: number) {
   await assertAdmin();
-  if (!Number.isSafeInteger(newStock) || newStock < 0 || newStock > 100000) return { error: 'Enter a nonnegative whole stock count.' };
-  try {
-    await db.transaction(async (tx) => {
-      const [existing] = await tx.select().from(builderComponent).where(eq(builderComponent.id, id)).for('update');
-      if (!existing) throw new Error('Component not found.');
-      if (existing.stock !== expectedStock) throw new Error('Stock changed. Refresh and try again.');
-      await tx.update(builderComponent).set({ stock: newStock, isAvailable: newStock > 0, updatedAt: new Date() }).where(eq(builderComponent.id, id));
-    });
-
-    revalidatePath('/admin/builder');
-    revalidatePath('/custom-bouquet');
-
-    await recordAuditLog({
-      action: 'UPDATE',
-      target: 'BUILDER_COMPONENT',
-      summary: `Updated stock`,
-      details: { componentId: id, newStock },
-    });
-    return { success: true };
-  } catch (error) {
-    console.error(error);
-    return { error: 'Failed to update stock' };
-  }
+  void _id; void _newStock; void _expectedStock;
+  return { error: 'Use Production or a reasoned stock correction to change stock.' };
 }

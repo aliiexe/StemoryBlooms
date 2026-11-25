@@ -1,0 +1,2 @@
+'use client';
+export default function AdminError({reset}:{reset:()=>void}){return <section style={{padding:24,maxWidth:650}}><h1>This workspace could not be loaded</h1><p>Retry the page. If a recent save was interrupted, check the record before repeating the action.</p><button type="button" onClick={reset} style={{padding:16,minHeight:44,borderRadius:10,border:0,background:'#3e5539',color:'white'}}>Reload workspace</button></section>;}

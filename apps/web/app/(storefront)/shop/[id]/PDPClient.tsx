@@ -1,18 +1,26 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import type { product as ProductTable, review as ReviewTable } from '@stemory/database';
+import type { CatalogCard } from '@/lib/commerce/catalog';
+import {useReducedMotion} from 'framer-motion';
+import React, { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useCartStore, ProductCard } from '@stemory/ui';
+import {CustomSelect} from '@/components/ui/CustomSelect';
 import { submitReview } from './actions';
 import styles from './pdp.module.css';
 
-export default function PDPClient({ product, recommendations }: { product: any, recommendations: any[] }) {
+type ProductDetails = Pick<typeof ProductTable.$inferSelect,'id'|'name'|'description'|'basePrice'|'salePrice'|'isSaleEnabled'|'stock'|'isAvailable'|'images'|'processingEstimate'> & {reviews:Pick<typeof ReviewTable.$inferSelect,'id'|'authorName'|'rating'|'title'|'content'|'createdAt'>[]};
+export default function PDPClient({ product, recommendations, trackInventory = true }: { trackInventory?:boolean; product: ProductDetails; recommendations: CatalogCard[] }) {
+  const orderLimit=trackInventory?Math.min(100,product.stock):100;
+  const reducedMotion=useReducedMotion();
   const [quantity, setQuantity] = useState(1);
-  const images = Array.isArray(product?.images) && product.images.length > 0 ? product.images : ['/hero-bouquet.png'];
+  const images = useMemo(()=>product.images?.length ? product.images : ['/hero-bouquet.png'],[product.images]);
   const [activeImage, setActiveImage] = useState(images[0]);
   const addItem = useCartStore((state) => state.addItem);
   const [added, setAdded] = useState(false);
+  const [rating,setRating]=useState('5');
   const [reviewStatus, setReviewStatus] = useState<{success?: boolean; error?: string} | null>(null);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -23,7 +31,7 @@ export default function PDPClient({ product, recommendations }: { product: any, 
 
   // 10 second auto-slideshow (pauses on hover)
   useEffect(() => {
-    if (images.length <= 1 || isHovered) return;
+    if (images.length <= 1 || isHovered || reducedMotion) return;
     const interval = setInterval(() => {
       setActiveImage((current) => {
         const idx = images.indexOf(current);
@@ -31,14 +39,15 @@ export default function PDPClient({ product, recommendations }: { product: any, 
       });
     }, 10000);
     return () => clearInterval(interval);
-  }, [images, isHovered]);
+  }, [images, isHovered, reducedMotion]);
 
   const handleAddToCart = () => {
+    if(!product.isAvailable || (trackInventory && product.stock<1))return;
     addItem({
-      id: product.id, productId: product.id, kind: 'PRODUCT', maxQuantity: Math.min(100, product.stock),
+      id: product.id, productId: product.id, kind: 'PRODUCT', maxQuantity: orderLimit,
       name: product.name,
-      price: product.isSaleEnabled && product.salePrice !== null ? product.salePrice : product.basePrice,
-      quantity,
+      price: product.isSaleEnabled && product.salePrice !== null ? product.salePrice! : product.basePrice,
+      quantity:Math.min(quantity,orderLimit),
       imageUrl: images[0]
     });
     setAdded(true);
@@ -87,6 +96,7 @@ export default function PDPClient({ product, recommendations }: { product: any, 
                     willChange: 'opacity',
                   }}
                   priority={i === 0}
+                  sizes="(max-width: 768px) 90vw, 50vw"
                 />
               ))}
             </div>
@@ -112,7 +122,7 @@ export default function PDPClient({ product, recommendations }: { product: any, 
                       transition: 'border-color 0.2s ease'
                     }}
                   >
-                    <Image src={image} alt={`${product.name} thumbnail ${index + 1}`} fill style={{ objectFit: 'cover' }} />
+                    <Image src={image} alt={`${product.name} thumbnail ${index + 1}`} fill sizes="80px" style={{ objectFit: 'cover' }} />
                   </button>
                 ))}
               </div>
@@ -144,41 +154,43 @@ export default function PDPClient({ product, recommendations }: { product: any, 
             <div style={{ display: 'flex', gap: '1rem', marginBottom: '3rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #D6CFE6', borderRadius: '50px', padding: '0.25rem', backgroundColor: '#fff' }}>
                 <button
+                  aria-label="Decrease arrangement quantity" disabled={quantity<=1}
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
                   style={{ background: 'none', border: 'none', padding: '0.5rem 1.25rem', cursor: 'pointer', fontSize: '1.2rem', color: '#5A5551' }}
                 >-</button>
                 <span style={{ minWidth: '2rem', textAlign: 'center', fontWeight: 600, fontSize: '1.1rem' }}>{quantity}</span>
                 <button
-                  onClick={() => setQuantity(Math.min(100, product.stock, quantity + 1))}
+                  aria-label="Increase arrangement quantity" disabled={!product.isAvailable||quantity>=orderLimit}
+                  onClick={() => setQuantity(Math.min(orderLimit, quantity + 1))}
                   style={{ background: 'none', border: 'none', padding: '0.5rem 1.25rem', cursor: 'pointer', fontSize: '1.2rem', color: '#5A5551' }}
                 >+</button>
               </div>
 
               <button
                 onClick={handleAddToCart}
-                disabled={!(product.isAvailable && product.stock > 0)}
+                disabled={!(product.isAvailable && (!trackInventory || product.stock > 0))}
                 style={{
                   flex: 1,
                   padding: '1rem 2rem',
-                  backgroundColor: (product.isAvailable && product.stock > 0) ? (added ? '#1B5E20' : 'var(--brand-primary)') : '#EAE6DF',
-                  color: (product.isAvailable && product.stock > 0) ? '#FDFBF7' : '#9A9591',
+                  backgroundColor: (product.isAvailable && (!trackInventory || product.stock > 0)) ? (added ? '#1B5E20' : 'var(--brand-primary)') : '#EAE6DF',
+                  color: (product.isAvailable && (!trackInventory || product.stock > 0)) ? '#FDFBF7' : '#9A9591',
                   border: 'none',
                   borderRadius: '50px',
                   fontSize: '1.1rem',
                   fontWeight: 600,
-                  cursor: (product.isAvailable && product.stock > 0) ? 'pointer' : 'not-allowed',
+                  cursor: (product.isAvailable && (!trackInventory || product.stock > 0)) ? 'pointer' : 'not-allowed',
                   transition: 'all 0.2s ease',
                   letterSpacing: '0.5px'
                 }}
               >
-                {(product.isAvailable && product.stock > 0) ? (added ? '✓ Added to Cart' : 'Add to Cart') : 'Out of Stock'}
+                {(product.isAvailable && (!trackInventory || product.stock > 0)) ? (added ? '✓ Added to Cart' : 'Add to Cart') : 'Out of Stock'}
               </button>
             </div>
 
             <div style={{ marginTop: '1.25rem', padding: '1rem', backgroundColor: '#FDFBF7', border: '1px solid #EAE6DF', borderRadius: '12px', display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
               <span style={{ fontSize: '1.2rem', color: '#8C9C76' }}>⏱️</span>
               <p style={{ margin: 0, fontSize: '0.9rem', color: '#5A5551', lineHeight: 1.5 }}>
-                <strong>Made to Order:</strong> Since every piece is handmade with care, please allow <strong>2-3 days for production</strong> before your order ships, plus standard delivery time.
+                <strong>Preparation and delivery:</strong> {product.processingEstimate||'Contact us for a date-sensitive request.'} <Link href="/shipping">Delivery information</Link>
               </p>
             </div>
 
@@ -194,25 +206,25 @@ export default function PDPClient({ product, recommendations }: { product: any, 
               </div>
               <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
                 <span style={{ color: '#8C9C76', fontSize: '1.5rem', lineHeight: 1 }}>✦</span>
-                <span style={{ fontSize: '1.05rem', color: '#5A5551' }}>Processing Estimate: {product.processingEstimate || '3-5 business days'}</span>
+                <span style={{ fontSize: '1.05rem', color: '#5A5551' }}>Processing Estimate: {product.processingEstimate || 'Confirmed by our team for your arrangement'}</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Reviews Section (Full Width Below) */}
-        <div style={{ marginTop: '8rem', borderTop: '1px solid #EAE6DF', paddingTop: '4rem' }}>
+        <div id="reviews" style={{ marginTop: '8rem', borderTop: '1px solid #EAE6DF', paddingTop: '4rem' }}>
           <h2 style={{ fontFamily: 'var(--font-editorial)', fontSize: '2.5rem', color: 'var(--brand-primary)', marginBottom: '3rem', textAlign: 'center' }}>
             Customer Reviews
           </h2>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '4rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%,300px), 1fr))', gap: '4rem' }}>
 
             {/* Reviews List */}
             <div style={{ order: 2 }}>
               {product.reviews && product.reviews.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
-                  {product.reviews.map((r: any) => (
+                  {product.reviews.map((r) => (
                     <div key={r.id} style={{ borderBottom: '1px solid #EAE6DF', paddingBottom: '2rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginBottom: '1rem' }}>
                         {[...Array(5)].map((_, i) => (
@@ -220,7 +232,7 @@ export default function PDPClient({ product, recommendations }: { product: any, 
                         ))}
                       </div>
                       <h4 style={{ fontSize: '1.15rem', fontWeight: 600, marginBottom: '0.75rem', color: '#3A3531' }}>{r.title}</h4>
-                      <p style={{ color: '#5A5551', fontSize: '1rem', lineHeight: 1.6, marginBottom: '1.5rem' }}>"{r.content}"</p>
+                      <p style={{ color: '#5A5551', fontSize: '1rem', lineHeight: 1.6, marginBottom: '1.5rem' }}>&ldquo;{r.content}&rdquo;</p>
                       <div style={{ fontSize: '0.9rem', color: '#9A9591', fontStyle: 'italic' }}>
                         — {r.authorName} on {new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' }).format(new Date(r.createdAt))}
                       </div>
@@ -244,44 +256,32 @@ export default function PDPClient({ product, recommendations }: { product: any, 
                     Thank you! Your review has been submitted and is pending approval.
                   </div>
                 ) : (
-                  <form action={async (formData) => {
-                    setIsSubmittingReview(true);
-                    const res = await submitReview(product.id, formData);
-                    if (res.error) setReviewStatus({ error: res.error });
-                    else setReviewStatus({ success: true });
-                    setIsSubmittingReview(false);
-                  }} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  <form onSubmit={async event=>{event.preventDefault();if(isSubmittingReview)return;const formData=new FormData(event.currentTarget);setIsSubmittingReview(true);try{const result=await submitReview(product.id,formData);setReviewStatus(result.error?{error:result.error}:{success:true});}catch{setReviewStatus({error:'Your review could not be submitted. Please try again.'});}finally{setIsSubmittingReview(false);}}} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
                     {reviewStatus?.error && (
-                      <div style={{ color: '#C62828', backgroundColor: '#FFEBEE', padding: '1rem', borderRadius: '12px', fontSize: '0.95rem' }}>
+                      <div role="alert" style={{ color: '#C62828', backgroundColor: '#FFEBEE', padding: '1rem', borderRadius: '12px', fontSize: '0.95rem' }}>
                         {reviewStatus.error}
                       </div>
                     )}
 
                     <div>
-                      <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.95rem', color: '#4A4A4A', fontWeight: 500 }}>Name *</label>
-                      <input type="text" name="authorName" required style={{ width: '100%', padding: '0.9rem', borderRadius: '12px', border: '1px solid #D6CFE6', fontSize: '1rem' }} />
+                      <label htmlFor="review-authorName" style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.95rem', color: '#4A4A4A', fontWeight: 500 }}>Name *</label>
+                      <input type="text" id="review-authorName" name="authorName" disabled={isSubmittingReview} maxLength={100} required style={{ width: '100%', padding: '0.9rem', borderRadius: '12px', border: '1px solid #D6CFE6', fontSize: '1rem' }} />
                     </div>
 
                     <div>
                       <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.95rem', color: '#4A4A4A', fontWeight: 500 }}>Rating *</label>
-                      <select name="rating" required style={{ width: '100%', padding: '0.9rem', borderRadius: '12px', border: '1px solid #D6CFE6', fontSize: '1rem', backgroundColor: '#fff' }}>
-                        <option value="5">5 Stars - Excellent</option>
-                        <option value="4">4 Stars - Very Good</option>
-                        <option value="3">3 Stars - Average</option>
-                        <option value="2">2 Stars - Poor</option>
-                        <option value="1">1 Star - Terrible</option>
-                      </select>
+                      <CustomSelect label="Review rating" name="rating" value={rating} onChange={setRating} disabled={isSubmittingReview} options={[5,4,3,2,1].map(value=>({value:String(value),label:`${value} ${value===1?'star':'stars'}`}))}/>
                     </div>
 
                     <div>
-                      <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.95rem', color: '#4A4A4A', fontWeight: 500 }}>Title (Optional)</label>
-                      <input type="text" name="title" style={{ width: '100%', padding: '0.9rem', borderRadius: '12px', border: '1px solid #D6CFE6', fontSize: '1rem' }} />
+                      <label htmlFor="review-title" style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.95rem', color: '#4A4A4A', fontWeight: 500 }}>Title (Optional)</label>
+                      <input type="text" id="review-title" name="title" disabled={isSubmittingReview} maxLength={160} style={{ width: '100%', padding: '0.9rem', borderRadius: '12px', border: '1px solid #D6CFE6', fontSize: '1rem' }} />
                     </div>
 
                     <div>
-                      <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.95rem', color: '#4A4A4A', fontWeight: 500 }}>Review *</label>
-                      <textarea name="content" required rows={4} style={{ width: '100%', padding: '0.9rem', borderRadius: '12px', border: '1px solid #D6CFE6', resize: 'vertical', fontSize: '1rem' }}></textarea>
+                      <label htmlFor="review-content" style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.95rem', color: '#4A4A4A', fontWeight: 500 }}>Review *</label>
+                      <textarea id="review-content" name="content" disabled={isSubmittingReview} maxLength={3000} required rows={4} style={{ width: '100%', padding: '0.9rem', borderRadius: '12px', border: '1px solid #D6CFE6', resize: 'vertical', fontSize: '1rem' }}></textarea>
                     </div>
 
                     <button
@@ -304,9 +304,9 @@ export default function PDPClient({ product, recommendations }: { product: any, 
             <h2 style={{ fontFamily: 'var(--font-editorial)', fontSize: '2.5rem', color: 'var(--brand-primary)', marginBottom: '3rem', textAlign: 'center' }}>
               You Might Also Like
             </h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '2rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%,250px), 1fr))', gap: '2rem' }}>
               {recommendations.map(rec => (
-                <ProductCard stock={rec.stock} isAvailable={rec.isAvailable} key={rec.id} id={rec.id} title={rec.name} price={rec.basePrice} salePrice={rec.isSaleEnabled ? rec.salePrice : null} imageUrl={rec.images?.[0] || '/hero-bouquet.png'} />
+                <ProductCard trackInventory={trackInventory} stock={rec.stock} isAvailable={rec.isAvailable} key={rec.id} id={rec.id} title={rec.name} price={rec.basePrice} salePrice={rec.isSaleEnabled ? rec.salePrice : null} imageUrl={rec.imageUrl || '/hero-bouquet.png'} />
               ))}
             </div>
           </div>

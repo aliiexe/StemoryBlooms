@@ -9,6 +9,7 @@ export async function updateUserRole(formData: FormData) {
   const actor = await assertAdmin();
   const userId = formData.get('userId')?.toString();
   const nextRole = formData.get('nextRole')?.toString();
+  const expectedRole=formData.get('expectedRole')?.toString();
 
   if (!userId || !nextRole || !['ADMIN', 'CUSTOMER'].includes(nextRole)) return { error: 'Choose a valid role.' };
 
@@ -24,6 +25,7 @@ export async function updateUserRole(formData: FormData) {
       if (currentActor?.role?.name !== 'ADMIN') throw new Error('Admin access is required.');
       const existing = await tx.query.user.findFirst({ where: eq(userTable.id, userId), with: { role: true } });
       if (!existing) throw new Error('User not found.');
+      if(expectedRole&&(existing.role?.name||'CUSTOMER')!==expectedRole)throw new Error('This person’s access changed. Reload before editing.');
       if (existing.role?.name === 'ADMIN' && nextRole === 'CUSTOMER') {
         const admins = await tx.select({ id: userTable.id }).from(userTable).innerJoin(roleTable, eq(userTable.roleId, roleTable.id)).where(eq(roleTable.name, 'ADMIN'));
         if (admins.length <= 1) throw new Error('Add another administrator before removing the last admin.');

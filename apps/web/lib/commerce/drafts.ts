@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { isDeepStrictEqual } from 'node:util';
 import { z } from 'zod';
 import { db, eq, sql, draftOrder, order, auditLog } from '@stemory/database';
 import { AssistedDraftDataSchema } from '@stemory/contracts';
@@ -43,7 +44,8 @@ export async function saveOrderDraft(input: unknown, actorId: string, database: 
     const previous = row ? requireDraft(row.payload) : null;
     if (previous && previous.status !== 'DRAFT') throw new CommerceError('Only active drafts can be edited.', 'DRAFT_CLOSED', 409);
     // A response can be lost after save; replay the same content without a second revision.
-    if (previous && previous.title === title && JSON.stringify(previous.data) === JSON.stringify(data)) return draftEditor(id, previous);
+    // JSONB reorders keys, and serialization omits explicitly undefined optional fields.
+    if (previous && previous.title === title && isDeepStrictEqual(previous.data, JSON.parse(JSON.stringify(data)))) return draftEditor(id, previous);
     if (previous) checkRevision(previous, expectedRevision);
     else if (expectedRevision !== 0) throw new CommerceError('Draft not found.', 'NOT_FOUND', 404);
     const value: DraftEnvelope = { schemaVersion: 1, title, data, revision: (previous?.revision || 0) + 1, status: 'DRAFT', updatedBy: actorId };

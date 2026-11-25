@@ -1,6 +1,8 @@
 'use server';
+import {validateImageReferences} from '@/lib/image-references';
 
 import { db, eq, product, productMaterial, material, builderComponent, productBuilderComponent, categoryToProduct } from '@stemory/database';
+import { inArray } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import crypto from 'crypto';
 import { z } from 'zod';
@@ -13,6 +15,8 @@ export async function saveProduct(formData: FormData) {
   const id = formData.get('id') as string;
   const name = formData.get('name') as string;
   const description = formData.get('description') as string;
+  const processingEstimate=String(formData.get('processingEstimate')||'').trim();
+  if(processingEstimate.length>300)return {error:'Keep the preparation estimate within 300 characters.'};
   const basePrice = Number(formData.get('basePrice') || NaN);
 
   const salePriceStr = formData.get('salePrice') as string;
@@ -37,40 +41,18 @@ export async function saveProduct(formData: FormData) {
   let finalSalePrice = salePrice;
   if (!isSaleEnabled) finalSalePrice = null;
 
-  const productMaterialsStr = formData.get('productMaterials') as string;
-  let productMaterialsList: { materialId: string, quantity: number }[] = [];
+  let productMaterialsList: { materialId: string; quantity: number }[];
+  let productBuilderComponentsList: { builderComponentId: string; quantity: number }[];
+  let categoryIds: string[];
+  const quantity = z.number().int().min(1).max(10000);
   try {
-    if (productMaterialsStr) {
-      const parsed = JSON.parse(productMaterialsStr);
-      productMaterialsList = parsed.filter((b: any) => b.materialId && b.quantity > 0);
-    }
-  } catch (e) {
-    console.error('Failed to parse product materials JSON', e);
-  }
+    productMaterialsList = z.array(z.object({materialId:z.string().min(1).max(128),quantity}).strict()).max(100).parse(JSON.parse(String(formData.get('productMaterials') || '[]')));
+    productBuilderComponentsList = z.array(z.object({builderComponentId:z.string().min(1).max(128),quantity}).strict()).max(100).parse(JSON.parse(String(formData.get('productBuilderComponents') || '[]')));
+    categoryIds = [...new Set(z.array(z.string().min(1).max(128)).max(100).parse(JSON.parse(String(formData.get('categoryIds') || '[]'))))];
+    if (new Set(productMaterialsList.map(row=>row.materialId)).size!==productMaterialsList.length || new Set(productBuilderComponentsList.map(row=>row.builderComponentId)).size!==productBuilderComponentsList.length) return {error:'List each recipe ingredient only once.'};
+  } catch { return {error:'Every recipe row must have an ingredient and a positive whole quantity. Check categories too.'}; }
 
-  const customFlowersBomStr = formData.get('productBuilderComponents') as string;
-  let productBuilderComponentsList: { builderComponentId: string, quantity: number }[] = [];
-  try {
-    if (customFlowersBomStr) {
-      const parsed = JSON.parse(customFlowersBomStr);
-      productBuilderComponentsList = parsed.filter((b: any) => b.builderComponentId && b.quantity > 0);
-    }
-  } catch (e) {
-    console.error('Failed to parse custom flowers BOM JSON', e);
-  }
-
-  const categoryIdsStr = formData.get('categoryIds') as string;
-  let categoryIds: string[] = [];
-  try {
-    if (categoryIdsStr) {
-      const parsed = JSON.parse(categoryIdsStr);
-      categoryIds = [...new Set(parsed as string[])];
-    }
-  } catch (e) {
-    console.error('Failed to parse category IDs JSON', e);
-  }
-
-  if (!name?.trim() || !description?.trim() || !Number.isSafeInteger(basePrice) || basePrice < 0 || basePrice > 1000000 || !Number.isSafeInteger(stock) || stock < 0 || stock > 100000 || !['PUBLISHED', 'DRAFT', 'HIDDEN', 'ARCHIVED'].includes(status)) {
+  if (!name?.trim() || !description?.trim() || !Number.isSafeInteger(basePrice) || basePrice < 0 || basePrice > 1000000 || (!id && (!Number.isSafeInteger(stock) || stock < 0 || stock > 100000)) || !['PUBLISHED', 'DRAFT', 'HIDDEN', 'ARCHIVED'].includes(status)) {
     return { error: 'Name, description, and valid base price are required' };
   }
 
@@ -78,32 +60,39 @@ export async function saveProduct(formData: FormData) {
     return { error: 'At least one product image is required' };
   }
 
-  if (productMaterialsList.length === 0 && productBuilderComponentsList.length === 0) {
-    return { error: 'At least one valid material or custom flower line is required' };
-  }
 
   if (finalSalePrice !== null && (!Number.isSafeInteger(finalSalePrice) || finalSalePrice < 0 || finalSalePrice > basePrice)) return { error: 'Sale price must be between zero and the base price.' };
   if ([...productMaterialsList, ...productBuilderComponentsList].some(line => !Number.isSafeInteger(line.quantity) || line.quantity <= 0)) return { error: 'Recipe quantities must be positive whole units.' };
 
   try {
+    if (!id && stock !== 0) return { error: 'New products start at zero. Record production or a count correction after saving.' };
     let currentProductId = id;
 
     await db.transaction(async (tx) => {
+      if (productMaterialsList.length) {
+        const ingredients = await tx.select({id:material.id}).from(material).where(inArray(material.id,productMaterialsList.map(row=>row.materialId)));
+        if (ingredients.length !== productMaterialsList.length) throw new Error('A raw ingredient no longer exists.');
+      }
+      if (productBuilderComponentsList.length) {
+        const components = await tx.select({id:builderComponent.id}).from(builderComponent).where(inArray(builderComponent.id,productBuilderComponentsList.map(row=>row.builderComponentId)));
+        if (components.length !== productBuilderComponentsList.length) throw new Error('A component no longer exists.');
+      }
       if (id) {
         const [existing] = await tx.select().from(product).where(eq(product.id, id)).for('update');
         if (!existing) throw new Error('Product not found.');
-        if (Number(formData.get('expectedStock')) !== existing.stock) throw new Error('Stock changed while editing. Refresh before saving.');
+        allImages=validateImageReferences(allImages,existing.images||[]);
         await tx.delete(productMaterial).where(eq(productMaterial.productId, id));
         await tx.delete(productBuilderComponent).where(eq(productBuilderComponent.productId, id));
         await tx.delete(categoryToProduct).where(eq(categoryToProduct.b, id));
 
         await tx.update(product).set({
-          name, description, basePrice, salePrice: finalSalePrice, isSaleEnabled, images: allImages, status, isAvailable, isFeatured, stock, updatedAt: new Date()
+          name, description, processingEstimate:processingEstimate||null, basePrice, salePrice: finalSalePrice, isSaleEnabled, images: allImages, status, isAvailable, isFeatured, updatedAt: new Date()
         }).where(eq(product.id, id));
       } else {
+        allImages=validateImageReferences(allImages);
         const [newProduct] = await tx.insert(product).values({
           id: crypto.randomUUID(),
-          name, description, basePrice, salePrice: finalSalePrice, isSaleEnabled, images: allImages, status, isAvailable, isFeatured, stock, updatedAt: new Date()
+          name, description, processingEstimate:processingEstimate||null, basePrice, salePrice: finalSalePrice, isSaleEnabled, images: allImages, status, isAvailable, isFeatured, stock, updatedAt: new Date()
         }).returning({ id: product.id });
         currentProductId = newProduct.id;
 
@@ -145,7 +134,7 @@ export async function saveProduct(formData: FormData) {
       action: id ? 'UPDATE' : 'CREATE',
       target: 'PRODUCT',
       summary: `${id ? 'Updated' : 'Created'} product "${name}"`,
-      details: { productId: currentProductId, name, basePrice, stock },
+      details: { productId: currentProductId, name, basePrice, ...(!id?{stock}:{}) },
     });
   } catch (error) {
     console.error('Save product error:', error);
@@ -158,19 +147,14 @@ export async function saveProduct(formData: FormData) {
 export async function deleteProduct(id: string) {
   await assertAdmin();
   try {
-    await db.transaction(async (tx) => {
-      await tx.delete(productMaterial).where(eq(productMaterial.productId, id));
-      await tx.delete(productBuilderComponent).where(eq(productBuilderComponent.productId, id));
-      await tx.delete(categoryToProduct).where(eq(categoryToProduct.b, id));
-      await tx.delete(product).where(eq(product.id, id));
-    });
+    await db.update(product).set({ status: 'ARCHIVED', isAvailable: false, updatedAt: new Date() }).where(eq(product.id, id));
     revalidatePath('/admin/products');
     revalidatePath('/shop');
 
     await recordAuditLog({
-      action: 'DELETE',
+      action: 'ARCHIVE',
       target: 'PRODUCT',
-      summary: `Deleted product`,
+      summary: `Archived product`,
       details: { productId: id },
     });
     return { success: true };
@@ -192,15 +176,15 @@ export async function quickUpdateProduct(id: string, updates: { stock?: number; 
     salePrice: z.number().int().min(0).max(1000000).nullable().optional(),
     isSaleEnabled: z.boolean().optional(),
   }).strict().safeParse(updates);
+  if (parsed.success && parsed.data.stock !== undefined) return { error: 'Use a reasoned stock correction to change the count.' };
   if (!id || !parsed.success) return { error: 'Please enter a valid price or whole stock quantity.' };
   try {
     const saved = await db.transaction(async tx => {
       const [current] = await tx.select().from(product).where(eq(product.id, id)).for('update');
       if (!current) throw new Error('Product not found.');
-      if (updates.stock !== undefined && updates.expectedStock !== current.stock) throw new Error('Stock changed. Refresh this product and try again.');
-      const { expectedStock: _expectedStock, ...values } = parsed.data;
+      const values = {salePrice:parsed.data.salePrice,isSaleEnabled:parsed.data.isSaleEnabled};
       const payload = { ...values, ...(values.isSaleEnabled === false ? { salePrice: null } : {}),
-        ...(values.stock !== undefined ? { isAvailable: values.stock > 0 } : {}), updatedAt: new Date() };
+        updatedAt: new Date() };
       const sale = values.isSaleEnabled ?? current.isSaleEnabled;
       const price = payload.salePrice === undefined ? current.salePrice : payload.salePrice;
       if (sale && (price === null || price > current.basePrice)) throw new Error('Sale price must be between zero and the base price.');

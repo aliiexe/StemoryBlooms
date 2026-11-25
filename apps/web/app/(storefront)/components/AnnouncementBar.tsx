@@ -1,8 +1,7 @@
-import { db, announcementBarSettings as settingsTable, announcement as announcementTable, eq, and, or, isNull, lte, gte, asc } from '@stemory/database';
-import { Suspense } from 'react';
+import { db, announcement as announcementTable, eq, and, or, isNull, lte, gte, asc } from '@stemory/database';
 import AnnouncementCarousel from './AnnouncementCarousel';
 
-async function getActiveAnnouncements(pathname?: string) {
+async function getActiveAnnouncements() {
   const settings = await db.query.announcementBarSettings.findFirst();
   if (!settings?.enabled) return { announcements: [], settings: null };
 
@@ -10,7 +9,6 @@ async function getActiveAnnouncements(pathname?: string) {
   const announcements = await db.query.announcement.findMany({
     where: and(
       eq(announcementTable.status, 'ACTIVE'),
-      eq(announcementTable.showDesktop, true),
       or(
         isNull(announcementTable.startAt),
         lte(announcementTable.startAt, now)
@@ -27,18 +25,9 @@ async function getActiveAnnouncements(pathname?: string) {
   return { announcements, settings };
 }
 
-export default async function AnnouncementBar({ pathname }: { pathname?: string }) {
-  try {
-    const { announcements, settings } = await getActiveAnnouncements(pathname);
-    if (!settings || announcements.length === 0) return null;
-
-    return (
-      <div id="announcement-bar" role="region" aria-label="Announcements">
-        <AnnouncementCarousel announcements={announcements} settings={settings} />
-      </div>
-    );
-  } catch {
-    // Never break the layout if announcement fetch fails
-    return null;
-  }
+export default async function AnnouncementBar() {
+  let result:Awaited<ReturnType<typeof getActiveAnnouncements>>;
+  try{result=await getActiveAnnouncements();}catch{return null;}
+  if(!result.settings||!result.announcements.length)return null;
+  return <div id="announcement-bar" role="region" aria-label="Announcements"><AnnouncementCarousel announcements={result.announcements} settings={result.settings}/></div>;
 }

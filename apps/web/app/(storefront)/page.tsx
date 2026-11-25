@@ -1,9 +1,10 @@
-import { db, product as productTable, orderItem, eq, desc, sql } from '@stemory/database';
+import { publicSiteCopy } from '@/lib/site-content';
+import { db, product as productTable, orderItem, order, eq, desc, sql } from '@stemory/database';
 import HomeClient from './HomeClient';
 
 export default async function HomePage() {
   const settings = await db.query.siteSettings.findFirst();
-  const config = settings?.config as Record<string, any> | null;
+  const config = settings?.config as Record<string, unknown> | null;
   const heroImages = (config?.heroImages as string[]) || [];
   const heroFadeSpeed = (config?.heroFadeSpeed as number) || 5;
 
@@ -26,11 +27,14 @@ export default async function HomePage() {
   const topSellingProductIds = await db
     .select({
       productId: orderItem.productId,
-      sales: sql<number>`count(${orderItem.productId})`
+      sales: sql<number>`sum(${orderItem.quantity})`
     })
     .from(orderItem)
+    .innerJoin(order,eq(order.id,orderItem.orderId))
+    .innerJoin(productTable,eq(productTable.id,orderItem.productId))
+    .where(sql`${order.status} <> 'CANCELLED' AND ${productTable.status}='PUBLISHED'`)
     .groupBy(orderItem.productId)
-    .orderBy(desc(sql<number>`count(${orderItem.productId})`))
+    .orderBy(desc(sql<number>`sum(${orderItem.quantity})`))
     .limit(3);
 
   const bestSellerIds = topSellingProductIds
@@ -57,8 +61,11 @@ export default async function HomePage() {
     imageUrl: p.images?.[0] || '/hero-bouquet.png'
   }));
 
+  const heroCopy = await publicSiteCopy('home');
   return (
     <HomeClient
+      trackInventory={config?.inventoryTrackingEnabled !== false}
+      heroCopy={heroCopy}
       collectionProducts={collectionProducts}
       bestSellerProducts={bestSellerProducts}
       heroImages={heroImages}

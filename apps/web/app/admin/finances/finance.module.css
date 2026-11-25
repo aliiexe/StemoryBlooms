@@ -1,0 +1,11 @@
+.metrics { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px; }
+.metric { padding:22px;background:#fff;border:1px solid #e2e8d9;border-radius:10px;min-width:0; }
+.metric>span { font-size:12px;color:#718063;display:block; }
+.metric>strong { display:block;font-size:clamp(21px,2vw,28px);font-weight:550;color:#4c623a;line-height:1.2;margin:14px 0 10px;font-variant-numeric:tabular-nums;white-space:nowrap;letter-spacing:-.03em; }
+.metric>small { display:block;font-size:11px;color:#7c896f;line-height:1.5; }
+.details { color:#77856a;font-size:12px;line-height:1.7;margin-top:18px; }
+.details summary { cursor:pointer; }
+.details p { margin:10px 0 0; }
+.caption { margin:0;color:#7c896e;font-size:12px; }
+@media(max-width:1200px) { .metrics { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:480px) { .metrics { gap:10px; }.metric { padding:17px; }.metric>strong { font-size:20px;white-space:normal;overflow-wrap:anywhere; }.metric>span { font-size:11px; } }

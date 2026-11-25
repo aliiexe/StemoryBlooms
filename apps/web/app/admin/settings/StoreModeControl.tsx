@@ -1,0 +1,12 @@
+'use client';
+import {useState} from 'react';
+import {useRouter} from 'next/navigation';
+import {setSiteMode} from './actions';
+import ConfirmModal from '../components/ConfirmModal';
+import styles from '../workspace.module.css';
+const modes=[{value:'LIVE',label:'Live',description:'Visitors can shop and place orders.'},{value:'WAITLIST',label:'Waitlist',description:'Visitors see a signup page. Online checkout is closed.'},{value:'MAINTENANCE',label:'Maintenance',description:'Visitors see a maintenance page. Online checkout is closed.'},{value:'DRAFT',label:'Draft',description:'Online selling stays closed while you prepare the store.'}];
+export default function StoreModeControl({current}:{current:string}){
+ const [selected,setSelected]=useState(current);const [confirm,setConfirm]=useState(false);const [busy,setBusy]=useState(false);const [error,setError]=useState('');const router=useRouter();
+ async function save(){if(busy)return;setBusy(true);setError('');try{const result=await setSiteMode(selected,current);if(result.error)setError(result.error);else router.refresh();}catch{setError('Could not confirm the store status. Reload to check the current setting.');}finally{setBusy(false);setConfirm(false);}}
+ return <section className={styles.panel}><div className={styles.sectionTitle}><div><h2>Store status</h2><p className={styles.subtle}>Choose what visitors see. Staff can continue working in the admin.</p></div><span className={styles.status}>{modes.find(mode=>mode.value===current)?.label||current}</span></div><div className={styles.actions}>{modes.map(mode=><button type="button" className={styles.filterToggle} key={mode.value} disabled={busy} aria-pressed={selected===mode.value} onClick={()=>setSelected(mode.value)}>{mode.label}</button>)}</div><p className={styles.subtle}>{modes.find(mode=>mode.value===selected)?.description}</p>{error&&<p role="alert">{error}</p>}<button className={styles.primary} type="button" disabled={busy||selected===current} onClick={()=>setConfirm(true)}>Change store status</button><ConfirmModal busy={busy} isOpen={confirm} title={`Switch store to ${modes.find(mode=>mode.value===selected)?.label.toLowerCase()}?`} message={modes.find(mode=>mode.value===selected)?.description||''} confirmText={busy?'Saving…':'Change store status'} isDestructive={selected!=='LIVE'} onCancel={()=>{if(!busy)setConfirm(false);}} onConfirm={()=>void save()}/></section>;
+}

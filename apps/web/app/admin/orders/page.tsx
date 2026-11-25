@@ -2,12 +2,15 @@ import { assertAdmin } from '@/lib/user-sync';
 import { db, order, orderItem, customer, eq, and, sql, inArray, desc } from '@stemory/database';
 import Link from 'next/link';
 import styles from '../dashboard.module.css';
-import { OrderActions } from './OrderActions';
+import { Plus, ArrowUpRight, ShoppingBag } from 'lucide-react';
 import OrdersFilters from './OrdersFilters';
 import { ORDER_STATUS_LABELS } from '@/lib/commerce/order-status';
 import type { OrderAddress } from '@/lib/commerce/receipt-access';
+import { paymentRowsForOrders } from '@/lib/commerce/payments';
+import { paymentState, fulfillmentLabels, formatPaymentMoney } from '@/lib/commerce/payment-state';
+import workspace from '../workspace.module.css';
 
-type Filters = { search?: string; status?: string; from?: string; to?: string; page?: string; archived?: string };
+type Filters = { search?: string; status?: string; from?: string; to?: string; page?: string; archived?: string; view?: string };
 export default async function AdminOrdersPage({ searchParams }: { searchParams: Promise<Filters> }) {
   await assertAdmin();
   const values = await searchParams;
@@ -16,8 +19,11 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
   const dateValue = (value?: string) => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) ? value : '';
   const from = dateValue(values.from); const to = dateValue(values.to);
   const archived = values.archived === '1';
+  const view = ['ALL','DONE'].includes(values.view || '') ? values.view! : 'OPEN';
   const conditions = [archived ? sql`${order.deliveryAddress}->>'archivedAt' IS NOT NULL` : sql`${order.deliveryAddress}->>'archivedAt' IS NULL`];
   if (status) conditions.push(eq(order.status, status));
+  else if (!archived && view === 'OPEN') conditions.push(inArray(order.status, ['NEW','CONFIRMED','IN_PRODUCTION','PROCESSING','READY','SHIPPED']));
+  else if (!archived && view === 'DONE') conditions.push(inArray(order.status, ['DELIVERED','COMPLETED','CANCELLED']));
   if (search) {
     const pattern = `%${search}%`;
     conditions.push(sql`(${order.orderNumber} ILIKE ${pattern} OR ${customer.firstName} ILIKE ${pattern} OR ${customer.lastName} ILIKE ${pattern} OR ${customer.phone} ILIKE ${pattern} OR ${customer.email} ILIKE ${pattern} OR ${order.deliveryAddress}->'customerSnapshot'->>'firstName' ILIKE ${pattern} OR ${order.deliveryAddress}->'customerSnapshot'->>'phone' ILIKE ${pattern})`);
@@ -29,20 +35,22 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
   const pages = Math.max(1, Math.ceil(totals.count / 20));
   const page = Math.max(1, Math.min(pages, Number.parseInt(values.page || '1') || 1));
   const rows = await db.select({ record: order, buyer: customer }).from(order).leftJoin(customer, eq(order.customerId, customer.id)).where(where).orderBy(desc(order.createdAt), order.id).limit(20).offset((page-1)*20);
+  const payments = await paymentRowsForOrders(rows.map(row => row.record));
   const items = rows.length ? await db.select().from(orderItem).where(inArray(orderItem.orderId, rows.map(row => row.record.id))) : [];
-  const url = (updates: Record<string,string>) => { const params = new URLSearchParams({ search, status, from, to, ...(archived ? { archived: '1' } : {}), ...updates }); return `/admin/orders?${params}`; };
+  const url = (updates: Record<string,string>) => { const params = new URLSearchParams({ search, status, from, to, view, ...(archived ? { archived: '1' } : {}), ...updates }); return `/admin/orders?${params}`; };
   return <div className={styles.dashboard}>
-    <header className={styles.pageHeader}><div><h1 className={styles.pageTitle}>{archived ? 'Archived orders' : 'Orders'}</h1><p>Find orders, review payment, and manage the next fulfillment step.</p></div><Link href="/admin/orders/new" className={styles.submitBtn} style={{ width: 'auto', textDecoration: 'none', margin: 0 }}>Create order</Link></header>
-    <OrdersFilters key={`${search}:${status}:${from}:${to}:${archived}`} search={search} status={status} from={from} to={to} archived={archived} />
-    <p>{totals.count} matching orders · <Link href={archived ? '/admin/orders' : url({ archived: '1', page: '1' })}>{archived ? 'Show active orders' : 'Show archived orders'}</Link></p>
-    <div className={styles.card}><div className={styles.tableScroller} role="region" aria-label="Order results" tabIndex={0}><table className={styles.table}><thead><tr><th>Order</th><th>Customer</th><th>Amount to collect</th><th>Payment</th><th>Items</th><th>Placed</th><th>Status and actions</th></tr></thead><tbody>
-      {rows.map(({ record, buyer }) => { const address = record.deliveryAddress as OrderAddress; const contact = address.customerSnapshot || buyer; const lines = items.filter(item => item.orderId === record.id);
-        return <tr key={record.id}><td><Link href={`/admin/orders/${record.id}`}>{record.orderNumber}</Link><div>{record.source}</div></td><td>{contact?.firstName} {contact?.lastName}<div>{contact?.phone}</div></td><td>{record.total} MAD<div style={{ fontSize: '0.8rem' }}>Includes {record.deliveryFee} MAD delivery</div></td><td>{record.paymentStatus === 'PAID' ? 'Collected' : 'Awaiting collection'}</td><td>{lines.slice(0,2).map(item => <div key={item.id}>{item.quantity} × {item.productName}</div>)}{lines.length > 2 && <div>+{lines.length-2} more</div>}</td><td>{new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeZone: 'Africa/Casablanca' }).format(record.createdAt)}</td><td>{archived ? ORDER_STATUS_LABELS[record.status] || record.status : <OrderActions orderId={record.id} currentStatus={record.status} sentToInfinidis={record.sentToInfinidis} />}</td></tr>;
-      })}
-      {!rows.length && <tr><td colSpan={7}>No orders match these filters. <Link href="/admin/orders">Clear filters</Link></td></tr>}
-    </tbody></table></div></div>
-    <nav aria-label="Order results pages" style={{ display: 'flex', gap: 16, justifyContent: 'space-between', marginTop: 20 }}>
-      {page > 1 ? <Link href={url({ page: String(page-1) })}>← Previous</Link> : <span />}<span>Page {page} of {pages}</span>{page < pages ? <Link href={url({ page: String(page+1) })}>Next →</Link> : <span />}
-    </nav>
+    <header className={styles.pageHeader}><div><h1 className={styles.pageTitle}>{archived?'Archived orders':'Orders'}</h1><p>Your customers, their bouquets, and the next thing to do.</p></div><Link href="/admin/orders/new" className={workspace.primary}><Plus size={16}/>Create order</Link></header>
+    <nav className={workspace.tabs} aria-label="Order views">{[{value:'OPEN',label:'Open orders'},{value:'DONE',label:'Completed & cancelled'},{value:'ALL',label:'All history'}].map(tab=><Link key={tab.value} className={workspace.tab} aria-current={view===tab.value?'page':undefined} href={`/admin/orders?view=${tab.value}${archived?'&archived=1':''}`}>{tab.label}</Link>)}</nav>
+    <OrdersFilters key={`${search}:${status}:${from}:${to}:${archived}:${view}`} search={search} status={status} from={from} to={to} archived={archived} view={view}/>
+    <section className={workspace.tableSurface} aria-label="Orders"><div className={workspace.tableToolbar}><strong>{archived?'Archived orders':view==='OPEN'?'Orders to work on':view==='DONE'?'Completed & cancelled':'Order history'}</strong><span>{totals.count} {totals.count===1?'order':'orders'}</span></div>
+    {rows.length?<div className={workspace.tableWrap} role="region" aria-label="Order results" tabIndex={0}><table className={`${workspace.table} ${workspace.ordersTable}`}><thead><tr><th>Order / customer</th><th className={workspace.optionalColumn}>Bouquet</th><th>Fulfillment</th><th>Payment</th><th style={{textAlign:'right'}}> </th></tr></thead><tbody>
+      {rows.map(({record,buyer})=>{const address=record.deliveryAddress as OrderAddress;const contact=address.customerSnapshot||buyer;const lines=items.filter(item=>item.orderId===record.id);const payment=paymentState(record,payments.get(record.id));const short=record.orderNumber.length>18?`${record.orderNumber.slice(0,10)}…${record.orderNumber.slice(-4)}`:record.orderNumber;return <tr key={record.id}>
+      <td><Link className={workspace.rowTitle} href={`/admin/orders/${record.id}`}>{contact?.firstName} {contact?.lastName || ''}</Link><span className={workspace.rowMeta} title={record.orderNumber}>{short} · {new Intl.DateTimeFormat('en-GB',{day:'numeric',month:'short',timeZone:'Africa/Casablanca'}).format(record.createdAt)}</span></td>
+      <td className={workspace.optionalColumn}><span className={workspace.rowTitle} title={lines[0]?.productName}>{lines[0]?`${lines[0].quantity} × ${lines[0].productName}`:'Custom order'}</span><span className={workspace.rowMeta}>{lines.length>1?`+${lines.length-1} more · `:''}{record.source.toLowerCase().replaceAll('_',' ')}</span></td>
+      <td><span className={workspace.status}>{payment.fulfillment==='PICKUP'&&record.status==='DELIVERED'?'Picked up':ORDER_STATUS_LABELS[record.status]||record.status}</span><span className={workspace.rowMeta}>{fulfillmentLabels[payment.fulfillment]}</span></td>
+      <td><span className={workspace.money}>{formatPaymentMoney(payment.remaining)}{payment.remaining>0&&(payment.collected>0||!['DELIVERED','COMPLETED'].includes(record.status))?' due':''}</span><span className={workspace.rowMeta}>{payment.remaining===0?payment.label:`${payment.label} · ${formatPaymentMoney(record.total*100)} total`}</span></td>
+      <td style={{textAlign:'right'}}><Link className={workspace.rowAction} href={`/admin/orders/${record.id}`} aria-label={`Open order ${record.orderNumber}`}>Open<ArrowUpRight size={14}/></Link></td></tr>;})}
+    </tbody></table></div>:<div className={workspace.emptyState}><ShoppingBag size={32} strokeWidth={1.25}/><h2>{search||status||from||to?'No matching orders':view==='OPEN'?'You’re all caught up':'No orders in this view'}</h2><p>{search||status||from||to?'Try another search or clear the filters.':'New orders will appear here. Your completed orders are always available in All history.'}</p><Link className={workspace.secondary} href={search||status||from||to?`/admin/orders?view=${view}`:'/admin/orders?view=ALL'}>{search||status||from||to?'Clear filters':'View order history'}</Link></div>}
+    <nav aria-label="Order results pages" className={workspace.pagination}><Link href={archived?'/admin/orders':url({archived:'1',page:'1'})}>{archived?'Back to orders':'Archived orders'}</Link><div className={workspace.actions}>{page>1&&<Link href={url({page:String(page-1)})}>Previous</Link>}<span>{page} / {pages}</span>{page<pages&&<Link href={url({page:String(page+1)})}>Next</Link>}</div></nav></section>
   </div>;
 }

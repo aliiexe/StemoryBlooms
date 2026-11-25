@@ -27,15 +27,16 @@ type Props = {
     countdownEndBehavior: string;
     countdownReplacementText: string | null;
   };
+  fontSize?:string;
   onDismiss?: () => void;
   showDismiss?: boolean;
 };
 
-export default function AnnouncementSlide({ announcement: ann, onDismiss, showDismiss }: Props) {
+export default function AnnouncementSlide({ announcement: ann, onDismiss, showDismiss, fontSize }: Props) {
   const textStyle: React.CSSProperties = {
     color: ann.textColor,
     fontFamily: 'var(--font-sans)',
-    fontSize: 'clamp(0.75rem, 2vw, 0.875rem)',
+    fontSize: fontSize || 'clamp(0.75rem, 2vw, 0.875rem)',
     textAlign: ann.textAlignment.toLowerCase() as 'left' | 'center' | 'right',
     lineHeight: 1.4,
   };
@@ -102,7 +103,20 @@ export default function AnnouncementSlide({ announcement: ann, onDismiss, showDi
         </span>
       )}
 
-      {showDismiss && (
+
+    </div>
+  );
+
+  if (ann.wholeBarClickable && ann.linkUrl) {
+    return <div style={{position:'relative'}}><Link
+        href={ann.linkUrl}
+        target={ann.openInNewTab ? '_blank' : '_self'}
+        rel={ann.openInNewTab ? 'noopener noreferrer' : undefined}
+        style={{ display: 'block', textDecoration: 'none', width: '100%' }}
+        aria-label={ann.message}
+      >
+        {content}
+      </Link>      {showDismiss && (
         <button
           aria-label="Dismiss announcement"
           onClick={onDismiss}
@@ -118,28 +132,34 @@ export default function AnnouncementSlide({ announcement: ann, onDismiss, showDi
             opacity: 0.5,
             display: 'flex',
             alignItems: 'center',
-            padding: 4,
+            padding: 4,minWidth:44,minHeight:44,justifyContent:'center',
           }}
         >
           <X size={14} />
         </button>
-      )}
-    </div>
-  );
-
-  if (ann.wholeBarClickable && ann.linkUrl) {
-    return (
-      <Link
-        href={ann.linkUrl}
-        target={ann.openInNewTab ? '_blank' : '_self'}
-        rel={ann.openInNewTab ? 'noopener noreferrer' : undefined}
-        style={{ display: 'block', textDecoration: 'none', width: '100%' }}
-        aria-label={ann.message}
-      >
-        {content}
-      </Link>
-    );
+      )}</div>;
   }
 
-  return content;
+  return <div style={{position:'relative'}}>{content}      {showDismiss && (
+        <button
+          aria-label="Dismiss announcement"
+          onClick={onDismiss}
+          style={{
+            position: 'absolute',
+            right: 8,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            color: ann.textColor,
+            opacity: 0.5,
+            display: 'flex',
+            alignItems: 'center',
+            padding: 4,minWidth:44,minHeight:44,justifyContent:'center',
+          }}
+        >
+          <X size={14} />
+        </button>
+      )}</div>;
 }

@@ -33,7 +33,7 @@ export default function AboutPage() {
                 In a world where everything is fleeting, we wanted to create something that endures. Real flowers wilt and fade, taking their memories with them. We believe that the symbol of your love, appreciation, or celebration should last as long as the memory itself.
               </p>
               <p>
-                That's why we turned to pipe cleaners—a humble material transformed through hours of meticulous hand-crafting into luxurious, velvet-like floral arrangements. Every petal is shaped by hand in our Moroccan studio, ensuring no two blooms are exactly alike.
+                That&apos;s why we turned to pipe cleaners—a humble material transformed through hours of meticulous hand-crafting into luxurious, velvet-like floral arrangements. Every petal is shaped by hand in our Moroccan studio, ensuring no two blooms are exactly alike.
               </p>
               <p>
                 Stemory Blooms is more than a florist. We are memory keepers.

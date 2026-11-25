@@ -1,4 +1,6 @@
+import {db,user,eq} from '@stemory/database';
 import { NextResponse } from 'next/server';
+import {z} from 'zod';
 import { Webhook } from 'svix';
 import { headers } from 'next/headers';
 import { syncClerkUserToDatabase } from '@/lib/user-sync';
@@ -19,7 +21,7 @@ export async function POST(req: Request) {
   const payload = await req.text();
 
   const wh = new Webhook(secret);
-  let evt: any;
+  let evt: unknown;
   try {
     evt = wh.verify(payload, {
       'svix-id': svixId,
@@ -31,13 +33,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Webhook verification failed' }, { status: 400 });
   }
 
-  const eventType = evt.type;
+  const parsed=z.object({type:z.string(),data:z.object({id:z.string().min(1)}).passthrough()}).safeParse(evt);
+  if(!parsed.success)return NextResponse.json({error:'Invalid webhook payload'},{status:400});
+  const eventType = parsed.data.type;
   if (eventType === 'user.created' || eventType === 'user.updated') {
-    const data = evt.data;
+    const data = parsed.data.data;
     if (data?.id) {
       await syncClerkUserToDatabase(data.id);
     }
   }
+
+  if(eventType==='user.deleted') await db.update(user).set({roleId:null,updatedAt:new Date()}).where(eq(user.clerkId,parsed.data.data.id));
 
   return NextResponse.json({ success: true });
 }

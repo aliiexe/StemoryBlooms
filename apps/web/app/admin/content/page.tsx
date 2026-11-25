@@ -1,144 +1,15 @@
 import { assertAdmin } from '@/lib/user-sync';
-import React from 'react';
-import { db, contentBlock, giftCard, promoCode } from '@stemory/database';
-import { desc } from 'drizzle-orm';
-import styles from '../dashboard.module.css';
-import { saveContentBlock } from './actions';
+import { db, contentBlock, giftCard, promoCode, desc } from '@stemory/database';
+import { contentDefaults, parseManagedContent, type SiteContentKey } from '@/lib/site-content';
 import BenefitsManager from './BenefitsManager';
-
-type ContentBlockPayload = {
-  title?: string;
-  type?: string;
-  isActive?: boolean;
-};
-
-function formatBlockPreview(content: unknown) {
-  if (typeof content === 'string') {
-    return content;
-  }
-
-  try {
-    return JSON.stringify(content, null, 2);
-  } catch {
-    return 'Unrenderable content';
-  }
-}
-
-const contentBlockIdeas = [
-  'Homepage hero copy and CTA text',
-  'Announcement bar messages',
-  'Delivery and care notes',
-  'FAQ snippets and policy text',
-  'Holiday or campaign banners',
-];
-
-export default async function AdminContentPage() {
+import WebsiteCopyEditor from './WebsiteCopyEditor';
+import styles from '../dashboard.module.css';
+import ui from '../workspace.module.css';
+import Link from 'next/link';
+export default async function AdminContentPage({searchParams}:{searchParams:Promise<{tab?:string}>}){
   await assertAdmin();
-  const blocks = await db.query.contentBlock.findMany({
-    orderBy: [desc(contentBlock.createdAt)],
-  });
-
-  const promos = await db.query.promoCode.findMany({
-    orderBy: [desc(promoCode.createdAt)],
-  });
-
-  const giftCards = await db.query.giftCard.findMany({
-    orderBy: [desc(giftCard.createdAt)],
-  });
-
-  return (
-    <div className={styles.dashboard}>
-      <header style={{ marginBottom: '2rem' }}>
-        <h1 className={styles.shopTitle} style={{ fontSize: '1.75rem', margin: 0 }}>Marketing & Content</h1>
-        <p style={{ maxWidth: '760px', margin: '0.75rem 0 0', color: '#5A5551', lineHeight: 1.6 }}>
-          This page keeps reusable site content, promo codes, and gift cards in one place. Use it when you want to change homepage text, launch a campaign, or manage discount tools without hopping between duplicate menus.
-        </p>
-      </header>
-
-      <BenefitsManager promos={promos} cards={giftCards} />
-
-      <div className={styles.card}>
-        <h3 className={styles.cardTitle}>Content blocks</h3>
-        <p style={{ marginTop: '-0.25rem', color: '#6B6660', lineHeight: 1.6 }}>
-          Good content blocks are short, reusable, and easy to swap. Typical categories are:
-        </p>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1.5rem' }}>
-          {contentBlockIdeas.map((idea) => (
-            <span key={idea} style={{ padding: '0.45rem 0.75rem', borderRadius: '999px', backgroundColor: '#F6F1E8', color: '#4E473F', fontSize: '0.85rem', border: '1px solid #E7DDCF' }}>
-              {idea}
-            </span>
-          ))}
-        </div>
-
-        <form action={async (formData) => { 'use server'; await saveContentBlock(formData); }} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-          <div>
-            <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.9rem', color: '#3A3531' }}>Identifier</label>
-            <input name="identifier" required placeholder="home_hero" style={{ width: '100%', padding: '0.9rem', borderRadius: '10px', border: '1px solid #D6CFE6', backgroundColor: '#FDFBF7' }} />
-          </div>
-          <div>
-            <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.9rem', color: '#3A3531' }}>Title</label>
-            <input name="title" placeholder="Homepage hero" style={{ width: '100%', padding: '0.9rem', borderRadius: '10px', border: '1px solid #D6CFE6', backgroundColor: '#FDFBF7' }} />
-          </div>
-          <div>
-            <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.9rem', color: '#3A3531' }}>Type</label>
-            <input name="type" placeholder="banner" style={{ width: '100%', padding: '0.9rem', borderRadius: '10px', border: '1px solid #D6CFE6', backgroundColor: '#FDFBF7' }} />
-          </div>
-          <div>
-            <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.9rem', color: '#3A3531' }}>Status</label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.9rem', borderRadius: '10px', border: '1px solid #D6CFE6', backgroundColor: '#FDFBF7' }}>
-              <input type="checkbox" name="isActive" defaultChecked />
-              Active
-            </label>
-          </div>
-          <div style={{ gridColumn: '1 / -1' }}>
-            <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.9rem', color: '#3A3531' }}>Content JSON or copy</label>
-            <textarea name="content" rows={5} placeholder='{"headline":"Fresh blooms"}' style={{ width: '100%', padding: '0.9rem', borderRadius: '10px', border: '1px solid #D6CFE6', backgroundColor: '#FDFBF7', resize: 'vertical' }} />
-          </div>
-          <div style={{ gridColumn: '1 / -1' }}>
-            <button type="submit" className={styles.submitBtn} style={{ margin: 0 }}>Save content block</button>
-          </div>
-        </form>
-
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Identifier</th>
-              <th>Title</th>
-              <th>Type</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {blocks.map((block) => (
-              <tr key={block.id}>
-                <td><strong>{block.key}</strong></td>
-                <td>{((block.content as ContentBlockPayload) ?? {}).title || 'Untitled'}</td>
-                <td>{((block.content as ContentBlockPayload) ?? {}).type || '-'}</td>
-                <td>{((block.content as ContentBlockPayload) ?? {}).isActive ? 'Active' : 'Inactive'}</td>
-              </tr>
-            ))}
-            {blocks.length === 0 && (
-              <tr>
-                <td colSpan={4} style={{ textAlign: 'center', padding: '2rem', color: '#7A7571' }}>No content blocks yet.</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-
-        {blocks.length > 0 && (
-          <div style={{ marginTop: '1.25rem', display: 'grid', gap: '1rem' }}>
-            {blocks.map((block) => (
-              <div key={block.id} style={{ padding: '1rem', borderRadius: '12px', border: '1px solid #EAE6DF', backgroundColor: '#FCFBF8' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.5rem' }}>
-                  <strong style={{ color: 'var(--brand-primary)' }}>{block.key}</strong>
-                  <span style={{ color: '#7A7571', fontSize: '0.85rem' }}>{new Date(block.createdAt).toLocaleDateString()}</span>
-                </div>
-                <pre style={{ margin: 0, whiteSpace: 'pre-wrap', color: '#5A5551', fontSize: '0.85rem', lineHeight: 1.6 }}>{formatBlockPreview(block.content)}</pre>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  const tab=(await searchParams).tab==='offers'?'offers':'pages';
+  const [blocks,promos,cards]=await Promise.all([db.select().from(contentBlock),db.select().from(promoCode).orderBy(desc(promoCode.createdAt)),db.select().from(giftCard).orderBy(desc(giftCard.createdAt))]);
+  const records=(Object.keys(contentDefaults) as SiteContentKey[]).map(key=>{const value=parseManagedContent(blocks.find(row=>row.key===`site.${key}`)?.content);return{key,copy:value?.draft||contentDefaults[key],revision:value?.revision||0,published:Boolean(value?.published)};});
+  return <div className={styles.dashboard}><header className={styles.pageHeader}><div><h1 className={styles.pageTitle}>Website content</h1><p>Manage your pages, offers, and customer-facing messages.</p></div><div className={ui.actions}><Link className={ui.secondary} href="/admin/announcements">Announcements</Link><Link className={ui.secondary} href="/admin/settings?section=appearance">Website images</Link></div></header><nav className={ui.tabs} aria-label="Content sections"><Link className={ui.tab} aria-current={tab==='pages'?'page':undefined} href="/admin/content">Website pages</Link><Link className={ui.tab} aria-current={tab==='offers'?'page':undefined} href="/admin/content?tab=offers">Discounts & gift cards</Link></nav>{tab==='pages'?<WebsiteCopyEditor records={records}/>:<BenefitsManager promos={promos} cards={cards}/>}</div>;
 }

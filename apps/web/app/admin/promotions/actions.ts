@@ -3,7 +3,6 @@
 import { db, eq, promoCode, giftCard } from '@stemory/database';
 import { revalidatePath } from 'next/cache';
 import crypto from 'crypto';
-import { parseIntegerInput } from '../../../lib/form-values';
 import { recordAuditLog } from '@/lib/audit';
 import { assertAdmin } from '@/lib/user-sync';
 
@@ -12,12 +11,12 @@ export async function savePromoCode(formData: FormData) {
   const id = formData.get('id') as string;
   const code = formData.get('code') as string;
   const type = formData.get('type') as string;
-  const value = parseIntegerInput(formData.get('value') as string | null);
+  const value = Number(formData.get('value'));
   const usageLimitStr = formData.get('usageLimit') as string;
-  const usageLimit = usageLimitStr ? parseIntegerInput(usageLimitStr) : null;
+  const usageLimit = usageLimitStr ? Number(usageLimitStr) : null;
   const isActive = formData.get('isActive') === 'on';
 
-  if (!code?.trim() || !/^[A-Za-z0-9_-]{3,64}$/.test(code.trim()) || value === null || value < 0 || !['PERCENTAGE', 'FIXED'].includes(type) || (type === 'PERCENTAGE' && value > 100) || (usageLimit !== null && usageLimit < 1)) {
+  if (!code?.trim() || !/^[A-Za-z0-9_-]{3,64}$/.test(code.trim()) || !Number.isSafeInteger(value) || value < 0 || value > 1000000 || !['PERCENTAGE', 'FIXED'].includes(type) || (type === 'PERCENTAGE' && value > 100) || (usageLimit !== null && (!Number.isSafeInteger(usageLimit) || usageLimit < 1 || usageLimit>1000000))) {
     return { error: 'Code and valid value are required' };
   }
 
@@ -68,19 +67,21 @@ export async function saveGiftCard(formData: FormData) {
   await assertAdmin();
   const id = formData.get('id') as string;
   const code = formData.get('code') as string;
-  const initialBalance = parseIntegerInput(formData.get('initialBalance') as string | null);
+  const initialBalance = Number(formData.get('initialBalance'));
   const currentBalanceStr = formData.get('currentBalance') as string;
-  const currentBalance = currentBalanceStr ? parseIntegerInput(currentBalanceStr) : initialBalance;
+  const currentBalance = currentBalanceStr ? Number(currentBalanceStr) : initialBalance;
   const isActive = formData.get('isActive') === 'on';
 
-  if (!code?.trim() || !/^[A-Za-z0-9_-]{3,64}$/.test(code.trim()) || initialBalance === null || currentBalance === null || initialBalance <= 0 || currentBalance < 0 || currentBalance > initialBalance) {
+  if (!code?.trim() || !/^[A-Za-z0-9_-]{3,64}$/.test(code.trim()) || !Number.isSafeInteger(initialBalance) || initialBalance>1000000 || !Number.isSafeInteger(currentBalance) || initialBalance <= 0 || currentBalance < 0 || currentBalance > initialBalance) {
     return { error: 'Code and valid balance are required' };
   }
 
+  let savedBalance=currentBalance;
   try {
     if (id) {
       const existing = await db.query.giftCard.findFirst({ where: eq(giftCard.id, id) });
       if (!existing || initialBalance !== existing.initialBalance) return { error: 'An issued card’s value cannot be changed. Create a new card instead.' };
+      savedBalance=existing.currentBalance;
       await db.update(giftCard)
         .set({ code: code.trim().toUpperCase(), isActive, updatedAt: new Date() })
         .where(eq(giftCard.id, id));
@@ -96,7 +97,7 @@ export async function saveGiftCard(formData: FormData) {
       action: id ? 'UPDATE' : 'CREATE',
       target: 'GIFT_CARD',
       summary: `${id ? 'Updated' : 'Created'} gift card "${code.toUpperCase()}"`,
-      details: { giftCardId: id, code, initialBalance, currentBalance },
+      details: { giftCardId: id, code, initialBalance, currentBalance:savedBalance },
     });
     return { success: true };
   } catch (error) {
@@ -109,7 +110,7 @@ export async function deleteGiftCard(id: string) {
   await assertAdmin();
   try {
     await db.update(giftCard).set({ isActive: false, updatedAt: new Date() }).where(eq(giftCard.id, id));
-    revalidatePath('/admin/promotions');
+    revalidatePath('/admin/content');
     await recordAuditLog({
       action: 'DELETE',
       target: 'GIFT_CARD',

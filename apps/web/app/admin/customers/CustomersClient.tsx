@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import type { customer } from '@stemory/database';
 import { motion } from 'framer-motion';
 import { Users, Mail, Phone, Calendar } from 'lucide-react';
 import styles from '../dashboard.module.css';
@@ -15,7 +16,7 @@ const itemVariants = {
   show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 300, damping: 24 } }
 };
 
-export default function CustomersClient({ customers }: { customers: any[] }) {
+export default function CustomersClient({ customers }: { customers: ((typeof customer.$inferSelect) & {orders?: {id:string}[]})[] }) {
   return (
     <motion.div 
       className={styles.dashboard}

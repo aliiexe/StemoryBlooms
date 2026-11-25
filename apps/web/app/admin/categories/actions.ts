@@ -11,9 +11,9 @@ import crypto from 'crypto';
 export async function saveCategory(formData: FormData) {
   await assertAdmin();
   const id = formData.get('id') as string;
-  const name = formData.get('name') as string;
+  const name = String(formData.get('name')||'').trim();
 
-  if (!name) {
+  if (!name || name.length>100) {
     return { error: 'Name is required' };
   }
 
@@ -24,7 +24,7 @@ export async function saveCategory(formData: FormData) {
       await db.insert(category).values({ id: crypto.randomUUID(), name });
     }
     
-    revalidatePath('/admin/categories');
+    revalidatePath('/admin/categories');revalidatePath('/shop');
     await recordAuditLog({
       action: id ? 'UPDATE' : 'CREATE',
       target: 'CATEGORY',
@@ -41,7 +41,7 @@ export async function deleteCategory(id: string) {
   await assertAdmin();
   try {
     await db.delete(category).where(eq(category.id, id));
-    revalidatePath('/admin/categories');
+    revalidatePath('/admin/categories');revalidatePath('/shop');
     await recordAuditLog({
       action: 'DELETE',
       target: 'CATEGORY',

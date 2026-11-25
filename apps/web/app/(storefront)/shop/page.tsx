@@ -1,96 +1,19 @@
-export const dynamic = 'force-dynamic';
-
 import styles from './page.module.css';
-import { ProductCard } from '@stemory/ui';
-import { db } from '@stemory/database';
+import {ProductCard} from '@stemory/ui';
 import Link from 'next/link';
-
-type ShopProduct = {
-  id: string;
-  name: string;
-  price: number;
-  stock: number; isAvailable: boolean;
-  salePrice?: number | null;
-  imageUrl: string;
-  description: string;
-};
-
-export default async function ShopPage({ searchParams }: { searchParams?: Promise<{ search?: string | string[] }> }) {
-  let products: ShopProduct[] = [];
-  const resolvedSearchParams = await Promise.resolve(searchParams);
-  const searchTerm = Array.isArray(resolvedSearchParams?.search)
-    ? resolvedSearchParams.search[0]
-    : resolvedSearchParams?.search || '';
-  const normalizedSearchTerm = searchTerm.trim().toLowerCase();
-
-  try {
-    const dbProducts = await db.query.product.findMany({
-      where: (products, { eq }) => eq(products.status, 'PUBLISHED'),
-      orderBy: (products, { desc }) => [desc(products.createdAt)]
-    });
-
-    if (dbProducts && dbProducts.length > 0) {
-      products = dbProducts.map((p) => ({
-        id: p.id,
-        name: p.name,
-        price: p.basePrice,
-        stock: p.stock, isAvailable: p.isAvailable,
-        salePrice: p.isSaleEnabled ? p.salePrice : null,
-        imageUrl: p.images?.[0] || '/hero-bouquet.png',
-        description: p.description || ''
-      }));
-
-      if (normalizedSearchTerm) {
-        products = products.filter((product) =>
-          [product.name, product.description]
-            .join(' ')
-            .toLowerCase()
-            .includes(normalizedSearchTerm)
-        );
-      }
-    }
-  } catch (error) {
-    console.error('Failed to fetch products:', error);
-  }
-
-  return (
-    <main className={styles.shopContainer}>
-      {/* Decorative Background Blob */}
-      <div style={{ position: 'absolute', top: '-10%', right: '-5%', width: '40vw', height: '40vw', backgroundColor: '#EAE6DF', borderRadius: '50%', filter: 'blur(100px)', opacity: 0.5, zIndex: 0 }} />
-
-      <header className={styles.shopHeader}>
-        <h1 className={styles.shopTitle}>The Collection</h1>
-        <p className={styles.shopSubtitle}>
-          Explore our signature series of luxury handcrafted everlasting arrangements, meticulously designed to bring enduring beauty to any space.
-        </p>
-        {normalizedSearchTerm && (
-          <div className={styles.searchSummary}>
-            <span className={styles.searchPill}>Searching for “{searchTerm}”</span>
-            <Link href="/shop" className={styles.clearSearchLink}>Clear search</Link>
-          </div>
-        )}
-      </header>
-
-      {products.length > 0 ? (
-        <div className={styles.productGrid}>
-          {products.map(product => (
-            <ProductCard stock={product.stock} isAvailable={product.isAvailable} key={product.id} id={product.id} title={product.name} price={product.price} salePrice={product.salePrice} imageUrl={product.imageUrl} />
-          ))}
-        </div>
-      ) : (
-        <div className={styles.emptyState}>
-          <h2 className={styles.emptyTitle}>
-            {normalizedSearchTerm ? 'No matching bouquets' : 'The collection is currently empty'}
-          </h2>
-          <p className={styles.emptyDesc}>
-            We&apos;ve sold out of our latest collection! Our master florists are busy hand-crafting
-            new everlasting arrangements. Join our waitlist to be notified when they drop.
-          </p>
-          <Link href="/contact" style={{ display: 'inline-block', marginTop: '2rem', padding: '1rem 2.5rem', backgroundColor: 'var(--brand-primary)', color: '#FDFBF7', textDecoration: 'none', borderRadius: '50px', fontWeight: 500 }}>
-            Contact us
-          </Link>
-        </div>
-      )}
-    </main>
-  );
+import {browseCatalog,catalogFilters} from '@/lib/commerce/catalog';
+import CatalogFilters from './CatalogFilters';
+export const dynamic='force-dynamic';
+export const metadata={title:'Shop handcrafted arrangements',description:'Explore our handmade everlasting arrangements. Browse by category, availability, and price.',alternates:{canonical:'/shop'}};
+export default async function ShopPage({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}){
+  const input=await searchParams;let filters;
+  try{filters=catalogFilters(input);}catch(error){return <main className={styles.shopContainer}><h1 className={styles.shopTitle}>The Collection</h1><p role="alert">{error instanceof Error?error.message:'Check the collection filters.'}</p><Link href="/shop">Reset filters</Link></main>;}
+  // Let the route error boundary show service failures; an outage is not an empty catalog.
+  const {items,count,categories,trackInventory}=await browseCatalog(filters);const pages=Math.max(1,Math.ceil(count/12));
+  const url=(page:number)=>`/shop?${new URLSearchParams(Object.entries({...filters,page}).filter(([,value])=>value!==undefined).map(([key,value])=>[key,String(value)]))}`;
+  const filtered=Boolean(filters.search||filters.category||filters.min!==undefined||filters.max!==undefined||filters.availability!=='ALL');
+  return <main className={styles.shopContainer}><header className={styles.shopHeader}><h1 className={styles.shopTitle}>The Collection</h1><p className={styles.shopSubtitle}>Handcrafted everlasting arrangements, made in Morocco.</p></header>
+    <CatalogFilters key={JSON.stringify(filters)} filters={filters} categories={categories}/><div className={styles.results}><p role="status">{count} {count===1?'arrangement':'arrangements'}{filters.search?` matching “${filters.search}”`:''}</p>{filtered&&<Link href="/shop">Clear filters</Link>}</div>
+    {items.length?<div className={styles.productGrid}>{items.map(item=><ProductCard trackInventory={trackInventory} key={item.id} id={item.id} title={item.name} price={item.basePrice} salePrice={item.isSaleEnabled?item.salePrice:null} stock={item.stock} isAvailable={item.isAvailable} imageUrl={item.imageUrl||'/hero-bouquet.png'}/>)}</div>:<div className={styles.emptyState}><h2 className={styles.emptyTitle}>{filtered?'No arrangements match these filters':'Our collection is being prepared'}</h2><p className={styles.emptyDesc}>{filtered?'Try a different price range, category, or search. You can also build a custom bouquet.':'Please check back soon or contact us about a custom arrangement.'}</p><Link href={filtered?'/shop':'/contact'}>{filtered?'Reset filters':'Contact us'}</Link> · <Link href="/custom-bouquet">Build a bouquet</Link></div>}
+    <nav aria-label="Collection pages" className={styles.results}>{filters.page>1&&<Link href={url(filters.page-1)}>Previous</Link>}<span>Page {filters.page} of {pages}</span>{filters.page<pages&&<Link href={url(filters.page+1)}>Next</Link>}</nav></main>;
 }

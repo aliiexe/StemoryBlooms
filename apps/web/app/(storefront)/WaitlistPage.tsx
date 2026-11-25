@@ -19,6 +19,7 @@ export default function WaitlistPage({ heroImages = [], heroFadeSpeed = 5 }: { h
     setIsPending(true);
     setError(null);
     
+    try {
     const res = await joinWaitlist(email);
     
     if (res.error) {
@@ -26,7 +27,7 @@ export default function WaitlistPage({ heroImages = [], heroFadeSpeed = 5 }: { h
     } else {
       setSubmitted(true);
     }
-    setIsPending(false);
+    } catch { setError('Your request could not be confirmed. Please try again.'); } finally { setIsPending(false); }
   };
 
   return (
@@ -56,8 +57,8 @@ export default function WaitlistPage({ heroImages = [], heroFadeSpeed = 5 }: { h
 
           {submitted ? (
             <div className={styles.successMessage}>
-              <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem', fontFamily: 'var(--font-editorial)', fontWeight: 500 }}>You're on the list.</h3>
-              <p style={{ fontSize: '0.95rem', opacity: 0.9 }}>Keep an eye on your inbox. We'll email you the moment we launch.</p>
+              <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem', fontFamily: 'var(--font-editorial)', fontWeight: 500 }}>Check your inbox.</h3>
+              <p style={{ fontSize: '0.95rem', opacity: 0.9 }}>If confirmation is needed, we will email a link. Confirm your address to join the launch list.</p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className={styles.form}>

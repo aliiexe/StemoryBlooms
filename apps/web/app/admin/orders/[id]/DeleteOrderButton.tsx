@@ -32,13 +32,13 @@ export default function DeleteOrderButton({ orderId }: { orderId: string }) {
         disabled={isSubmitting}
         style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          width: '36px', height: '36px',
-          border: '1px solid #FEE2E2', backgroundColor: '#FEF2F2',
-          color: '#DC2626', borderRadius: '6px', cursor: 'pointer'
+          minHeight: '42px', padding:'8px 12px', gap:8, font:'inherit', fontSize:13,
+          border: '1px solid #dfe5d8', backgroundColor: '#fff',
+          color: '#71825e', borderRadius: '6px', cursor: 'pointer'
         }}
         title="Archive Order"
       >
-        <Archive size={16} />
+        <Archive size={16} />Archive
       </button>
 
       <ConfirmModal

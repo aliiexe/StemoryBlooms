@@ -9,7 +9,7 @@ interface CustomBuilderSettingsFormProps {
 }
 
 export function CustomBuilderSettingsForm({ initialBaseFee }: CustomBuilderSettingsFormProps) {
-  const [baseFee, setBaseFee] = useState(initialBaseFee);
+  const [baseFee, setBaseFee] = useState(String(initialBaseFee));
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -25,12 +25,12 @@ export function CustomBuilderSettingsForm({ initialBaseFee }: CustomBuilderSetti
       const result = await saveCustomBuilderSettings(formData);
       if (result.success) {
         setMessage('Custom builder settings saved!');
-        setTimeout(() => setMessage(''), 3000);
+
       } else {
-        setMessage('Error saving settings.');
+        setMessage(`Error: ${result.error||'Settings could not be saved.'}`);
       }
     } catch {
-      setMessage('An error occurred.');
+      setMessage('Error: Could not save. Your changes are preserved.');
     } finally {
       setIsSaving(false);
     }
@@ -38,22 +38,22 @@ export function CustomBuilderSettingsForm({ initialBaseFee }: CustomBuilderSetti
 
   return (
     <form onSubmit={handleSubmit} className={styles.card}>
-      <h3 className={styles.cardTitle}>Custom Builder Settings</h3>
+      <h3 className={styles.cardTitle}>Custom bouquet base fee</h3>
       <p style={{ color: '#7A7571', fontSize: '0.9rem', marginBottom: '1.5rem', lineHeight: 1.6 }}>
         Configure the base fee added to custom bouquets to cover wrapping paper, notes, ribbon, and packaging materials.
       </p>
 
       <div style={{ marginBottom: '2rem', maxWidth: '300px' }}>
-        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#5A5551', fontSize: '0.95rem' }}>
-          Base Materials Fee (MAD)
+        <label htmlFor="builder-base-fee" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#5A5551', fontSize: '0.95rem' }}>
+          Base fee (whole MAD)
         </label>
         <input
-          type="number"
+          id="builder-base-fee" type="number"
           value={baseFee}
-          onChange={(e) => setBaseFee(parseInt(e.target.value) || 0)}
+          onChange={(e) => setBaseFee(e.target.value)}
           min="0"
           required
-          style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #D6CFE6', fontSize: '1rem' }}
+          style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '7px', border: '1px solid #D6CFE6', fontSize: '1rem' }}
         />
       </div>
 
@@ -62,9 +62,9 @@ export function CustomBuilderSettingsForm({ initialBaseFee }: CustomBuilderSetti
           type="submit"
           disabled={isSaving}
           className={styles.submitBtn}
-          style={{ width: 'auto', padding: '0.85rem 2rem', margin: 0, borderRadius: '50px' }}
+          style={{ width: 'auto', padding: '0.85rem 2rem', margin: 0, borderRadius: '7px' }}
         >
-          {isSaving ? 'Saving…' : 'Save Settings'}
+          {isSaving ? 'Saving…' : 'Save base fee'}
         </button>
         {message && (
           <span style={{ color: message.includes('Error') ? '#C62828' : '#1B5E20', fontSize: '0.9rem', fontWeight: 500 }}>

@@ -35,6 +35,7 @@ export async function uploadImage(file: File): Promise<string> {
     });
     return blob.url;
   } else {
+    if(process.env.NODE_ENV==='production')throw new Error('Configure BLOB_READ_WRITE_TOKEN before uploading images in production.');
     // ── Development / local disk ───────────────────────────────────────
     const { mkdir, writeFile } = await import('fs/promises');
     const uploadDir = path.join(process.cwd(), 'public', 'uploads');

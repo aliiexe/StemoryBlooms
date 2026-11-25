@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Bodoni_Moda, Sora, Cormorant_Garamond } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
-import { Analytics } from "@vercel/analytics/react";
+import PrivateSafeAnalytics from '@/components/PrivateSafeAnalytics';
 import "@stemory/ui/tokens.css";
 import "@stemory/ui/typography.css";
 import "./globals.css";
@@ -55,7 +55,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/og-image.jpg",
+        url: "/opengraph-image",
         width: 1200,
         height: 630,
         alt: "Stemory Blooms - Luxury Everlasting Bouquets",
@@ -66,7 +66,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Stemory Blooms | Everlasting Handcrafted Bouquets",
     description: "Artisanal pipe-cleaner flowers that never wilt. Handcrafted with love in Morocco.",
-    images: ["/og-image.jpg"],
+    images: ["/opengraph-image"],
   }
 };
 export default function RootLayout({
@@ -76,10 +76,10 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider>
-      <html lang="en" className={`${bodoniModa.variable} ${sora.variable} ${cormorantGaramond.variable}`}>
+      <html lang="en" data-scroll-behavior="smooth" className={`${bodoniModa.variable} ${sora.variable} ${cormorantGaramond.variable}`}>
         <body>
           {children}
-          <Analytics />
+          <PrivateSafeAnalytics />
         </body>
       </html>
     </ClerkProvider>

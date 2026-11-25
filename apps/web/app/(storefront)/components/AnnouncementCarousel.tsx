@@ -1,10 +1,13 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useSyncExternalStore } from 'react';
+import {usePathname} from 'next/navigation';
+import {announcementMatchesPath} from '@/lib/announcement-visibility';
 import AnnouncementSlide from './AnnouncementSlide';
 
 type Announcement = {
   id: string;
+  targetMode:string;includedPaths:string[]|null;excludedPaths:string[]|null;showMobile:boolean;showTablet:boolean;showDesktop:boolean;
   message: string;
   highlightedText: string | null;
   ctaLabel: string | null;
@@ -18,7 +21,7 @@ type Announcement = {
   linkColor: string;
   barHeight: string;
   textAlignment: string;
-  animationType: string;
+  animationType: string;desktopFontSize:string;mobileFontSize:string;
   isDismissible: boolean;
   dismissalDuration: string;
   dismissalVersion: string;
@@ -29,6 +32,7 @@ type Announcement = {
 };
 
 type Settings = {
+  mode:string;
   autoPlay: boolean;
   loop: boolean;
   intervalSeconds: number;
@@ -75,6 +79,15 @@ function isSessionDismissed(ann: Announcement): boolean {
   try { return !!sessionStorage.getItem(getDismissalKey(ann)); } catch { return false; }
 }
 
+const subscribeViewport=(notify:()=>void)=>{window.addEventListener('resize',notify);return()=>window.removeEventListener('resize',notify);};
+const viewportSnapshot=()=>window.innerWidth<600?'MOBILE':window.innerWidth<1024?'TABLET':'DESKTOP';
+const subscribeDismissal=(notify:()=>void)=>{window.addEventListener('storage',notify);window.addEventListener('sb-ann-dismissed',notify);return()=>{window.removeEventListener('storage',notify);window.removeEventListener('sb-ann-dismissed',notify);};};
+const subscribeMotion=(notify:()=>void)=>{const query=window.matchMedia('(prefers-reduced-motion: reduce)');query.addEventListener('change',notify);return()=>query.removeEventListener('change',notify);};
+const motionSnapshot=()=>window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const subscribeTime=(notify:()=>void)=>{const timer=window.setInterval(notify,1000);return()=>window.clearInterval(timer);};
+const timeSnapshot=()=>Math.floor(Date.now()/1000);
+const noSubscription=()=>()=>{};
+
 export default function AnnouncementCarousel({
   announcements,
   settings,
@@ -82,67 +95,21 @@ export default function AnnouncementCarousel({
   announcements: Announcement[];
   settings: Settings;
 }) {
-  const prefersReduced = useRef(
-    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  );
-
-  const [visible, setVisible] = useState<Announcement[]>([]);
-  const [current, setCurrent] = useState(0);
-  const [paused, setPaused] = useState(false);
-  const [exiting, setExiting] = useState(false);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Filter dismissed on client
-  useEffect(() => {
-    setVisible(
-      announcements.filter(a => !isDismissed(a) && !isSessionDismissed(a))
-    );
-  }, [announcements]);
-
-  const goTo = useCallback((next: number, filtered: Announcement[]) => {
-    if (filtered.length <= 1 || prefersReduced.current) {
-      setCurrent(next);
-      return;
-    }
-    setExiting(true);
-    setTimeout(() => {
-      setCurrent(next);
-      setExiting(false);
-    }, settings.transitionDurationMs);
-  }, [settings.transitionDurationMs]);
-
-  const advance = useCallback(() => {
-    setVisible(prev => {
-      if (prev.length <= 1) return prev;
-      setCurrent(c => {
-        const next = (c + 1) % prev.length;
-        if (!settings.loop && next === 0) return c;
-        goTo(next, prev);
-        return c; // actual update happens in goTo's setTimeout
-      });
-      return prev;
-    });
-  }, [settings.loop, goTo]);
-
-  useEffect(() => {
-    if (!settings.autoPlay || visible.length <= 1 || paused) return;
-    timerRef.current = setInterval(advance, settings.intervalSeconds * 1000);
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [settings.autoPlay, settings.intervalSeconds, visible.length, paused, advance]);
-
-  const handleDismiss = (ann: Announcement) => {
-    dismiss(ann);
-    setVisible(prev => {
-      const next = prev.filter(a => a.id !== ann.id);
-      if (current >= next.length) setCurrent(Math.max(0, next.length - 1));
-      return next;
-    });
-  };
-
-  if (visible.length === 0) return null;
-
-  const ann = visible[current] || visible[0];
-  const transitionClass = prefersReduced.current ? 'ann-reduced' : `ann-${settings.transitionType.toLowerCase()}`;
+  const pathname=usePathname();
+  const device=useSyncExternalStore(subscribeViewport,viewportSnapshot,()=> 'SERVER');
+  const reduced=useSyncExternalStore(subscribeMotion,motionSnapshot,()=>true);
+  const dismissed=useSyncExternalStore(subscribeDismissal,()=>JSON.stringify(announcements.filter(ann=>ann.isDismissible&&(isDismissed(ann)||isSessionDismissed(ann))).map(ann=>ann.id)),()=> '[]');
+  const now=useSyncExternalStore(announcements.some(ann=>ann.countdownEnabled)?subscribeTime:noSubscription,timeSnapshot,()=>0);
+  const hidden:string[]=JSON.parse(dismissed);
+  const visible=device==='SERVER'?[]:announcements.filter(ann=>!hidden.includes(ann.id)&&announcementMatchesPath(ann,pathname)&&(device==='MOBILE'?ann.showMobile:device==='TABLET'?ann.showTablet:ann.showDesktop)&&!(ann.countdownEnabled&&ann.countdownTarget&&ann.countdownEndBehavior==='HIDE'&&new Date(ann.countdownTarget).getTime()<=now*1000));
+  const [current,setCurrent]=useState(0);const [paused,setPaused]=useState(false);const [exiting,setExiting]=useState(false);const transition=useRef<ReturnType<typeof setTimeout>|null>(null);
+  const activeIndex=Math.min(current,Math.max(0,visible.length-1));
+  const goTo=useCallback((next:number,count:number)=>{if(transition.current)clearTimeout(transition.current);if(count<=1||reduced){setCurrent(next);return;}setExiting(true);transition.current=setTimeout(()=>{setCurrent(next);setExiting(false);},settings.transitionDurationMs);},[reduced,settings.transitionDurationMs]);
+  useEffect(()=>()=>{if(transition.current)clearTimeout(transition.current);},[]);
+  useEffect(()=>{if(settings.mode==='MANUAL'||!settings.autoPlay||reduced||visible.length<=1||paused)return;const timer=setInterval(()=>{const next=(activeIndex+1)%visible.length;if(!settings.loop&&next===0)return;goTo(next,visible.length);},Math.max(1,settings.intervalSeconds)*1000);return()=>clearInterval(timer);},[settings.mode,settings.autoPlay,settings.loop,settings.intervalSeconds,reduced,visible.length,paused,activeIndex,goTo]);
+  function handleDismiss(ann:Announcement){dismiss(ann);window.dispatchEvent(new Event('sb-ann-dismissed'));}
+  if(!visible.length)return null;
+  const ann=visible[activeIndex];const animation=ann.animationType==='FADE'?settings.transitionType:ann.animationType;const transitionClass=reduced||animation==='NONE'?'ann-reduced':`ann-${animation.toLowerCase()}`;
 
   return (
     <div
@@ -162,6 +129,7 @@ export default function AnnouncementCarousel({
       <div className={exiting ? `ann-exit ${transitionClass}` : `ann-enter ${transitionClass}`} style={{ width: '100%' }}>
         <AnnouncementSlide
           announcement={ann}
+          fontSize={device==='MOBILE'?ann.mobileFontSize:ann.desktopFontSize}
           onDismiss={() => handleDismiss(ann)}
           showDismiss={settings.allowDismissal && ann.isDismissible}
         />
@@ -172,12 +140,12 @@ export default function AnnouncementCarousel({
         <>
           <button
             aria-label="Previous announcement"
-            onClick={() => goTo((current - 1 + visible.length) % visible.length, visible)}
+            onClick={() => goTo((activeIndex - 1 + visible.length) % visible.length, visible.length)}
             style={arrowStyle('left', ann.textColor)}
           >‹</button>
           <button
             aria-label="Next announcement"
-            onClick={() => goTo((current + 1) % visible.length, visible)}
+            onClick={() => goTo((activeIndex + 1) % visible.length, visible.length)}
             style={arrowStyle('right', ann.textColor)}
           >›</button>
         </>
@@ -190,10 +158,10 @@ export default function AnnouncementCarousel({
             <button
               key={i}
               aria-label={`Go to announcement ${i + 1}`}
-              onClick={() => goTo(i, visible)}
+              onClick={() => goTo(i, visible.length)}
               style={{
                 width: 6, height: 6, borderRadius: '50%', border: 'none', cursor: 'pointer', padding: 0,
-                background: i === current ? ann.textColor : `${ann.textColor}50`,
+                background: i === activeIndex ? ann.textColor : `${ann.textColor}50`,
                 transition: 'background 0.2s',
               }}
             />

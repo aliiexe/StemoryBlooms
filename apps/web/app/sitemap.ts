@@ -1,5 +1,7 @@
 import { MetadataRoute } from 'next';
-import { db, eq, sql, product } from '@stemory/database';
+import { db, eq, product } from '@stemory/database';
+
+export const revalidate=300;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://stemoryblooms.com';

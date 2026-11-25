@@ -17,17 +17,13 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter web typecheck
       - run: pnpm --filter web test
-      - name: Lint commerce and permission boundaries
-        working-directory: apps/web
-        run: pnpm exec eslint lib/commerce app/api/v1/orders/route.ts app/api/v1/orders/quote/route.ts app/api/internal/notifications/route.ts app/admin/orders/actions.ts app/admin/materials/actions.ts app/admin/custom-orders app/admin/orders/new app/admin/components/ConfirmModal.tsx
+      - name: Lint web application
+        run: pnpm --filter web lint
       - name: Check migration metadata drift
         run: |
           pnpm --filter @stemory/database db:generate
           git diff --exit-code -- packages/database/drizzle
           test -z "$(git ls-files --others --exclude-standard packages/database/drizzle)"
-      - name: Record remaining repository lint debt
-        continue-on-error: true
-        run: pnpm --filter web lint
       - name: Production build
         env:
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}

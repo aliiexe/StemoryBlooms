@@ -37,6 +37,7 @@ export const CartItemSchema = z.discriminatedUnion('kind', [
 
 export type CheckoutCartItem = z.infer<typeof CartItemSchema>;
 export const CheckoutQuoteSchema = z.object({
+  fulfillmentMethod: z.enum(['DELIVERY','PICKUP']).optional(),
   city: z.string().trim().min(1, 'City is required').max(100),
   deliveryZoneId: identifier,
   promoCode: z.string().trim().max(64).optional(),
@@ -69,29 +70,43 @@ export const CheckoutPayloadSchema = z.object({
 export type CheckoutPayload = z.infer<typeof CheckoutPayloadSchema>;
 
 export const AssistedSourceSchema = z.enum(['INSTAGRAM', 'TIKTOK', 'PHONE', 'IN_PERSON']);
+export const FulfillmentMethodSchema = z.enum(['DELIVERY', 'PICKUP', 'HAND_DELIVERY']);
+export const ReceivedPaymentSchema = z.object({
+  method: z.enum(['CARD', 'CASH', 'BANK_TRANSFER']),
+  allocation: z.enum(['ORDER', 'ITEMS', 'DELIVERY']),
+  amountCents: z.number().int().positive().max(1000000000),
+  reference: z.string().trim().max(150).default(''),
+}).strict().superRefine((value, ctx) => {
+  if (value.method !== 'CASH' && !value.reference) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['reference'], message: 'Add the payment reference so this received payment can be verified.' });
+});
 const assistedItemFields = {
   productId: identifier,
   quantity,
   customName: z.string().trim().min(1).max(150).optional(),
   customPrice: z.number().int().nonnegative().max(1000000).optional(),
   configuration: CustomConfigurationSchema.optional(),
+  unitPriceOverride: z.number().int().nonnegative().max(1000000).optional(),
+  priceOverrideReason: z.string().trim().max(300).optional(),
 };
 export const AssistedItemSchema = z.object(assistedItemFields).strict();
 const assistedPricingFields = {
   source: AssistedSourceSchema,
   city: z.string().trim().max(100),
-  deliveryZoneId: identifier.optional(),
+  deliveryZoneId: z.union([identifier, z.literal('')]).optional(),
   manualDiscount: z.number().int().nonnegative().max(10000000),
   manualDiscountReason: z.string().trim().max(300).optional(),
   promoCode: z.string().trim().max(64).optional(),
   isHandDelivered: z.boolean().optional(),
+  fulfillmentMethod: FulfillmentMethodSchema.optional(),
+  trackInventory: z.boolean().optional(),
   items: z.array(AssistedItemSchema).min(1).max(50),
 };
 function validateAssistedPricing(value: z.infer<typeof assistedPricingObject>, ctx: z.RefinementCtx) {
-  if (value.isHandDelivered && value.source !== 'IN_PERSON') ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Hand delivery is only available for in-person orders.' });
-  if (!value.isHandDelivered && (!value.deliveryZoneId || !value.city)) ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Select an active delivery city.' });
+  if (!value.fulfillmentMethod && value.isHandDelivered && value.source !== 'IN_PERSON') ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Hand delivery is only available for in-person orders.' });
+  if ((value.fulfillmentMethod ? value.fulfillmentMethod === 'DELIVERY' : !value.isHandDelivered) && (!value.deliveryZoneId || !value.city)) ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Select an active delivery city.' });
   if (value.manualDiscount > 0 && !value.manualDiscountReason) ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Enter a reason for the manual discount.' });
   value.items.forEach((item, index) => {
+    if (item.unitPriceOverride !== undefined && !item.priceOverrideReason?.trim()) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['items', index, 'priceOverrideReason'], message: 'Add a short reason for your custom price.' });
     if (item.productId === 'CUSTOM' && (!item.customName || item.customPrice === undefined)) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['items', index], message: 'Manual items need a name and valid price.' });
     if (item.productId === 'BOUQUET' && !item.configuration) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['items', index], message: 'Choose components for each custom bouquet.' });
     if (item.productId !== 'BOUQUET' && item.configuration) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['items', index], message: 'Only custom bouquets can have a component recipe.' });
@@ -111,9 +126,10 @@ export const AssistedOrderSchema = z.object({
   idempotencyKey: z.string().regex(/^[A-Za-z0-9_-]{16,128}$/),
   expectedTotal: z.number().int().nonnegative().max(10000000),
   quoteVersion: z.string().regex(/^[a-f0-9]{64}$/),
+  receivedPayment: ReceivedPaymentSchema.optional(),
 }).strict().superRefine((value, ctx) => {
   validateAssistedPricing(value, ctx);
-  if (!value.isHandDelivered && value.address.length < 5) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['address'], message: 'Provide a complete delivery address.' });
+  if ((value.fulfillmentMethod ? value.fulfillmentMethod === 'DELIVERY' : !value.isHandDelivered) && value.address.length < 5) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['address'], message: 'Provide a complete delivery address.' });
   if (Boolean(value.recipientName) !== Boolean(value.recipientPhone)) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['recipientName'], message: 'Enter both recipient name and phone, or leave both blank to use the buyer.' });
 });
 
@@ -127,9 +143,14 @@ export const AssistedDraftDataSchema = z.object({
   manualDiscount: z.number().int().nonnegative().max(10000000).default(0),
   manualDiscountReason: z.string().max(300).default(''), promoCode: z.string().max(64).default(''),
   isHandDelivered: z.boolean().default(false),
+  fulfillmentMethod: FulfillmentMethodSchema.optional(),
+  trackInventory: z.boolean().optional(),
+  receivedPayment: z.object({ method: z.enum(['CARD', 'CASH', 'BANK_TRANSFER']), allocation: z.enum(['ORDER', 'ITEMS', 'DELIVERY']), amountCents: z.number().int().nonnegative().max(1000000000), reference: z.string().max(150).default('') }).strict().optional(),
   items: z.array(z.object({
     productId: z.string().max(128), quantity,
     customName: z.string().max(150).optional(), customPrice: z.number().int().nonnegative().max(1000000).optional(),
+    unitPriceOverride: z.number().int().nonnegative().max(1000000).optional(),
+    priceOverrideReason: z.string().max(300).optional(),
     configuration: z.object({ components: z.record(identifier, quantity).refine(value => Object.keys(value).length <= 50), cardMessage: z.string().max(500).optional() }).strict().optional(),
   }).strict()).max(50).default([]),
 }).strict();

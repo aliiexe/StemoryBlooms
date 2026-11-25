@@ -1,6 +1,8 @@
 "use client";
 
 import React from 'react';
+import Link from 'next/link';
+import type {material} from '@stemory/database';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { AlertTriangle, PackageSearch } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -25,12 +27,12 @@ export default function DashboardClient({
   lowStock,
   activeDeliveries
 }: {
-  metrics: any[];
-  recentOrders: any[];
-  salesData: any[];
-  topProducts: any;
-  lowStock: any;
-  activeDeliveries: any;
+  metrics: {label:string;value:string;sub?:string;positive?:boolean}[];
+  recentOrders:{id:string;number:string;name:string;total:string;status:string;bg:string;fg:string}[];
+  salesData:{name:string;sales:number}[];
+  topProducts:{name:string;sold:number}[];
+  lowStock:(typeof material.$inferSelect)[];
+  activeDeliveries:{id:string;orderNumber:string;status:string;customer:{firstName:string;lastName:string}}[];
 }) {
   return (
     <motion.div 
@@ -68,7 +70,7 @@ export default function DashboardClient({
                     const initials = o.name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase();
                     return (
                       <tr key={i} style={{ background: '#F9FAFB', borderRadius: '8px' }}>
-                        <td style={{ padding: '12px', fontWeight: 600, color: '#111827', borderTopLeftRadius: '8px', borderBottomLeftRadius: '8px' }}>{o.id}</td>
+                        <td style={{ padding: '12px', fontWeight: 600, color: '#111827', borderTopLeftRadius: '8px', borderBottomLeftRadius: '8px' }}><Link href={`/admin/orders/${o.id}`}>{o.number}</Link></td>
                         <td style={{ padding: '12px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--brand-primary), #4CAF50)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 700 }}>
@@ -113,7 +115,7 @@ export default function DashboardClient({
                     <Tooltip 
                       cursor={{ stroke: 'rgba(27,94,32,0.2)', strokeWidth: 2, strokeDasharray: '4 4' }} 
                       contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(8px)' }}
-                      formatter={(val: any) => [new Intl.NumberFormat('en-MA', { style: 'currency', currency: 'MAD', maximumFractionDigits: 0 }).format(Number(val)), 'Revenue']}
+                      formatter={(val) => [new Intl.NumberFormat('en-MA', { style: 'currency', currency: 'MAD', maximumFractionDigits: 0 }).format(Number(val)), 'Revenue']}
                     />
                     <Area type="monotone" dataKey="sales" stroke="var(--brand-primary)" strokeWidth={3} fillOpacity={1} fill="url(#colorSales)" activeDot={{ r: 6, strokeWidth: 0, fill: 'var(--brand-primary)' }} />
                   </AreaChart>
@@ -130,8 +132,8 @@ export default function DashboardClient({
                 Top Bouquets
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
-                {topProducts.map((p: any, i: number) => {
-                  const maxSold = Math.max(...topProducts.map((tp: any) => tp.sold));
+                {topProducts.map((p, i) => {
+                  const maxSold = Math.max(...topProducts.map((tp) => tp.sold));
                   const percentage = maxSold > 0 ? (p.sold / maxSold) * 100 : 0;
                   return (
                     <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -160,10 +162,10 @@ export default function DashboardClient({
                 Low Stock Alerts
               </h3>
               <ul className={styles.statList} style={{ marginTop: '12px' }}>
-                {lowStock.map((item: any, i: number) => (
+                {lowStock.map((item, i) => (
                   <li key={i} style={{ padding: '10px 12px', background: '#FEF2F2', borderRadius: '8px', border: '1px solid #FEE2E2', marginBottom: '8px' }}>
                     <span style={{ fontWeight: 600, color: '#991B1B' }}>{item.name}</span> 
-                    <strong style={{ color: '#DC2626', background: '#FEE2E2', padding: '2px 8px', borderRadius: '12px', fontSize: '0.8rem' }}>{item.quantity} left</strong>
+                    <strong style={{ color: '#DC2626', background: '#FEE2E2', padding: '2px 8px', borderRadius: '12px', fontSize: '0.8rem' }}>{item.quantity<0?'Recount required':`${item.quantity} left`}</strong>
                   </li>
                 ))}
                 {lowStock.length === 0 && <li style={{ color: '#10B981', padding: '12px', background: '#ECFDF5', borderRadius: '8px', textAlign: 'center', fontWeight: 500 }}>All stock levels healthy ✨</li>}
@@ -179,7 +181,7 @@ export default function DashboardClient({
             <table className={styles.table}>
               <thead><tr><th>Order</th><th>Status</th></tr></thead>
               <tbody style={{ borderSpacing: '0 8px' }}>
-                {activeDeliveries.map((s: any, i: number) => {
+                {activeDeliveries.map((s, i) => {
                   const initials = s.customer.firstName[0] + (s.customer.lastName ? s.customer.lastName[0] : '');
                   return (
                     <tr key={i} style={{ background: '#F9FAFB', borderRadius: '8px' }}>
@@ -189,7 +191,7 @@ export default function DashboardClient({
                             {initials.toUpperCase()}
                           </div>
                           <div>
-                            <div style={{ fontWeight: 600, color: '#111827', fontSize: '0.9rem' }}>{s.orderNumber}</div>
+                            <div style={{ fontWeight: 600, color: '#111827', fontSize: '0.9rem' }}><Link href={`/admin/orders/${s.id}`}>{s.orderNumber}</Link></div>
                             <div style={{ fontSize: '0.8rem', color: '#6B7280' }}>{s.customer.firstName} {s.customer.lastName}</div>
                           </div>
                         </div>
@@ -218,9 +220,9 @@ export default function DashboardClient({
             <p style={{ color: '#7A7571', fontSize: '0.9rem', marginBottom: '1rem', lineHeight: 1.5 }}>
               Received an order via Instagram or TikTok? Enter it manually to keep stock and reporting synchronized.
             </p>
-            <a href="/admin/orders/new" className={styles.submitBtn} style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}>
+            <Link href="/admin/orders/new" className={styles.submitBtn} style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}>
               Create Assisted Order
-            </a>
+            </Link>
           </div>
         </motion.div>
       </div>

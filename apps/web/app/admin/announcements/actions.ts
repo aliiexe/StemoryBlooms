@@ -1,8 +1,9 @@
 'use server';
+import {casablancaInstant} from '@/lib/business-time';
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { db, eq, sql, announcement, announcementBarSettings, announcementTemplate } from '@stemory/database';
+import { db, eq, and, sql, announcement, announcementBarSettings, announcementTemplate } from '@stemory/database';
 import { asc, desc } from 'drizzle-orm';
 import crypto from 'crypto';
 import { parseIntegerInput } from '../../../lib/form-values';
@@ -11,13 +12,12 @@ import { assertAdmin } from '@/lib/user-sync';
 
 function validateUrl(url: string | null | undefined): string | null {
   if (!url) return null;
+  if(/^\/(?!\/)[^\s]*$/.test(url))return url;
   try {
     const parsed = new URL(url);
-    if (!['http:', 'https:'].includes(parsed.protocol)) return null;
+    if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Invalid link.');
     return parsed.toString();
-  } catch {
-    return null;
-  }
+  } catch { throw new Error('Enter a local page path or an HTTP(S) link.'); }
 }
 
 function sanitizeText(text: string): string {
@@ -28,11 +28,22 @@ function validateColor(color: string): string {
   return /^#[0-9A-Fa-f]{3,8}$/.test(color) ? color : '#F6F4EC';
 }
 
+function readPaths(value:FormDataEntryValue|undefined){
+ const paths=String(value||'').split(/[\n,]/).map(path=>path.trim()).filter(Boolean);
+ if(paths.length>50||paths.some(path=>!/^\/(?!\/)[A-Za-z0-9_/-]*(?:\/\*)?$/.test(path)))throw new Error('Use local page paths, such as /shop or /gifts/*.');
+ return paths.length?paths:null;
+}
+function validateSchedule(raw:Record<string,FormDataEntryValue>){
+ const start=casablancaInstant(raw.startAt);const end=casablancaInstant(raw.endAt);if(raw.noEndDate!=='on'&&start&&end&&end<=start)throw new Error('The announcement end must follow its start.');
+ if(raw.targetMode==='CUSTOM'&&!readPaths(raw.includedPaths)?.length)throw new Error('Add at least one custom page path.');
+}
+
 export async function createAnnouncement(formData: FormData) {
   await assertAdmin();
   const raw = Object.fromEntries(formData.entries());
+  validateSchedule(raw);
   await db.insert(announcement).values({
-      id: crypto.randomUUID(),
+      id: /^[a-f0-9-]{36}$/i.test(String(raw.submissionId)) ? String(raw.submissionId) : crypto.randomUUID(),
       internalTitle: sanitizeText(raw.internalTitle as string),
       message: sanitizeText(raw.message as string),
       highlightedText: raw.highlightedText ? sanitizeText(raw.highlightedText as string) : null,
@@ -44,8 +55,8 @@ export async function createAnnouncement(formData: FormData) {
       templateId: (raw.templateId as string) || null,
       status: 'DRAFT',
       order: parseIntegerInput(raw.order as string | null) ?? 0,
-      startAt: raw.startAt ? new Date(raw.startAt as string) : null,
-      endAt: raw.endAt ? new Date(raw.endAt as string) : null,
+      startAt: casablancaInstant(raw.startAt),
+      endAt: casablancaInstant(raw.endAt),
       noEndDate: raw.noEndDate === 'on',
       isDismissible: raw.isDismissible === 'on',
       dismissalDuration: (raw.dismissalDuration as string) || 'SESSION',
@@ -58,13 +69,15 @@ export async function createAnnouncement(formData: FormData) {
       mobileFontSize: (raw.mobileFontSize as string) || '0.8rem',
       barHeight: (raw.barHeight as string) || '40px',
       animationType: (raw.animationType as string) || 'FADE',
-      showDesktop: raw.showDesktop !== 'off',
-      showTablet: raw.showTablet !== 'off',
-      showMobile: raw.showMobile !== 'off',
+      showDesktop: raw.showDesktop === 'on',
+      showTablet: raw.showTablet === 'on',
+      showMobile: raw.showMobile === 'on',
       targetMode: (raw.targetMode as string) || 'ALL',
+      includedPaths:readPaths(raw.includedPaths),excludedPaths:readPaths(raw.excludedPaths),
       countdownEnabled: raw.countdownEnabled === 'on',
-      countdownTarget: raw.countdownTarget ? new Date(raw.countdownTarget as string) : null,
+      countdownTarget: casablancaInstant(raw.countdownTarget),
       countdownEndBehavior: (raw.countdownEndBehavior as string) || 'HIDE',
+      countdownReplacementText:raw.countdownReplacementText?sanitizeText(String(raw.countdownReplacementText)):null,
       updatedAt: new Date(),
       dismissalVersion: crypto.randomUUID()
   });
@@ -81,7 +94,10 @@ export async function createAnnouncement(formData: FormData) {
 export async function updateAnnouncement(id: string, formData: FormData) {
   await assertAdmin();
   const raw = Object.fromEntries(formData.entries());
-  await db.update(announcement)
+  validateSchedule(raw);
+  const current=await db.query.announcement.findFirst({where:eq(announcement.id,id)});
+  if(!current||raw.expectedUpdatedAt!==current.updatedAt.toISOString())throw new Error('This announcement changed. Reload before editing.');
+  const saved=await db.update(announcement)
     .set({
       internalTitle: sanitizeText(raw.internalTitle as string),
       message: sanitizeText(raw.message as string),
@@ -92,8 +108,8 @@ export async function updateAnnouncement(id: string, formData: FormData) {
       openInNewTab: raw.openInNewTab === 'on',
       decorativeAsset: (raw.decorativeAsset as string) || null,
       templateId: (raw.templateId as string) || null,
-      startAt: raw.startAt ? new Date(raw.startAt as string) : null,
-      endAt: raw.endAt ? new Date(raw.endAt as string) : null,
+      startAt: casablancaInstant(raw.startAt),
+      endAt: casablancaInstant(raw.endAt),
       noEndDate: raw.noEndDate === 'on',
       isDismissible: raw.isDismissible === 'on',
       dismissalDuration: (raw.dismissalDuration as string) || 'SESSION',
@@ -106,16 +122,19 @@ export async function updateAnnouncement(id: string, formData: FormData) {
       mobileFontSize: (raw.mobileFontSize as string) || '0.8rem',
       barHeight: (raw.barHeight as string) || '40px',
       animationType: (raw.animationType as string) || 'FADE',
-      showDesktop: raw.showDesktop !== 'off',
-      showTablet: raw.showTablet !== 'off',
-      showMobile: raw.showMobile !== 'off',
+      showDesktop: raw.showDesktop === 'on',
+      showTablet: raw.showTablet === 'on',
+      showMobile: raw.showMobile === 'on',
       targetMode: (raw.targetMode as string) || 'ALL',
+      includedPaths:readPaths(raw.includedPaths),excludedPaths:readPaths(raw.excludedPaths),
       countdownEnabled: raw.countdownEnabled === 'on',
-      countdownTarget: raw.countdownTarget ? new Date(raw.countdownTarget as string) : null,
+      countdownTarget: casablancaInstant(raw.countdownTarget),
       countdownEndBehavior: (raw.countdownEndBehavior as string) || 'HIDE',
+      countdownReplacementText:raw.countdownReplacementText?sanitizeText(String(raw.countdownReplacementText)):null,
       updatedAt: new Date()
     })
-    .where(eq(announcement.id, id));
+    .where(and(eq(announcement.id,id),eq(announcement.updatedAt,current.updatedAt))).returning({id:announcement.id});
+  if(!saved.length)throw new Error('This announcement changed. Reload before editing.');
   revalidatePath('/admin/announcements');
   revalidatePath('/');
   await recordAuditLog({

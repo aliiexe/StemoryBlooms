@@ -35,9 +35,10 @@ export function MaterialForm({ material, onSaved }: { material?: MaterialFormVal
   return (
     <>
       <form
-        action={async (formData) => {
+        onSubmit={async event => { event.preventDefault(); const formData = new FormData(event.currentTarget);
           setIsSubmitting(true);
-          const res = await saveMaterial(formData);
+          setError(null);
+          try { const res = await saveMaterial(formData);
           if (res?.error) {
             setError(res.error);
             toast.error(res.error);
@@ -45,7 +46,7 @@ export function MaterialForm({ material, onSaved }: { material?: MaterialFormVal
             toast.success(material?.id ? 'Material updated' : 'Material created');
             if (onSaved) onSaved();
           }
-          setIsSubmitting(false);
+          } catch { setError("Save could not be confirmed. Your entries are preserved."); } finally { setIsSubmitting(false); }
         }}
         style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
       >

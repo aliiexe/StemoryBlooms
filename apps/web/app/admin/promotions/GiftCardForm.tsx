@@ -1,129 +1,15 @@
 'use client';
-
-import React, { useState } from 'react';
-import { saveGiftCard, deleteGiftCard } from './actions';
-import styles from '../dashboard.module.css';
-import { ToggleSwitch } from '../../../components/ui/ToggleSwitch';
+import {useState} from 'react';
+import type {giftCard} from '@stemory/database';
+import {RotateCw} from 'lucide-react';
+import {clientOperationId} from '@/lib/client-operation-id';
+import {formatPaymentMoney} from '@/lib/commerce/payment-state';
+import {saveGiftCard,deleteGiftCard} from './actions';
+import {ToggleSwitch} from '@/components/ui/ToggleSwitch';
 import ConfirmModal from '../components/ConfirmModal';
-import { toast } from 'sonner';
-
-export function GiftCardForm({ card, onSaved }: { card?: any, onSaved?: () => void }) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isActive, setIsActive] = useState(card ? card.isActive : true);
-  const [showConfirm, setShowConfirm] = useState(false);
-
-  // Auto-generate code if new
-  const [code, setCode] = useState(card?.code || `GC-${crypto.randomUUID().replaceAll('-', '').toUpperCase()}`);
-
-  const confirmDelete = async () => {
-    setShowConfirm(false);
-    if (!card?.id) return;
-    const res = await deleteGiftCard(card.id);
-    if (res?.error) {
-      toast.error(res.error);
-    } else {
-      toast.success('Gift card disabled');
-      if (onSaved) onSaved();
-    }
-  };
-
-  return (
-    <>
-      <form
-        action={async (formData) => {
-          setIsSubmitting(true);
-          const res = await saveGiftCard(formData);
-          if (res?.error) {
-            setError(res.error);
-            toast.error(res.error);
-          } else {
-            toast.success(card?.id ? 'Gift card updated' : 'Gift card created');
-            if (onSaved) onSaved();
-          }
-          setIsSubmitting(false);
-        }}
-        style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
-      >
-        {error && <div style={{ color: '#C62828', backgroundColor: '#FFEBEE', padding: '0.75rem', borderRadius: '8px', fontSize: '0.9rem' }}>{error}</div>}
-
-        {card?.id && <input type="hidden" name="id" value={card.id} />}
-
-        <div>
-          <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: '#5A5551' }}>Gift Card Code</label>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <input
-              type="text"
-              name="code"
-              value={code}
-              onChange={e => setCode(e.target.value.toUpperCase())}
-              required
-              style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid #D6CFE6', fontFamily: 'monospace' }}
-            />
-            <button
-              type="button"
-              onClick={() => setCode(`GC-${crypto.randomUUID().replaceAll('-', '').toUpperCase()}`)}
-              style={{ padding: '0 1rem', borderRadius: '8px', border: '1px solid #D6CFE6', backgroundColor: '#FDFBF7', cursor: 'pointer' }}
-            >
-              Generate
-            </button>
-          </div>
-        </div>
-
-        <div>
-          <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 500, color: '#5A5551' }}>Initial Value (MAD)</label>
-          <input
-            type="number"
-            name="initialBalance"
-            step="0.01"
-            defaultValue={card?.initialBalance ?? ''}
-            required
-            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #D6CFE6' }}
-          />
-        </div>
-
-        <p>Gift cards are managed as private codes. Share the code securely with its recipient.</p>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', backgroundColor: '#FDFBF7', borderRadius: '8px', border: '1px solid #EAE6DF' }}>
-          <div>
-            <div style={{ fontWeight: 500, fontSize: '0.9rem', color: '#3A3531' }}>Card Status</div>
-            <div style={{ fontSize: '0.8rem', color: '#7A7571' }}>{isActive ? 'Active and ready to use' : 'Disabled'}</div>
-          </div>
-          <ToggleSwitch
-            checked={isActive}
-            onChange={setIsActive}
-          />
-          <input type="hidden" name="isActive" value={isActive ? 'on' : 'off'} />
-        </div>
-
-        <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className={styles.submitBtn}
-            style={{ flex: 1, padding: '0.75rem', margin: 0, borderRadius: '8px' }}
-          >
-            {isSubmitting ? 'Saving...' : (card ? 'Update Gift Card' : 'Create Gift Card')}
-          </button>
-          {card?.id && (
-            <button
-              type="button"
-              onClick={() => setShowConfirm(true)}
-              style={{ padding: '0.75rem 1rem', border: '1px solid #FFEBEE', backgroundColor: '#FFEBEE', color: '#C62828', borderRadius: '8px', cursor: 'pointer' }}
-            >
-              Disable
-            </button>
-          )}
-        </div>
-      </form>
-
-      <ConfirmModal
-        isOpen={showConfirm}
-        title="Disable Gift Card"
-        message="Are you sure you want to delete this gift card? Its usage history will be retained."
-        confirmText="Disable"
-        onConfirm={confirmDelete}
-        onCancel={() => setShowConfirm(false)}
-      />
-    </>
-  );
+import styles from '../orders/new/assisted-order.module.css';
+export function GiftCardForm({card,onSaved,onBusyChange}:{card?:typeof giftCard.$inferSelect;onSaved?:()=>void;onBusyChange?:(value:boolean)=>void}){
+ const [busy,setBusy]=useState(false);const [error,setError]=useState('');const [active,setActive]=useState(card?.isActive??true);const [confirm,setConfirm]=useState(false);const [code,setCode]=useState(()=>card?.code||`GC-${clientOperationId().replaceAll('-','').toUpperCase()}`);const pending=(value:boolean)=>{setBusy(value);onBusyChange?.(value);};
+ async function disable(){if(!card||busy)return;pending(true);setError('');try{const result=await deleteGiftCard(card.id);if(result.error)setError(result.error);else onSaved?.();}catch{setError('Could not confirm the change. Review this card before retrying.');}finally{pending(false);setConfirm(false);}}
+ return <><form className={styles.workspace} onSubmit={async event => { event.preventDefault(); const data = new FormData(event.currentTarget);if(busy)return;pending(true);setError('');try{const result=await saveGiftCard(data);if(result.error)setError(result.error);else onSaved?.();}catch{setError('Could not confirm the save. Check the card list before issuing it again.');}finally{pending(false);}}}><fieldset disabled={busy} className={styles.column}>{card&&<input type="hidden" name="id" value={card.id}/>}<label>Private gift card code<div style={{display:'flex',gap:8}}><input name="code" value={code} readOnly={Boolean(card)} onChange={event=>setCode(event.target.value.toUpperCase())} required minLength={3} maxLength={64} style={{fontFamily:'ui-monospace,monospace',fontSize:12,minWidth:0}}/>{!card&&<button type="button" className={styles.secondaryButton} aria-label="Generate another gift card code" onClick={()=>setCode(`GC-${clientOperationId().replaceAll('-','').toUpperCase()}`)}><RotateCw size={15}/></button>}</div></label><label>Issued value (whole MAD)<input name="initialBalance" type="number" min="1" max="1000000" step="1" required readOnly={Boolean(card)} defaultValue={card?.initialBalance}/></label>{card&&<p className={styles.hint}>Remaining balance: <strong>{formatPaymentMoney(card.currentBalance*100)}</strong>. Issued value is retained; redemption and refunds update the remaining balance.</p>}<p className={styles.hint}>Share this code privately with its recipient. Anyone with an active code can use its balance.</p><ToggleSwitch name="isActive" label="Available for redemption" checked={active} onChange={setActive}/>{error&&<p role="alert" className={styles.error}>{error}</p>}<button type="submit" className={styles.primaryButton} disabled={busy}>{busy?'Saving…':card?'Save gift card':'Issue gift card'}</button>{card&&<button type="button" className={styles.secondaryButton} disabled={busy||!card.isActive} onClick={()=>setConfirm(true)}>Disable card</button>}</fieldset></form><ConfirmModal busy={busy} isOpen={confirm} title="Disable gift card?" message="Stop future use of this code. Its remaining balance and usage history are retained." confirmText={busy?'Saving…':'Disable card'} onCancel={()=>{if(!busy)setConfirm(false);}} onConfirm={()=>void disable()}/></>;
 }

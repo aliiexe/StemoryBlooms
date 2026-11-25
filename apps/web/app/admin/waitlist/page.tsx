@@ -1,14 +1,14 @@
 import { assertAdmin } from '@/lib/user-sync';
-import React from 'react';
-import { db } from '@stemory/database';
+import { db, waitlistEntry, sql, and, desc } from '@stemory/database';
+import { waitlistSchemaReady } from '@/lib/commerce/waitlist';
+import QueueFilters from '../components/QueueFilters';
+import QueuePagination from '../components/QueuePagination';
 import styles from '../dashboard.module.css';
-import WaitlistClient from './WaitlistClient';
-
-export default async function AdminWaitlistPage() {
+import ui from '../workspace.module.css';
+export default async function AdminWaitlistPage({searchParams}:{searchParams:Promise<{search?:string;status?:string;page?:string}>}) {
   await assertAdmin();
-  const waitlistEntry = await db.query.waitlistEntry.findMany({
-    orderBy: (table, { desc }) => [desc(table.createdAt)]
-  });
-
-  return <WaitlistClient waitlist={waitlistEntry} />;
+  const filters=await searchParams;const search=(filters.search||'').trim().slice(0,150);const status=['ALL','VERIFIED','UNVERIFIED','UNSUBSCRIBED'].includes(filters.status||'')?filters.status!:'ALL';const page=Math.max(1,Math.min(10000,Number.parseInt(filters.page||'1',10)||1));const pattern=`%${search.replace(/[\\%_]/g,value=>`\\${value}`)}%`;
+  const where=and(search?sql`${waitlistEntry.email} ILIKE ${pattern}`:undefined,status==='VERIFIED'?sql`${waitlistEntry.isVerified}=true AND ${waitlistEntry.unsubscribed}=false`:status==='UNVERIFIED'?sql`${waitlistEntry.isVerified}=false AND ${waitlistEntry.unsubscribed}=false`:status==='UNSUBSCRIBED'?sql`${waitlistEntry.unsubscribed}=true`:undefined);
+  const [rows,totals,ready]=await Promise.all([db.select().from(waitlistEntry).where(where).orderBy(desc(waitlistEntry.createdAt),desc(waitlistEntry.id)).limit(25).offset((page-1)*25),db.select({count:sql<number>`count(*)::integer`}).from(waitlistEntry).where(where),waitlistSchemaReady()]);
+  return <div className={styles.dashboard}><header className={styles.pageHeader}><div><h1 className={styles.pageTitle}>Subscribers</h1><p>See who has confirmed their email and who has opted out.</p></div></header>{!ready&&<p role="status" className={ui.notice}>Email verification is waiting for the communication update.</p>}<QueueFilters action="/admin/waitlist" search={search} status={status} placeholder="Email address" options={[{value:'ALL',label:'All subscribers'},{value:'VERIFIED',label:'Verified'},{value:'UNVERIFIED',label:'Awaiting verification'},{value:'UNSUBSCRIBED',label:'Unsubscribed'}]}/><section className={ui.tableSurface}><div className={ui.tableToolbar}><strong>Subscriber list</strong><span>{totals[0].count} subscribers</span></div><div className={ui.tableWrap}><table className={ui.table}><thead><tr><th>Email</th><th>Joined</th><th>Status</th></tr></thead><tbody>{rows.map(row=><tr key={row.id}><td style={{overflowWrap:'anywhere'}}>{row.email}</td><td>{row.createdAt.toLocaleDateString('en-GB',{timeZone:'Africa/Casablanca',dateStyle:'medium'})}</td><td><span className={ui.status}>{row.unsubscribed?'Unsubscribed':row.isVerified?'Verified':'Awaiting verification'}</span></td></tr>)}{!rows.length&&<tr><td colSpan={3} className={ui.empty}>No subscribers in this view.</td></tr>}</tbody></table></div></section><QueuePagination path="/admin/waitlist" page={page} count={totals[0].count} search={search} status={status}/></div>;
 }

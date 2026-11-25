@@ -15,6 +15,34 @@
       "when": 1792278000000,
       "tag": "0001_order_delivery_flag",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792486090208,
+      "tag": "0002_square_carlie_cooper",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792489136841,
+      "tag": "0003_white_mastermind",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792490463937,
+      "tag": "0004_wakeful_shooting_star",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792618147265,
+      "tag": "0005_huge_golden_guardian",
+      "breakpoints": true
     }
   ]
 }

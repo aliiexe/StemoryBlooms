@@ -1,8 +1,7 @@
 import { assertAdmin } from '@/lib/user-sync';
 import { auth } from '@clerk/nextjs/server';
-import { db, eq, user as userTable, role as roleTable } from '@stemory/database';
+import { db } from '@stemory/database';
 import { redirect } from 'next/navigation';
-import { revalidatePath } from 'next/cache';
 import UsersClient from './UsersClient';
 
 async function getUsers() {
@@ -13,7 +12,7 @@ async function getUsers() {
 }
 
 export default async function AdminUsersPage() {
-  await assertAdmin();
+  const actor=await assertAdmin();
   const { userId } = await auth();
 
   if (!userId) {
@@ -22,5 +21,5 @@ export default async function AdminUsersPage() {
 
   const users = await getUsers();
 
-  return <UsersClient users={users} />;
+  return <UsersClient users={users} currentUserId={actor.id} />;
 }

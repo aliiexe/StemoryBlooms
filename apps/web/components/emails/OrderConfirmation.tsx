@@ -18,6 +18,7 @@ interface OrderConfirmationProps {
   address: string;
   items: CartItem[];
   receiptUrl?: string;
+  receivedAmount?: number; remainingAmount?: number; paymentLabel?: string;
 }
 
 export function OrderConfirmationTemplate({
@@ -31,7 +32,7 @@ export function OrderConfirmationTemplate({
   city,
   address,
   items,
-  receiptUrl,
+  receiptUrl, receivedAmount = 0, remainingAmount = total, paymentLabel = 'Unpaid',
 }: OrderConfirmationProps) {
   return (
     <div style={{ backgroundColor: '#F5F0E8', fontFamily: "'Georgia', 'Times New Roman', serif", padding: '40px 20px', margin: 0 }}>
@@ -64,6 +65,7 @@ export function OrderConfirmationTemplate({
           <div style={{ padding: '36px 40px' }}>
 
             {receiptUrl && <p><a href={receiptUrl}>View your private order receipt</a></p>}
+            <p>Payment: {paymentLabel}<br/>Received: {receivedAmount.toFixed(2)} MAD<br/><strong>Still due: {remainingAmount.toFixed(2)} MAD</strong></p>
             {/* Greeting */}
             <p style={{ margin: '0 0 8px', fontSize: '16px', color: '#3A3531' }}>
               A new order has been placed on Stemory Blooms.

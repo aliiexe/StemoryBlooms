@@ -1,7 +1,8 @@
 'use server';
 
-import { db, waitlistEntry } from '@stemory/database';
-import crypto from 'crypto';
+import { after } from 'next/server';
+import { requestWaitlistVerification } from '@/lib/commerce/waitlist';
+import { processNotificationOutbox } from '@/lib/commerce/outbox';
 import { headers } from 'next/headers';
 import { publicEmail } from '@/lib/commerce/public-input';
 import { enforceSubmissionLimit } from '@/lib/commerce/rate-limit';
@@ -12,7 +13,8 @@ export async function joinWaitlist(email: string) {
   if (!parsed.success) return { error: 'Invalid email address' };
   try {
     await enforceSubmissionLimit('waitlist', await headers(), 5);
-    await db.insert(waitlistEntry).values({ id: crypto.randomUUID(), email: parsed.data }).onConflictDoNothing();
+    const result = await requestWaitlistVerification(parsed.data);
+    if (result.jobId) after(async () => { await processNotificationOutbox(1, undefined, result.jobId!); });
     return { success: true };
   } catch (error) {
     console.error('Waitlist submission failed:', error);

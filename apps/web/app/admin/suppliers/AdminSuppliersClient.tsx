@@ -29,6 +29,7 @@ export function AdminSuppliersClient({ initialSuppliers }: { initialSuppliers: S
   const [isAdding, setIsAdding] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<Supplier | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [error, setError] = useState('');
 
   const { page: currentPage, setPage, rowsPerPage, setRowsPerPage, totalPages, paginatedItems, totalItems } = usePagination(
     suppliers.filter(s =>
@@ -58,16 +59,20 @@ export function AdminSuppliersClient({ initialSuppliers }: { initialSuppliers: S
       {(isAdding || editingSupplier) && (
         <div className={styles.card} style={{ marginBottom: '2rem' }}>
           <h3 className={styles.cardTitle}>{editingSupplier ? 'Edit Supplier' : 'New Supplier'}</h3>
-          <form action={async (formData) => {
+          <form onSubmit={async event => { event.preventDefault(); const formData = new FormData(event.currentTarget);
+            if (isPending) return;
+            setError('');
             startTransition(async () => {
-              const res = await saveSupplier(formData);
+              try { const res = await saveSupplier(formData);
               if (res?.success) {
                 setIsAdding(false);
                 setEditingSupplier(null);
                 window.location.reload();
-              }
+              } else { setError(res.error || "Could not save the supplier."); }
+              } catch { setError("Save could not be confirmed. Your entries are preserved."); }
             });
           }} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+            {error && <p role="alert" style={{gridColumn:'1 / -1',color:'#9d3636'}}>{error}</p>}
             {editingSupplier && <input type="hidden" name="id" value={editingSupplier.id} />}
             
             <div>
@@ -158,7 +163,7 @@ export function AdminSuppliersClient({ initialSuppliers }: { initialSuppliers: S
               {totalItems === 0 && (
                 <tr>
                   <td colSpan={6} style={{ textAlign: 'center', color: '#7A7571', padding: '2rem' }}>
-                    No suppliers found. Click "+ Add Supplier" to create one.
+                    No suppliers found. Click &quot;+ Add Supplier&quot; to create one.
                   </td>
                 </tr>
               )}

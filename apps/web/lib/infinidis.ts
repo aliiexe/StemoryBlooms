@@ -1,5 +1,3 @@
-import { recordAuditLog } from '@/lib/audit';
-
 interface InfinidisOrderPayload {
   fullname: string;
   email: string; // The store owner's Infinidis email
@@ -13,59 +11,24 @@ interface InfinidisOrderPayload {
   note?: string;
 }
 
-export async function sendOrderToInfinidis(orderData: Omit<InfinidisOrderPayload, 'email'>) {
+export type CourierShipment = Omit<InfinidisOrderPayload, 'email'>;
+export type CourierSubmissionResult = { outcome: 'ACKNOWLEDGED' | 'REJECTED' | 'UNCERTAIN'; error?: string };
+
+export async function submitInfinidisOrder(orderData: CourierShipment): Promise<CourierSubmissionResult> {
   const accountEmail = process.env.INFINIDIS_ACCOUNT_EMAIL;
-
-  if (!accountEmail) {
-    console.error('Missing INFINIDIS_ACCOUNT_EMAIL in environment variables');
-    return false;
-  }
-
-  const payload: InfinidisOrderPayload = {
-    ...orderData,
-    email: accountEmail,
-  };
-
+  if (!accountEmail) return { outcome: 'REJECTED', error: 'Carrier account email is not configured.' };
   try {
     const response = await fetch('https://app.infinidis.ma/sendtoinfinidis.php', {
-      method: 'POST',
-      signal: AbortSignal.timeout(15_000),
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify(payload)
+      method: 'POST', signal: AbortSignal.timeout(15_000), headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ ...orderData, email: accountEmail }),
     });
-
-    const data = await response.json().catch(() => null);
-
-    if (response.ok && data?.success) {
-      console.log(`Order ${orderData.code} sent to Infinidis successfully.`);
-
-      // Optionally log this success
-      await recordAuditLog({
-        action: 'UPDATE',
-        target: 'ORDER',
-        summary: `Order ${orderData.code} automatically submitted to INFINIDIS`,
-        details: { orderCode: orderData.code, infinidisResponse: data },
-      }).catch(console.error);
-
-      return true;
-    } else {
-      console.error(`Failed to send order ${orderData.code} to Infinidis:`, data);
-
-      await recordAuditLog({
-        action: 'UPDATE',
-        target: 'ORDER',
-        summary: `Failed to submit Order ${orderData.code} to INFINIDIS`,
-        details: { orderCode: orderData.code, infinidisResponse: data },
-      }).catch(console.error);
-
-      return false;
-    }
-  } catch (error) {
-    console.error(`Error sending order ${orderData.code} to Infinidis:`, error);
-    return false;
+    const data: unknown = await response.json().catch(() => null);
+    const success = data && typeof data === 'object' && 'success' in data ? data.success : undefined;
+    if (response.ok && success === true) return { outcome: 'ACKNOWLEDGED' };
+    if (response.status < 500 && success === false) return { outcome: 'REJECTED', error: 'The carrier explicitly rejected this registration. Verify the shipment details before retrying.' };
+    return { outcome: 'UNCERTAIN', error: 'The carrier did not provide a definite acknowledgment. Verify its dashboard before retrying.' };
+  } catch {
+    return { outcome: 'UNCERTAIN', error: 'The request timed out or its result was lost. Check whether the carrier already registered this order.' };
   }
 }
 

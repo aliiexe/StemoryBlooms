@@ -1,13 +1,15 @@
 "use client";
 
+import type {adminNotification} from '@stemory/database';
 import React, { useState, useRef, useEffect, useTransition } from 'react';
 import { Bell, Check, Trash2 } from 'lucide-react';
 import styles from './admin.module.css';
 import { getNotifications, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification } from './actions/notifications';
 
 export function AdminNotifications() {
+  const [error,setError]=useState('');
   const [isOpen, setIsOpen] = useState(false);
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<(typeof adminNotification.$inferSelect)[]>([]);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -31,33 +33,17 @@ export function AdminNotifications() {
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
-  const handleMarkAsRead = async (id: string) => {
-    setNotifications(notifications.map(n => n.id === id ? { ...n, isRead: true } : n));
-    startTransition(() => {
-      markNotificationAsRead(id);
-    });
-  };
-
-  const handleMarkAllAsRead = async () => {
-    setNotifications(notifications.map(n => ({ ...n, isRead: true })));
-    startTransition(() => {
-      markAllNotificationsAsRead();
-    });
-  };
-
-  const handleDelete = async (id: string) => {
-    setNotifications(notifications.filter(n => n.id !== id));
-    startTransition(() => {
-      deleteNotification(id);
-    });
-  };
+  function mutate(operation:()=>Promise<unknown>){startTransition(async()=>{setError('');try{await operation();setNotifications(await getNotifications());}catch{setError('The notification update failed. Please try again.');}});}
+  const handleMarkAsRead=(id:string)=>mutate(()=>markNotificationAsRead(id));
+  const handleMarkAllAsRead=()=>mutate(markAllNotificationsAsRead);
+  const handleDelete=(id:string)=>mutate(()=>deleteNotification(id));
 
   return (
     <div className={styles.notificationsWrapper} ref={dropdownRef} style={{ position: 'relative' }}>
       <button 
         className={styles.topBarIcon} 
-        aria-label="Notifications"
-        onClick={() => setIsOpen(!isOpen)}
+        aria-label="Notifications" aria-expanded={isOpen} aria-haspopup="dialog"
+        onClick={() => {setIsOpen(!isOpen);if(!isOpen)getNotifications().then(setNotifications).catch(()=>setError('Notifications could not be loaded.'));}}
         style={{ position: 'relative', cursor: 'pointer', background: 'none', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
       >
         <Bell size={18} />
@@ -77,11 +63,11 @@ export function AdminNotifications() {
       </button>
 
       {isOpen && (
-        <div style={{
+        <div role="dialog" aria-label="Admin notifications" onKeyDown={event=>{if(event.key==='Escape'){setIsOpen(false);dropdownRef.current?.querySelector<HTMLButtonElement>('button')?.focus();}}} style={{
           position: 'absolute',
           top: 'calc(100% + 8px)',
           right: '-10px',
-          width: '320px',
+          width: 'min(320px, calc(100vw - 32px))',
           backgroundColor: '#FFFFFF',
           border: '1px solid #EAE6DF',
           borderRadius: '16px',
@@ -100,7 +86,7 @@ export function AdminNotifications() {
             <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: '#3A3531' }}>Notifications</h3>
             {unreadCount > 0 && (
               <button 
-                onClick={handleMarkAllAsRead}
+                disabled={isPending} onClick={handleMarkAllAsRead}
                 style={{ background: 'none', border: 'none', color: '#1565C0', fontSize: '0.8rem', cursor: 'pointer', padding: 0 }}
               >
                 Mark all as read
@@ -108,6 +94,7 @@ export function AdminNotifications() {
             )}
           </div>
           
+          {error&&<p role="alert" style={{padding:16,color:'#8c2635'}}>{error}</p>}
           <div style={{ maxHeight: '360px', overflowY: 'auto' }}>
             {notifications.length === 0 ? (
               <div style={{ padding: '2rem 1rem', textAlign: 'center', color: '#7A7571', fontSize: '0.9rem' }}>
@@ -142,14 +129,14 @@ export function AdminNotifications() {
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                       {!n.isRead && (
                         <button 
-                          onClick={() => handleMarkAsRead(n.id)}
+                          disabled={isPending} aria-label="Mark notification read" onClick={() => handleMarkAsRead(n.id)}
                           style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', background: 'none', border: 'none', color: '#1565C0', fontSize: '0.75rem', cursor: 'pointer', padding: 0 }}
                         >
                           <Check size={12} /> Mark as read
                         </button>
                       )}
                       <button 
-                        onClick={() => handleDelete(n.id)}
+                        disabled={isPending} aria-label="Dismiss notification" onClick={() => handleDelete(n.id)}
                         style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', background: 'none', border: 'none', color: '#9A9591', fontSize: '0.75rem', cursor: 'pointer', padding: 0 }}
                       >
                         <Trash2 size={12} /> Delete

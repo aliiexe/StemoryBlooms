@@ -587,3 +587,34 @@
     width: 100vw;
   }
 }
+
+.modalDialog { position: fixed; inset: 0; width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; border: 0; padding: 0; background: transparent; color: inherit; }
+.modalDialog::backdrop { background: rgba(27,20,15,0.45); backdrop-filter: blur(4px); }
+.modalDialog .cartDrawer { height: 100dvh; }
+.mobileNav { overflow-y: auto; }
+.iconBtn, .hamburger, .removeBtn, .quantityControl button { min-width: 44px; min-height: 44px; }
+.iconBtn:focus-visible, .hamburger:focus-visible, .modalDialog button:focus-visible, .modalDialog a:focus-visible { outline: 3px solid #719265; outline-offset: 2px; }
+.quantityControl output { min-width: 32px; text-align: center; }
+@media (max-width: 480px) { .actions { gap: 0.25rem; } .cartItem { gap: 0.75rem; } .cartItemDetails { min-width: 0; } .cartItemDetails h3 { overflow-wrap: anywhere; } .mobileNavLinks { gap: 1rem; } .mobileNavHeader { margin-bottom: 1.5rem; } }
+
+.header { min-height:78px; padding:15px clamp(20px,4vw,60px); background:#fcfbf8; box-shadow:none; border-bottom:1px solid #e2e5d9; gap:24px; }
+.logo img { height:37px; width:auto; max-width:148px; }
+.nav { gap:27px; }
+.nav a { font-size:12px; letter-spacing:0; text-transform:none; color:#526347; }
+.nav a:hover { color:#243d20; }
+.iconBtn { color:#526347; }
+.cartBadge { background:#435d36; }
+.cartDrawer { border-left:1px solid #dde3d3; background:#fcfbf8; }
+.cartHeader h2 { font-size:27px; font-weight:400; }
+.checkoutBtn,.cartCta,.searchPrimaryBtn { border-radius:4px; box-shadow:none; font-size:14px; background:#3d5433; }
+.cartItemImage { border-radius:4px; }.cartItemDetails h3 { font-size:14px; }.cartItemPrice { font-size:12px; }
+.quantityControl { border-radius:4px; }.shippingNotice { font-size:12px; }
+@media(max-width:900px) { .header { min-height:66px; padding:12px 18px; gap:15px; }.logo img { height:30px; }.mobileNavLinks a { font-size:25px; text-transform:none; letter-spacing:-.02em; } }
+
+.header { min-height:84px;gap:20px; }
+.logo img { width:176px;height:auto;max-width:176px; }
+.actions { gap:6px;flex-shrink:0; }
+.nav { gap:24px; }
+@media(max-width:1050px) { .nav { display:none; }.hamburger { display:flex; } }
+@media(max-width:900px) { .header { min-height:72px;padding:12px 18px;gap:10px; }.logo img { width:140px;height:auto;max-width:140px; }.actions { gap:2px; } }
+@media(max-width:370px) { .header { padding-left:12px;padding-right:12px; }.logo img { width:116px; }.actions { gap:0; } }

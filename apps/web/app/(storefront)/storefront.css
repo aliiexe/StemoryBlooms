@@ -1,0 +1,11 @@
+[data-storefront] { --brand-primary:#41573a; --brand-primary-hover:#2e4328; --surface-primary:#fcfbf8; color:#34442d; background:#fcfbf8; font-size:16px; }
+[data-storefront] :is(input:not([type=checkbox]):not([type=hidden]),textarea) { border:1px solid #cfd8c6; border-radius:4px; padding:12px 14px; color:#34472c; background:#fff; min-height:46px; font:inherit; font-size:14px; box-sizing:border-box; max-width:100%; }
+[data-storefront] textarea { resize:vertical!important; line-height:1.6; }
+[data-storefront] :is(input,textarea,button,a,summary):focus-visible { outline:3px solid #92a77d; outline-offset:3px; }
+[data-storefront] button { font-family:var(--font-sans),sans-serif; }
+[data-storefront] input[type=checkbox] { appearance:none; -webkit-appearance:none; width:20px; height:20px; min-height:20px; border:1px solid #8b9d7b; border-radius:3px; background:white; display:inline-grid; place-content:center; flex-shrink:0; }
+[data-storefront] input[type=checkbox]:checked { background:#48603c; border-color:#48603c; }
+[data-storefront] input[type=checkbox]:checked::before { content:'✓'; font-size:14px; font-weight:600; color:white; }
+[data-storefront] a { text-underline-offset:4px; }
+[data-storefront] section { scroll-margin-top:110px; }
+@media(prefers-reduced-motion:reduce) { [data-storefront] *,[data-storefront] *::before,[data-storefront] *::after { scroll-behavior:auto!important; transition-duration:.01ms!important; animation-duration:.01ms!important; } }

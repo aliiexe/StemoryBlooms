@@ -1,0 +1,28 @@
+'use client';
+import {useState} from 'react';
+import Link from 'next/link';
+import {ArrowUpRight,Eye,Check,FileText} from 'lucide-react';
+import type {SiteCopy,SiteContentKey} from '@/lib/site-content';
+import {saveWebsiteCopy} from './site-actions';
+import ConfirmModal from '../components/ConfirmModal';
+import ui from '../workspace.module.css';
+import styles from './editor.module.css';
+type ContentRecord={key:SiteContentKey;copy:SiteCopy;revision:number;published:boolean};
+const labels:Record<SiteContentKey,string>={home:'Homepage',shipping:'Delivery information',returns:'Returns & replacements',faq:'FAQs',terms:'Ordering terms',privacy:'Privacy notice','cash-on-delivery':'Cash on delivery'};
+export default function WebsiteCopyEditor({records}:{records:ContentRecord[]}){
+ const [selected,setSelected]=useState<SiteContentKey>('home');
+ const [values,setValues]=useState(()=>Object.fromEntries(records.map(row=>[row.key,{...row,savedCopy:JSON.stringify(row.copy),message:'',error:''}])) as Record<SiteContentKey,ContentRecord&{savedCopy:string;message:string;error:string}>);
+ const [busy,setBusy]=useState(false);const [confirm,setConfirm]=useState(false);const current=values[selected];const copy=current.copy;const dirty=JSON.stringify(copy)!==current.savedCopy;
+ function change(field:keyof SiteCopy,value:string){setValues(previous=>({...previous,[selected]:{...previous[selected],copy:{...previous[selected].copy,[field]:value},message:'',error:''}}));}
+ async function save(publish:boolean){if(busy)return;const target=selected;const value=values[target];setBusy(true);setValues(previous=>({...previous,[target]:{...previous[target],message:'',error:''}}));try{const result=await saveWebsiteCopy({key:target,copy:value.copy,expectedRevision:value.revision,publish});setValues(previous=>({...previous,[target]:result.success?{...previous[target],revision:result.revision,published:publish||previous[target].published,savedCopy:JSON.stringify(value.copy),message:publish?'Published. Your website now uses this text.':'Draft saved.',error:''}:{...previous[target],error:result.error||'Could not save this page.'}}));}catch{setValues(previous=>({...previous,[target]:{...previous[target],error:'Could not confirm the save. Your text is still here; reload the saved version before publishing again.'}}));}finally{setBusy(false);setConfirm(false);}}
+ return <div className={styles.layout}><aside className={styles.pages} aria-label="Website pages"><h2>Pages</h2>{records.map(row=><button type="button" key={row.key} disabled={busy} className={styles.pageButton} aria-pressed={selected===row.key} onClick={()=>setSelected(row.key)}><span>{labels[row.key]}</span>{values[row.key].published?<span className={styles.dot} title="Published text available"/>:<FileText size={13}/>}</button>)}</aside>
+ <section className={styles.editor}><header className={styles.editorHeader}><div><h2>{labels[selected]}</h2><p>Edit the draft. Publish when it’s ready.</p></div><Link href={selected==='home'?'/':`/${selected}`} target="_blank" rel="noopener">View website<ArrowUpRight size={14}/></Link></header>
+ <form onSubmit={event=>{event.preventDefault();void save(false);}}><div className={styles.columns}><fieldset disabled={busy} className={styles.fields} style={{border:0,margin:0}}><label>Heading<input required value={copy.title} maxLength={160} onChange={event=>change('title',event.target.value)}/></label><label>Introduction<textarea rows={3} maxLength={1000} value={copy.subtitle} onChange={event=>change('subtitle',event.target.value)}/></label>
+ <label>{selected==='home'?'Short tagline':'Page content'}{selected==='home'?<input value={copy.body} maxLength={1000} onChange={event=>change('body',event.target.value)}/>:<textarea rows={10} maxLength={16000} value={copy.body} onChange={event=>change('body',event.target.value)}/>}</label>
+ <div className={styles.twoFields}><label>Button text<input required maxLength={80} value={copy.ctaLabel} onChange={event=>change('ctaLabel',event.target.value)}/></label><label>Link to<input required maxLength={200} value={copy.ctaHref} placeholder="/shop" onChange={event=>change('ctaHref',event.target.value)}/></label></div></fieldset>
+ <aside className={styles.preview} aria-label="Draft text preview"><span><Eye size={14}/>Draft preview · not published</span><h3>{copy.title||'Your heading'}</h3><p>{copy.subtitle}</p>{copy.body.split(/\n\s*\n/).map((paragraph,index)=><p key={index}>{paragraph}</p>)}<span className={styles.cta}>{copy.ctaLabel||'Button'}</span></aside></div>
+ {current.error&&<p className={styles.feedback} role="alert">{current.error}</p>}{current.message&&<p className={styles.feedback} role="status"><Check size={14}/>{current.message}</p>}
+ <footer className={styles.footer}><span>{dirty?'Unsaved changes':current.published?'Published version available':current.revision===0?'Default website text':'Private draft'}</span><div className={ui.actions}><button type="submit" disabled={busy||(!dirty&&current.revision>0)} className={ui.secondary}>{busy?'Saving…':'Save draft'}</button><button type="button" disabled={busy} className={ui.primary} onClick={event=>{if(event.currentTarget.form?.reportValidity())setConfirm(true);}}>Publish page</button></div></footer></form></section>
+ <ConfirmModal busy={busy} isOpen={confirm} title={`Publish ${labels[selected].toLowerCase()}?`} message="The website will use the text shown in this preview. Review service details and policy promises before publishing." confirmText={busy?'Publishing…':'Publish page'} isDestructive={false} onCancel={()=>{if(!busy)setConfirm(false);}} onConfirm={()=>void save(true)}/>
+ </div>;
+}

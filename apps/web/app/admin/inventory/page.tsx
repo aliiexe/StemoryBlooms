@@ -3,12 +3,14 @@ import React from 'react';
 import { db, material, supplier } from '@stemory/database';
 import { asc } from 'drizzle-orm';
 import styles from '../dashboard.module.css';
+import { inventorySchemaReady } from '@/lib/commerce/stock-ledger';
 import { InventoryTableClient } from './InventoryTableClient';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminInventoryPage() {
   await assertAdmin();
+  const storageReady = await inventorySchemaReady();
   const materials = await db.query.material.findMany({
     orderBy: [asc(material.name)],
     with: {
@@ -61,7 +63,7 @@ export default async function AdminInventoryPage() {
       </div>
 
       {negativeStockCount > 0 && <p role="status" style={{ padding: '1rem', border: '1px solid #D49B46', borderRadius: 12, marginBottom: 16 }}>{negativeStockCount} materials have historical negative stock. Recount these materials and record a stock correction before using their balances for purchasing decisions.</p>}
-      <InventoryTableClient key={materials.map(m => `${m.id}:${m.updatedAt.getTime()}`).join('|')}
+      <InventoryTableClient storageReady={storageReady} key={materials.map(m => `${m.id}:${m.updatedAt.getTime()}`).join('|')}
         initialMaterials={materials.map(m => ({...m, cost: m.cost === null ? null : Number(m.cost)}))}
         suppliers={suppliers}
       />

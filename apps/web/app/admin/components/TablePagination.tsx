@@ -44,16 +44,16 @@ export function TablePagination({
   };
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderTop: '1px solid #EAE6DF', backgroundColor: '#fff', borderBottomLeftRadius: '12px', borderBottomRightRadius: '12px' }}>
+    <nav aria-label="Table pagination" style={{ display: 'flex', flexWrap:'wrap',gap:16, justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderTop: '1px solid #EAE6DF', backgroundColor: '#fff', borderBottomLeftRadius: '12px', borderBottomRightRadius: '12px' }}>
       <div style={{ color: '#7A7571', fontSize: '0.9rem' }}>
         Showing <span style={{ fontWeight: 600, color: '#3A3531' }}>{startItem}-{endItem}</span> of <span style={{ fontWeight: 600, color: '#3A3531' }}>{totalItems}</span> results
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem',flexWrap:'wrap',maxWidth:'100%' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <span style={{ color: '#7A7571', fontSize: '0.9rem' }}>Rows per page:</span>
           <div style={{ width: '80px' }}>
-            <CustomSelect
+            <CustomSelect label="Rows per page"
               value={rowsPerPage.toString()}
               onChange={(val) => {
                 onRowsPerPageChange(Number(val));
@@ -70,11 +70,11 @@ export function TablePagination({
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-          <button
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem',flexWrap:'wrap',maxWidth:'100%' }}>
+          <button type="button" aria-label="Previous page"
             onClick={() => onPageChange(page - 1)}
             disabled={page === 1}
-            style={{ padding: '0.35rem', borderRadius: '4px', border: '1px solid #D6CFE6', backgroundColor: '#fff', color: page === 1 ? '#C4BCAF' : '#5A5551', cursor: page === 1 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            style={{ minWidth:44,minHeight:44,padding: '0.35rem', borderRadius: '4px', border: '1px solid #D6CFE6', backgroundColor: '#fff', color: page === 1 ? '#C4BCAF' : '#5A5551', cursor: page === 1 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
             <ChevronLeft size={16} />
           </button>
@@ -83,12 +83,12 @@ export function TablePagination({
             p === '...' ? (
               <span key={`dots-${idx}`} style={{ padding: '0 0.5rem', color: '#9A9591' }}>...</span>
             ) : (
-              <button
+              <button type="button" aria-label={`Page ${p}`} aria-current={p===page?'page':undefined}
                 key={p}
                 onClick={() => onPageChange(p as number)}
                 style={{
-                  minWidth: '32px',
-                  height: '32px',
+                  minWidth: '44px',
+                  height: '44px',
                   padding: '0 0.25rem',
                   borderRadius: '4px',
                   border: p === page ? '1px solid var(--brand-primary)' : '1px solid transparent',
@@ -107,15 +107,15 @@ export function TablePagination({
             )
           ))}
 
-          <button
+          <button type="button" aria-label="Next page"
             onClick={() => onPageChange(page + 1)}
             disabled={page === totalPages}
-            style={{ padding: '0.35rem', borderRadius: '4px', border: '1px solid #D6CFE6', backgroundColor: '#fff', color: page === totalPages ? '#C4BCAF' : '#5A5551', cursor: page === totalPages ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            style={{ minWidth:44,minHeight:44,padding: '0.35rem', borderRadius: '4px', border: '1px solid #D6CFE6', backgroundColor: '#fff', color: page === totalPages ? '#C4BCAF' : '#5A5551', cursor: page === totalPages ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
             <ChevronRight size={16} />
           </button>
         </div>
       </div>
-    </div>
+    </nav>
   );
 }

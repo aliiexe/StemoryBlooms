@@ -6,6 +6,7 @@ import { auth } from '@clerk/nextjs/server';
 import { getUserRoleName } from '@/lib/user-sync';
 import { getReceiptSecret, verifyReceiptToken, type OrderAddress } from '@/lib/commerce/receipt-access';
 import type { Metadata } from 'next';
+import { orderPaymentState } from '@/lib/commerce/payments';
 
 export const metadata: Metadata = { title: 'Order receipt', robots: { index: false, follow: false }, referrer: 'no-referrer' };
 
@@ -37,7 +38,9 @@ export default async function ReceiptPage({ params, searchParams }: {
   if (!customerData) notFound();
   const items = await db.select().from(orderItem).where(eq(orderItem.orderId, orderRecord.id));
 
+  const payment = await orderPaymentState(orderRecord);
   const fullOrder = {
+    payment: { label: payment.label, collected: payment.collected, remaining: payment.remaining, itemsRemaining: payment.itemsRemaining, deliveryRemaining: payment.deliveryRemaining },
     orderNumber: orderRecord.orderNumber,
     createdAt: orderRecord.createdAt.toISOString(),
     subtotal: orderRecord.subtotal, deliveryFee: orderRecord.deliveryFee,

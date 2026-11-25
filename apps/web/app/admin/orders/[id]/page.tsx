@@ -5,8 +5,15 @@ import Link from 'next/link';
 import styles from '../../dashboard.module.css';
 import { OrderActions } from '../OrderActions';
 import DeleteOrderButton from './DeleteOrderButton';
-import PaymentActions from './PaymentActions';
+import { financeSchemaReady, orderFinanceOverview } from '@/lib/commerce/finance';
+import OrderFinancePanel from './OrderFinancePanel';
+import ReceivedPaymentPanel from './ReceivedPaymentPanel';
+import { paymentRowsForOrders } from '@/lib/commerce/payments';
+import { paymentState, fulfillmentLabels } from '@/lib/commerce/payment-state';
 import type { OrderAddress } from '@/lib/commerce/receipt-access';
+import detail from '../order-detail.module.css';
+import {ArrowLeft,ArrowUpRight,Clock} from 'lucide-react';
+import {formatPaymentMoney} from '@/lib/commerce/payment-state';
 import { ORDER_STATUS_LABELS } from '@/lib/commerce/order-status';
 
 export default async function OrderDetailsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -16,44 +23,31 @@ export default async function OrderDetailsPage({ params }: { params: Promise<{ i
   if (!current) notFound();
   const address = current.deliveryAddress as OrderAddress;
   const buyer = address.customerSnapshot || current.customer;
+  const payment = paymentState(current, (await paymentRowsForOrders([current])).get(id));
   const productIds = current.orderItems.flatMap(item => item.productId ? [item.productId] : []);
+  const financeReady = await financeSchemaReady();
+  const finance = financeReady ? await orderFinanceOverview(id) : null;
   const products = productIds.length ? await db.select({ id: product.id, images: product.images }).from(product).where(inArray(product.id, productIds)) : [];
   const components = await db.select({ id: builderComponent.id, name: builderComponent.name }).from(builderComponent);
-  const money = (amount: number) => `${amount.toLocaleString('en-MA', { maximumFractionDigits: 2 })} MAD`;
+  const money = (amount:number)=>formatPaymentMoney(amount*100);
+  const shortReference=current.orderNumber.length>18?`${current.orderNumber.slice(0,10)}…${current.orderNumber.slice(-4)}`:current.orderNumber;
+  const pickupMismatch=payment.fulfillment==='DELIVERY'&&/\bpick[ -]?up\b|retrait/i.test(address.addressLine1||'');
   const date = (value: Date) => new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Africa/Casablanca' }).format(value);
   return <div className={styles.dashboard}>
-    <header className={styles.pageHeader}><div><Link href="/admin/orders">← Back to orders</Link><h1 className={styles.pageTitle}>Order {current.orderNumber}</h1><p>{date(current.createdAt)} · {current.source}{address.archivedAt ? ' · Archived' : ''}</p></div>
-      {!address.archivedAt && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}><OrderActions orderId={id} currentStatus={current.status} sentToInfinidis={current.sentToInfinidis} /><DeleteOrderButton orderId={id} /></div>}
+    <header className={styles.pageHeader}><div><Link href="/admin/orders" className={detail.back}><ArrowLeft size={14}/>Orders</Link><h1 className={styles.pageTitle}>Order {shortReference}</h1><div className={detail.headerMeta}><span>{date(current.createdAt)}</span><span>· {current.source.toLowerCase().replaceAll('_',' ')}</span>{address.archivedAt&&<span>Archived</span>}</div>{shortReference!==current.orderNumber&&<p className={detail.reference}>{current.orderNumber}</p>}</div>
+      {!address.archivedAt&&<div style={{display:'flex',flexWrap:'wrap',gap:12}}><OrderActions orderId={id} currentStatus={current.status} sentToInfinidis={current.sentToInfinidis} pickup={payment.fulfillment==='PICKUP'}/><DeleteOrderButton orderId={id}/></div>}
     </header>
-    <div className={styles.orderDetailGrid}>
-      <div style={{ display: 'grid', gap: 24 }}>
-        <section className={styles.card} style={{ padding: '1.25rem' }}><h2>Order items</h2>
-          {current.orderItems.map(item => {
-            const config = item.configuration as { components?: Record<string, number>; componentNames?: Record<string, string>; cardMessage?: string } | null;
-            const image = products.find(value => value.id === item.productId)?.images?.[0];
-            return <article key={item.id} style={{ padding: '1rem 0', borderBottom: '1px solid #EAE6DF' }}>
-              <div style={{ display: 'flex', gap: 12, alignItems: 'start' }}>{image && <img src={image} alt="" width={56} height={56} style={{ objectFit: 'cover', borderRadius: 8 }} />}<div style={{ minWidth: 0 }}><strong>{item.productName}</strong><p>{item.quantity} × {money(item.unitPrice)} = {money(item.totalPrice)}</p></div></div>
-              {config?.components && <ul>{Object.entries(config.components).map(([componentId, quantity]) => <li key={componentId}>{quantity} × {config.componentNames?.[componentId] || components.find(value => value.id === componentId)?.name || 'Archived component'}</li>)}</ul>}
-              {config?.cardMessage && <p><strong>Card message:</strong> {config.cardMessage}</p>}
-            </article>;
-          })}
-          <dl style={{ marginTop: 24 }}><div className={styles.summaryLine}><dt>Merchandise subtotal</dt><dd>{money(current.subtotal)}</dd></div>
-            <div className={styles.summaryLine}><dt>Discounts and gift credit</dt><dd>−{money(current.discount)}</dd></div>
-            <div className={styles.summaryLine}><dt>Delivery fee</dt><dd>{money(current.deliveryFee)}</dd></div>
-            <div className={styles.summaryLine}><dt><strong>Order total</strong></dt><dd><strong>{money(current.total)}</strong></dd></div></dl>
-        </section>
-        <section className={styles.card} style={{ padding: '1.25rem' }}><h2>Order history</h2>
-          {current.orderStatusHistories.length ? <ol>{current.orderStatusHistories.sort((a,b) => a.createdAt.getTime() - b.createdAt.getTime()).map(event => <li key={event.id}><strong>{ORDER_STATUS_LABELS[event.status] || event.status}</strong> — {date(event.createdAt)}{event.note && <p>{event.note}</p>}</li>)}</ol> : <p>No status events were recorded for this older order.</p>}
-          {current.paymentStatusHistories.length > 0 && <><h3>Payment events</h3><ul>{current.paymentStatusHistories.map(event => <li key={event.id}>{event.status} — {date(event.createdAt)}</li>)}</ul></>}
-        </section>
-      </div>
-      <div style={{ display: 'grid', gap: 24 }}>
-        <section className={styles.card} style={{ padding: '1.25rem', overflowWrap: 'anywhere' }}><h2>Customer</h2><strong>{buyer.firstName} {buyer.lastName}</strong><p><a href={`tel:${buyer.phone}`}>{buyer.phone}</a></p>{buyer.email && <a href={`mailto:${buyer.email}`}>{buyer.email}</a>}</section>
-        <section className={styles.card} style={{ padding: '1.25rem', overflowWrap: 'anywhere' }}><h2>Delivery</h2>{address.recipientSnapshot && <><h3>Recipient</h3><p>{address.recipientSnapshot.name}</p><p><a href={`tel:${address.recipientSnapshot.phone}`}>{address.recipientSnapshot.phone}</a></p></>}<p>{address.addressLine1}</p><p>{address.city}</p>{address.deliveryEstimate && <p>{address.deliveryEstimate}</p>}{current.notes && <><h3>Notes</h3><p style={{ whiteSpace: 'pre-wrap' }}>{current.notes}</p></>}</section>
-        {address.manualDiscountReason && <section className={styles.card} style={{ padding: '1.25rem' }}><h2>Manual discount</h2><p>{money(address.manualDiscount || 0)} — {address.manualDiscountReason}</p></section>}
-        <section className={styles.card} style={{ padding: '1.25rem' }}><h2>Payment</h2><p>{current.paymentStatus === 'PAID' ? 'Cash collection recorded' : 'Awaiting cash collection'}</p><p>Cash on delivery · {money(current.total)}</p>{!address.archivedAt && <PaymentActions orderId={id} paid={current.paymentStatus === 'PAID'} delivered={['DELIVERED', 'COMPLETED'].includes(current.status)} />}</section>
-        <Link href={`/receipt/${encodeURIComponent(current.orderNumber)}`}>View private receipt</Link>
-      </div>
-    </div>
+    <div className={styles.orderDetailGrid}><div className={detail.sections}>
+    <section className={detail.section}><h2>Order items</h2>{current.orderItems.map(item=>{const config=item.configuration as {components?:Record<string,number>;componentNames?:Record<string,string>;cardMessage?:string}|null;const image=products.find(value=>value.id===item.productId)?.images?.[0];return <article key={item.id} className={detail.item}><img src={image||'/hero-bouquet.png'} alt=""/><div><strong className={detail.itemName}>{item.productName}</strong><p className={detail.itemMeta}>{item.quantity} × {money(item.unitPrice)}</p>{config?.components&&<ul className={detail.ingredients}>{Object.entries(config.components).map(([componentId,quantity])=><li key={componentId}>{quantity} × {config.componentNames?.[componentId]||components.find(value=>value.id===componentId)?.name||'Archived component'}</li>)}</ul>}{config?.cardMessage&&<p className={detail.itemMeta}><strong>Card message:</strong> {config.cardMessage}</p>}</div><span className={detail.itemPrice}>{money(item.totalPrice)}</span></article>;})}
+    <dl className={detail.totals}><div><dt>Items subtotal</dt><dd>{money(current.subtotal)}</dd></div>{current.discount>0&&<div><dt>Discounts & gift credit</dt><dd>−{money(current.discount)}</dd></div>}<div><dt>{payment.fulfillment==='PICKUP'?'Pickup':'Delivery'}</dt><dd>{money(current.deliveryFee)}</dd></div><div className={detail.grand}><dt>Order total</dt><dd>{money(current.total)}</dd></div></dl></section>
+    {current.notes&&<section className={detail.section}><h2>Order note</h2><p className={detail.itemMeta} style={{whiteSpace:'pre-wrap'}}>{current.notes}</p></section>}
+    {address.manualDiscountReason&&<section className={detail.section}><h2>Agreed discount</h2><p className={detail.itemMeta}>{money(address.manualDiscount||0)} · {address.manualDiscountReason}</p></section>}
+    <details className={`${detail.section} ${detail.historyDetails}`}><summary className={detail.historyHeading}><Clock size={16}/>Order activity ({current.orderStatusHistories.length})</summary>{current.orderStatusHistories.length?<ol className={detail.history}>{current.orderStatusHistories.sort((a,b)=>b.createdAt.getTime()-a.createdAt.getTime()).map(event=><li key={event.id}><strong>{ORDER_STATUS_LABELS[event.status]||event.status}</strong><time>{date(event.createdAt)}</time>{event.note&&!/^[A-Z_]+\s*→\s*[A-Z_]+$/.test(event.note)&&<p>{event.note}</p>}</li>)}</ol>:<p className={detail.itemMeta}>No activity was recorded for this earlier order.</p>}{current.paymentStatusHistories.length>0&&<details style={{marginTop:20}}><summary className={detail.itemMeta}>Earlier payment status changes</summary><ul>{current.paymentStatusHistories.map(event=><li key={event.id} className={detail.itemMeta}>{event.status.toLowerCase().replaceAll('_',' ')} · {date(event.createdAt)}</li>)}</ul></details>}</details>
+    </div><aside className={detail.sections}>
+    <ReceivedPaymentPanel orderId={id} status={address.archivedAt?'CANCELLED':current.status} value={payment} entries={(address.paymentRecords||[]).map(({id,amountCents,method,allocation,reference,at})=>({id,amountCents,method,allocation,reference,at}))} carrierReview={Boolean(address.carrierBalanceReviewRequired)}/>
+    <section className={detail.section}><h2>Customer & fulfillment</h2><div className={detail.contact}><strong>{buyer.firstName} {buyer.lastName}</strong><a href={`tel:${buyer.phone}`}>{buyer.phone}</a>{buyer.email&&<a href={`mailto:${buyer.email}`}>{buyer.email}</a>}</div><div className={detail.delivery}><h3>{fulfillmentLabels[payment.fulfillment]}</h3><div className={detail.contact}>{address.recipientSnapshot&&<><strong>{address.recipientSnapshot.name}</strong><a href={`tel:${address.recipientSnapshot.phone}`}>{address.recipientSnapshot.phone}</a></>}{payment.fulfillment==='PICKUP'?<p>Customer collection · no courier needed</p>:<><p>{address.addressLine1}</p><p>{address.city}</p>{address.deliveryEstimate&&<p>{address.deliveryEstimate}</p>}</>}{pickupMismatch&&<p style={{padding:12,background:'#faf4e8',borderRadius:6,color:'#947439'}}>The address mentions pickup, but this order was saved as courier delivery with a delivery fee. Review the original arrangement before another handoff or collection.</p>}</div></div></section>
+    <Link className={detail.receipt} href={`/receipt/${encodeURIComponent(current.orderNumber)}`}>Open private receipt<ArrowUpRight size={14}/></Link>
+    </aside></div>
+    {finance&&<details className={detail.section}><summary className={detail.historyHeading}>Settlements, refunds & returns</summary><div style={{marginTop:20}}><OrderFinancePanel orderId={id} status={current.status} total={current.total} giftAmount={address.redemptions?.giftAmount||0} value={finance}/></div></details>}
   </div>;
 }

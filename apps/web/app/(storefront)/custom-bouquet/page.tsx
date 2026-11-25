@@ -12,14 +12,10 @@ const SECTION_TO_TYPE: Record<string, string> = {
 };
 
 export default async function CustomBouquetPage() {
-  const [components, settings] = await Promise.all([
-    db.query.builderComponent.findMany({
-      where: and(eq(builderComponent.isAvailable, true), sql`${builderComponent.stock} >= GREATEST(1, ${builderComponent.minQuantity})`)
-    }),
-    db.query.siteSettings.findFirst(),
-  ]);
-
-  const config = settings?.config as { builderSections?: Record<string, boolean>; customBouquetBaseFee?: number } | null;
+  const settings = await db.query.siteSettings.findFirst();
+  const config = settings?.config as { builderSections?: Record<string, boolean>; customBouquetBaseFee?: number; inventoryTrackingEnabled?:boolean } | null;
+  const trackInventory=config?.inventoryTrackingEnabled!==false;
+  const components=await db.query.builderComponent.findMany({where:and(eq(builderComponent.isAvailable,true),trackInventory?sql`${builderComponent.stock} >= GREATEST(1, ${builderComponent.minQuantity})`:undefined)});
   const builderSections: Record<string, boolean> = config?.builderSections ?? {};
 
   // Determine which steps are enabled (default: all enabled if no config)
@@ -36,8 +32,8 @@ export default async function CustomBouquetPage() {
     name: c.name,
     price: c.unitPrice,
     imageUrl: c.imageUrl,
-    minQuantity: c.minQuantity,
-    maxQuantity: Math.min(c.maxQuantity ?? 100, c.stock, 100)
+    minQuantity: c.minQuantity,stock:trackInventory?c.stock:100,
+    maxQuantity: Math.min(c.maxQuantity ?? 100, trackInventory?c.stock:100, 100)
   });
 
   const itemsData: Record<string, ReturnType<typeof mapItem>[]> = {};
@@ -67,8 +63,7 @@ export default async function CustomBouquetPage() {
             Custom Builder Unavailable
           </h2>
           <p style={{ color: '#7A7571', fontSize: '1.1rem', lineHeight: 1.6, marginBottom: '2rem' }}>
-            We are currently restocking our supply of raw materials for custom arrangements.
-            The builder will be back online as soon as our master florists restock!
+            Custom bouquet choices are not available at the moment. Please contact us to arrange a bouquet, or explore the collection.
           </p>
         </div>
       ) : (
