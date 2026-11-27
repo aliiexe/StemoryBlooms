@@ -1,5 +1,5 @@
 "use client";
-import Link from 'next/link';
+import Link from './ContextLink';
 import styles from './ProductCard.module.css';
 import { useCartStore } from '../store/useCartStore';
 

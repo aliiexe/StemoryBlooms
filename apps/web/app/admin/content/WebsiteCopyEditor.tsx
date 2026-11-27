@@ -1,4 +1,5 @@
 'use client';
+import {useRememberedState} from '@/components/navigation/useRememberedState';
 import {useState} from 'react';
 import Link from 'next/link';
 import {ArrowUpRight,Eye,Check,FileText} from 'lucide-react';
@@ -10,7 +11,8 @@ import styles from './editor.module.css';
 type ContentRecord={key:SiteContentKey;copy:SiteCopy;revision:number;published:boolean};
 const labels:Record<SiteContentKey,string>={home:'Homepage',shipping:'Delivery information',returns:'Returns & replacements',faq:'FAQs',terms:'Ordering terms',privacy:'Privacy notice','cash-on-delivery':'Cash on delivery'};
 export default function WebsiteCopyEditor({records}:{records:ContentRecord[]}){
- const [selected,setSelected]=useState<SiteContentKey>('home');
+ const [rememberedPage,setSelected]=useRememberedState<SiteContentKey>('page','home');
+ const selected=records.some(record=>record.key===rememberedPage)?rememberedPage:'home';
  const [values,setValues]=useState(()=>Object.fromEntries(records.map(row=>[row.key,{...row,savedCopy:JSON.stringify(row.copy),message:'',error:''}])) as Record<SiteContentKey,ContentRecord&{savedCopy:string;message:string;error:string}>);
  const [busy,setBusy]=useState(false);const [confirm,setConfirm]=useState(false);const current=values[selected];const copy=current.copy;const dirty=JSON.stringify(copy)!==current.savedCopy;
  function change(field:keyof SiteCopy,value:string){setValues(previous=>({...previous,[selected]:{...previous[selected],copy:{...previous[selected].copy,[field]:value},message:'',error:''}}));}

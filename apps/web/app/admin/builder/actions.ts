@@ -9,6 +9,22 @@ import { inArray } from 'drizzle-orm';
 import { parseIntegerInput } from '../../../lib/form-values';
 import { assertAdmin } from '../../../lib/user-sync';
 import { recordAuditLog } from '@/lib/audit';
+import { rememberQuickComponent } from '@/lib/commerce/quick-components';
+import { publicError } from '@/lib/commerce/errors';
+
+export async function addQuickBuilderComponent(input: unknown) {
+  const actor = await assertAdmin();
+  try {
+    const component = await rememberQuickComponent(input, actor.id);
+    revalidatePath('/admin/builder');
+    revalidatePath('/admin/orders/new');
+    return { success: true as const, component: {
+      id: component.id, name: component.name, price: component.unitPrice, type: component.type,
+      stock: component.stock, available: component.isAvailable, imageUrl: component.imageUrl,
+      minQuantity: component.minQuantity, maxQuantity: component.maxQuantity,
+    } };
+  } catch (error) { return { success: false as const, error: publicError(error).message }; }
+}
 
 
 export async function saveBuilderComponent(formData: FormData) {

@@ -1,4 +1,5 @@
 'use client';
+import {useRememberedState} from '@/components/navigation/useRememberedState';
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -13,7 +14,7 @@ import ConfirmModal from '../components/ConfirmModal';
 import styles from '../dashboard.module.css';
 type Material = { id: string; name: string; quantity: number; cost: number | null; lowStockThreshold: number | null; supplierId?: string | null; supplier?: { id: string; name: string } | null; productMaterials?: { productId: string }[] };
 export function InventoryTableClient({ initialMaterials, suppliers = [], storageReady = true }: { initialMaterials: Material[]; suppliers?: { id: string; name: string }[]; storageReady?: boolean }) {
-  const router = useRouter(); const [search, setSearch] = useState(''); const [filter, setFilter] = useState('ALL'); const [supplierId, setSupplierId] = useState(''); const [editing, setEditing] = useState<Material | 'new' | null>(null); const [remove, setRemove] = useState<Material | null>(null); const [busy, setBusy] = useState(false); const [error, setError] = useState('');
+  const router = useRouter(); const [search, setSearch] = useRememberedState('search', ''); const [filter, setFilter] = useRememberedState('filter', 'ALL'); const [supplierId, setSupplierId] = useRememberedState('supplier', ''); const [editing, setEditing] = useState<Material | 'new' | null>(null); const [remove, setRemove] = useState<Material | null>(null); const [busy, setBusy] = useState(false); const [error, setError] = useState('');
   const filtered = initialMaterials.filter(value => (!supplierId || value.supplierId === supplierId) && `${value.name} ${value.supplier?.name || ''}`.toLowerCase().includes(search.toLowerCase()) && (filter === 'ALL' || filter === 'NEGATIVE' && value.quantity < 0 || filter === 'LOW' && value.lowStockThreshold !== null && value.quantity <= value.lowStockThreshold));
   const { page, setPage, rowsPerPage, setRowsPerPage, totalPages, paginatedItems, totalItems } = usePagination(filtered, 10);
   return <>

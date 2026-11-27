@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Bodoni_Moda, Sora, Cormorant_Garamond } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
+import NavigationMemory from '@/components/navigation/NavigationMemory';
 import PrivateSafeAnalytics from '@/components/PrivateSafeAnalytics';
 import "@stemory/ui/tokens.css";
 import "@stemory/ui/typography.css";
@@ -80,6 +81,7 @@ export default function RootLayout({
         <body>
           {children}
           <PrivateSafeAnalytics />
+          <NavigationMemory />
         </body>
       </html>
     </ClerkProvider>

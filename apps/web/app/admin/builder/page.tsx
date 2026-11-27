@@ -6,8 +6,9 @@ import { AdminBuilderClient } from './AdminBuilderClient';
 
 export const dynamic = 'force-dynamic';
 
-export default async function AdminBuilderPage() {
+export default async function AdminBuilderPage({searchParams}:{searchParams:Promise<{edit?:string}>}) {
   await assertAdmin();
+  const {edit} = await searchParams;
   const [components, materials, settings] = await Promise.all([
     db.query.builderComponent.findMany({
       orderBy: [asc(builderComponent.type), asc(builderComponent.name)],
@@ -35,6 +36,7 @@ export default async function AdminBuilderPage() {
     <div>
       <AdminBuilderClient
         initialComponents={typedComponents}
+        initialEditingId={edit}
         allMaterials={materials}
         initialSections={builderSections}
         trackInventory={config?.inventoryTrackingEnabled!==false}

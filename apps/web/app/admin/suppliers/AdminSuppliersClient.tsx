@@ -1,4 +1,5 @@
 'use client';
+import { useRememberedState } from '@/components/navigation/useRememberedState';
 
 import React, {  useState, useTransition  } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -28,7 +29,7 @@ export function AdminSuppliersClient({ initialSuppliers }: { initialSuppliers: S
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<Supplier | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useRememberedState("searchTerm", '');
   const [error, setError] = useState('');
 
   const { page: currentPage, setPage, rowsPerPage, setRowsPerPage, totalPages, paginatedItems, totalItems } = usePagination(

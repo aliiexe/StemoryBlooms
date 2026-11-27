@@ -1,7 +1,7 @@
 "use client";
 
+import ContextLink from '@/components/navigation/ContextLink';
 import React from 'react';
-import Link from 'next/link';
 import type {material} from '@stemory/database';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { AlertTriangle, PackageSearch } from 'lucide-react';
@@ -70,7 +70,7 @@ export default function DashboardClient({
                     const initials = o.name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase();
                     return (
                       <tr key={i} style={{ background: '#F9FAFB', borderRadius: '8px' }}>
-                        <td style={{ padding: '12px', fontWeight: 600, color: '#111827', borderTopLeftRadius: '8px', borderBottomLeftRadius: '8px' }}><Link href={`/admin/orders/${o.id}`}>{o.number}</Link></td>
+                        <td style={{ padding: '12px', fontWeight: 600, color: '#111827', borderTopLeftRadius: '8px', borderBottomLeftRadius: '8px' }}><ContextLink href={`/admin/orders/${o.id}`}>{o.number}</ContextLink></td>
                         <td style={{ padding: '12px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--brand-primary), #4CAF50)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 700 }}>
@@ -191,7 +191,7 @@ export default function DashboardClient({
                             {initials.toUpperCase()}
                           </div>
                           <div>
-                            <div style={{ fontWeight: 600, color: '#111827', fontSize: '0.9rem' }}><Link href={`/admin/orders/${s.id}`}>{s.orderNumber}</Link></div>
+                            <div style={{ fontWeight: 600, color: '#111827', fontSize: '0.9rem' }}><ContextLink href={`/admin/orders/${s.id}`}>{s.orderNumber}</ContextLink></div>
                             <div style={{ fontSize: '0.8rem', color: '#6B7280' }}>{s.customer.firstName} {s.customer.lastName}</div>
                           </div>
                         </div>
@@ -220,9 +220,9 @@ export default function DashboardClient({
             <p style={{ color: '#7A7571', fontSize: '0.9rem', marginBottom: '1rem', lineHeight: 1.5 }}>
               Received an order via Instagram or TikTok? Enter it manually to keep stock and reporting synchronized.
             </p>
-            <Link href="/admin/orders/new" className={styles.submitBtn} style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}>
+            <ContextLink href="/admin/orders/new" className={styles.submitBtn} style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}>
               Create Assisted Order
-            </Link>
+            </ContextLink>
           </div>
         </motion.div>
       </div>

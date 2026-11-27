@@ -70,7 +70,7 @@ async function priceOrder(reader: Reader, input: QuoteInput, lock: boolean, webs
     const typeCounts: Record<string, number> = {};
     for (const [id, quantity] of Object.entries(line.configuration.components)) {
       const found = componentsById.get(id);
-      if (!found || !found.isAvailable) fail('A selected bouquet component is no longer available.', 'UNAVAILABLE', 409);
+      if (!found || (website && !found.isAvailable)) fail('A selected bouquet component is no longer available.', 'UNAVAILABLE', 409);
       if (quantity < Math.max(1, found.minQuantity) || quantity > (found.maxQuantity ?? 100)) fail(`Please check the quantity for ${found.name}.`);
       typeCounts[found.type] = (typeCounts[found.type] || 0) + quantity;
       if (!['WRAPPING', 'CARD'].includes(found.type)) hasFlowers = true;

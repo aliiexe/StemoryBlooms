@@ -1,4 +1,5 @@
 'use client';
+import { navigateReturn } from '@/components/navigation/ReturnLink';
 
 import React, { useState } from 'react';
 import { deleteOrder } from '../actions';
@@ -19,7 +20,7 @@ export default function DeleteOrderButton({ orderId }: { orderId: string }) {
       const result = await deleteOrder(orderId);
       if (result?.error) { toast.error(result.error); return; }
       toast.success('Order archived');
-      router.push('/admin/orders');
+      navigateReturn(router, '/admin/orders');
     } catch { toast.error('Could not archive this order. Try again.'); }
     finally { setIsSubmitting(false); }
   };

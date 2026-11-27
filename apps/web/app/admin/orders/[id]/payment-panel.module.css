@@ -1,0 +1,8 @@
+.carrierNotice { display:grid;gap:12px;min-width:0; }
+.carrierNotice p { margin:0; }
+.carrierForm { display:grid;gap:10px;min-width:0; }
+.carrierForm label { display:block;font-weight:500;line-height:1.5; }
+.carrierForm input { display:block;width:100%;min-width:0;min-height:44px;box-sizing:border-box; }
+.carrierForm button { width:100%;white-space:normal;line-height:1.5;text-align:center;padding:11px 14px; }
+.carrierForm input[aria-invalid=true] { border-color:#a24132; }
+.carrierForm .carrierError { color:#913c2c;font-size:12px;line-height:1.6; }

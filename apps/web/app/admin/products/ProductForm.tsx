@@ -1,7 +1,7 @@
 'use client';
+import ReturnLink, { navigateReturn } from '@/components/navigation/ReturnLink';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { saveProduct } from './actions';
 import styles from '../dashboard.module.css';
@@ -126,7 +126,7 @@ export function ProductForm({
               setIsSubmitting(false);
             } else {
               toast.success(product?.id ? 'Product updated' : 'Product created');
-              router.push('/admin/products');
+              navigateReturn(router, '/admin/products');
             }
             } catch { setError('The save could not be confirmed. Your product fields are preserved.'); } finally { setIsSubmitting(false); }
           });
@@ -413,9 +413,9 @@ export function ProductForm({
 
         {/* Floating Action Bar */}
         <div style={{ position: 'sticky', bottom: 0, left: 0, right: 0, marginTop: '3rem', padding: '1.5rem', backgroundColor: 'rgba(253, 251, 247, 0.95)', backdropFilter: 'blur(10px)', borderTop: '1px solid #EAE6DF', display: 'flex', justifyContent: 'flex-end', gap: '1rem', zIndex: 100 }}>
-          <Link href="/admin/products" style={{ padding: '1rem 2rem', color: '#5A5551', textDecoration: 'none', fontWeight: 500, borderRadius: '50px', transition: 'background-color 0.2s' }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#F5F5F5'} onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+          <ReturnLink href="/admin/products" style={{ padding: '1rem 2rem', color: '#5A5551', textDecoration: 'none', fontWeight: 500, borderRadius: '50px', transition: 'background-color 0.2s' }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#F5F5F5'} onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
             Discard Changes
-          </Link>
+          </ReturnLink>
           <button
             type="submit"
             disabled={isSubmitting}

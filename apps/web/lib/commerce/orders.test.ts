@@ -1,3 +1,4 @@
+import { rememberQuickComponent } from './quick-components';
 import { recordReceivedPayment, paymentRowsForOrders, confirmCarrierBalance } from './payments';
 import { paymentState } from './payment-state';
 import {changeSiteSettings} from '../site-settings';
@@ -238,7 +239,7 @@ function staffData() {
     city: 'Casablanca', address: 'Test address 10', deliveryZoneId: 'zone', items: [{ productId: 'product', quantity: 1 }] });
 }
 function inputForQuote(data: Record<string, unknown>) {
-  return Object.fromEntries(['source', 'city', 'deliveryZoneId', 'manualDiscount', 'manualDiscountReason', 'promoCode', 'isHandDelivered', 'items'].filter(name => data[name] !== undefined).map(name => [name, data[name]]));
+  return Object.fromEntries(['source', 'city', 'deliveryZoneId', 'manualDiscount', 'manualDiscountReason', 'promoCode', 'isHandDelivered', 'fulfillmentMethod', 'trackInventory', 'items'].filter(name => data[name] !== undefined).map(name => [name, data[name]]));
 }
 function newDraft(data = staffData()) { return { id: randomUUID(), expectedRevision: 0, title: 'Custom request', data }; }
 
@@ -920,4 +921,56 @@ test('finance period totals separate current receipts from old purchases while p
  await database.insert(tables.expense).values([{id:randomUUID(),description:'Earlier purchase',amount:50,category:'OTHER',date:new Date('2026-10-10T12:00:00Z'),updatedAt:new Date()},{id:randomUUID(),description:'Current expense',amount:10,category:'OTHER',date:new Date('2026-11-10T12:00:00Z'),updatedAt:new Date()}]);
  const current=await financeSummary(database,{from:'2026-11-01',to:'2026-11-30'});assert.equal(current.collected,12000);assert.equal(current.expensesCents,1000);assert.equal(current.carrierOutstanding,8000);assert.equal(current.cashPosition,15000);
  const all=await financeSummary(database);assert.equal(all.collected,36000);assert.equal(all.expensesCents,6000);assert.equal(all.carrierOutstanding,8000);
+});
+
+
+test('quick order components are durable, hidden online, and retry without duplicates', async () => {
+  const input = { id: randomUUID(), name: '  Lavender rose  ', type: 'FLOWER', unitPrice: 35 };
+  const first = await rememberQuickComponent(input, 'test-admin', database);
+  const replay = await rememberQuickComponent(input, 'test-admin', database);
+  assert.equal(first.id, replay.id); assert.equal(first.name, 'Lavender rose');
+  assert.equal(first.stock, 0); assert.equal(first.isAvailable, false); assert.equal(first.imageUrl, null);
+  assert.equal((await database.query.auditLog.findMany()).length, 1);
+  assert.equal((await database.query.order.findMany()).length, 0);
+  await assert.rejects(rememberQuickComponent({ ...input, unitPrice: 40 }, 'test-admin', database), /changed/);
+});
+
+test('quick component validation never rounds prices or accepts customer visibility fields', async () => {
+  const input = { id: randomUUID(), name: 'New flower', type: 'FLOWER', unitPrice: 35 };
+  for (const patch of [{ name: '   ' }, { name: 'x'.repeat(151) }, { unitPrice: -1 }, { unitPrice: 2.5 }, { unitPrice: NaN }, { type: 'WRAPPING' }, { isAvailable: true }]) {
+    await assert.rejects(rememberQuickComponent({ ...input, ...patch }, 'test-admin', database));
+  }
+  assert.equal((await database.query.builderComponent.findMany()).length, 3);
+});
+
+test('remembered flowers survive drafts, price correctly in staff orders, and retain order history after later editing', async () => {
+  const component = await rememberQuickComponent({ id: randomUUID(), name: 'Lavender rose', type: 'FLOWER', unitPrice: 35 }, 'test-admin', database);
+  const data = { ...staffData(), trackInventory: false, items: [{ productId: 'BOUQUET', quantity: 1, configuration: { components: { [component.id]: 2 } } }] };
+  const saved = await saveOrderDraft(newDraft(data), 'test-admin', database);
+  assert.equal(saved.data.items[0].configuration?.components[component.id], 2);
+  const quote = await quoteStaffOrder(inputForQuote(data), database);
+  assert.equal(quote.subtotal, 89); assert.equal(quote.total, 109);
+  const created = await createStaffOrder({ ...data, expectedTotal: quote.total, quoteVersion: quote.quoteVersion, idempotencyKey: key('remembered-flower') }, database, 'test-admin');
+  await database.update(tables.builderComponent).set({ name: 'Updated rose', unitPrice: 50, imageUrl: '/uploads/rose.webp' }).where(eq(tables.builderComponent.id, component.id));
+  const line = (await database.query.orderItem.findMany()).find(row => row.orderId === created.id)!;
+  assert.equal(line.unitPrice, 89);
+  assert.equal((line.configuration as {componentNames:Record<string,string>}).componentNames[component.id], 'Lavender rose');
+  assert.equal((await database.query.builderComponent.findFirst({where:eq(tables.builderComponent.id,component.id)}))?.stock, 0);
+});
+
+test('hidden quick components stay unavailable at public checkout, and staff stock limits remain enforced', async () => {
+  const component = await rememberQuickComponent({ id: randomUUID(), name: 'New butterfly', type: 'ANIMAL_BUG', unitPrice: 25 }, 'test-admin', database);
+  const configuration = { components: { [component.id]: 1 } };
+  await database.update(tables.siteSettings).set({ config: { customBouquetBaseFee: 19, inventoryTrackingEnabled: false } });
+  await assert.rejects(quoteCheckout({ ...payload(), cartItems: [{ kind: 'CUSTOM', cartLineId: 'hidden-item', quantity: 1, configuration }] }, database), /no longer available/);
+  await assert.rejects(quoteStaffOrder(inputForQuote({ ...staffData(), trackInventory: true, items: [{ productId: 'BOUQUET', quantity: 1, configuration }] }), database), /not enough stock/);
+  const quote = await quoteStaffOrder(inputForQuote({ ...staffData(), trackInventory: false, items: [{ productId: 'BOUQUET', quantity: 1, configuration }] }), database);
+  assert.equal(quote.total, 64);
+});
+
+
+test('remembering a new item and its audit entry roll back together', async () => {
+  await assert.rejects(rememberQuickComponent({ id: randomUUID(), name: 'Rollback flower', type: 'FLOWER', unitPrice: 20 }, 'missing-actor', database));
+  assert.equal((await database.query.builderComponent.findMany()).length, 3);
+  assert.equal((await database.query.auditLog.findMany()).length, 0);
 });

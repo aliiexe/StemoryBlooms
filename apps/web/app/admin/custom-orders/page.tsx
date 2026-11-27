@@ -1,3 +1,4 @@
+import ContextLink from '@/components/navigation/ContextLink';
 import Link from 'next/link';
 import { db, draftOrder, user, eq, sql, and, desc } from '@stemory/database';
 import { assertAdmin } from '@/lib/user-sync';
@@ -31,7 +32,7 @@ export default async function AdminCustomOrdersPage({ searchParams }: { searchPa
   const pages = Math.max(1, Math.ceil(count / limit));
   const pageUrl = (next: number) => `/admin/custom-orders?${new URLSearchParams({ search, status, page: String(next) })}`;
   return <div className={styles.dashboard}>
-    <header className={styles.pageHeader}><div><h1 className={styles.pageTitle}>Order drafts</h1><p>A place for the orders you’re still working on. Resume when you’re ready.</p></div><Link className={workspace.primary} href="/admin/orders/new"><Plus size={16} />Create order</Link></header>
+    <header className={styles.pageHeader}><div><h1 className={styles.pageTitle}>Order drafts</h1><p>A place for the orders you’re still working on. Resume when you’re ready.</p></div><ContextLink className={workspace.primary} href="/admin/orders/new"><Plus size={16} />Create order</ContextLink></header>
     <nav className={workspace.tabs} aria-label="Draft views">{[{value:'DRAFT',label:'In progress'},{value:'CONVERTED',label:'Orders created'},{value:'ARCHIVED',label:'Archived'},{value:'ALL',label:'All drafts'}].map(tab=><Link key={tab.value} className={workspace.tab} aria-current={status===tab.value?'page':undefined} href={`/admin/custom-orders?${new URLSearchParams({status:tab.value,search})}`}>{tab.label}</Link>)}</nav>
     <DraftFilters key={`${search}:${status}`} search={search} status={status} />
     <section className={workspace.tableSurface} aria-label="Saved drafts">
@@ -40,11 +41,11 @@ export default async function AdminCustomOrdersPage({ searchParams }: { searchPa
       <table className={styles.table}><thead><tr><th>Draft / customer</th><th>Order details</th><th>Status</th><th>Last saved</th><th style={{textAlign:'right'}}> </th></tr></thead>
         <tbody>{rows.map(({ draft: row }) => {
           const draft = readDraftPayload(row.payload);
-          return <tr key={row.id}><td><Link className={workspace.rowTitle} title={draft?.title} href={`/admin/custom-orders/${row.id}`}>{draft?.title || 'Draft to review'}</Link><span className={workspace.rowMeta}>{draft?.data.customerName || 'Customer not added yet'}</span></td>
+          return <tr key={row.id}><td><ContextLink className={workspace.rowTitle} title={draft?.title} href={`/admin/custom-orders/${row.id}`}>{draft?.title || 'Draft to review'}</ContextLink><span className={workspace.rowMeta}>{draft?.data.customerName || 'Customer not added yet'}</span></td>
             <td>{draft?.data.items.reduce((sum,item)=>sum+item.quantity,0) || 0} items<span className={workspace.rowMeta}>{draft?.data.source.replaceAll('_', ' ').toLowerCase() || 'No channel'}</span></td>
             <td><span className={workspace.status} data-tone={draft?.status==='CONVERTED'?'paid':'draft'}>{draft?.status === 'CONVERTED' ? 'Order created' : draft?.status === 'ARCHIVED' ? 'Archived' : draft ? 'In progress' : 'Needs review'}</span></td>
             <td><span style={{whiteSpace:'nowrap'}}>{row.updatedAt.toLocaleDateString('en-GB', { timeZone:'Africa/Casablanca',day:'numeric',month:'short' })}</span><span className={workspace.rowMeta}>{row.updatedAt.toLocaleTimeString('en-GB',{timeZone:'Africa/Casablanca',hour:'2-digit',minute:'2-digit'})}</span></td>
-            <td><div className={workspace.rowActions}>{draft?.status === 'CONVERTED' && draft.convertedOrderId ? <Link className={workspace.rowAction} href={`/admin/orders/${draft.convertedOrderId}`}>View order<ArrowUpRight size={14}/></Link> : <Link className={workspace.rowAction} href={`/admin/custom-orders/${row.id}`}>{draft?.status === 'ARCHIVED' ? 'View' : 'Resume'}<ArrowUpRight size={14}/></Link>}
+            <td><div className={workspace.rowActions}>{draft?.status === 'CONVERTED' && draft.convertedOrderId ? <ContextLink className={workspace.rowAction} href={`/admin/orders/${draft.convertedOrderId}`}>View order<ArrowUpRight size={14}/></ContextLink> : <ContextLink className={workspace.rowAction} href={`/admin/custom-orders/${row.id}`}>{draft?.status === 'ARCHIVED' ? 'View' : 'Resume'}<ArrowUpRight size={14}/></ContextLink>}
               {draft && draft.status !== 'CONVERTED' && <DraftStatusActions id={row.id} revision={draft.revision} archived={draft.status === 'ARCHIVED'} />}</div></td></tr>;
         })}</tbody>
       </table></div> : <div className={workspace.emptyState}><FileText size={32} strokeWidth={1.25}/><h2>{search?'No matching drafts':'A little room to work things out'}</h2><p>{search?'Try another customer name or clear your search.':'Save an unfinished order here. You can return to the customer, bouquet, price, and payment details later.'}</p><Link className={workspace.primary} href={search?`/admin/custom-orders?status=${status}`:'/admin/orders/new'}>{search?'Clear search':'Start an order'}</Link></div>}

@@ -1,3 +1,4 @@
+import ReturnLink from '@/components/navigation/ReturnLink';
 import { assertAdmin } from '@/lib/user-sync';
 import { db, eq, inArray, order, product, builderComponent } from '@stemory/database';
 import { notFound } from 'next/navigation';
@@ -34,7 +35,7 @@ export default async function OrderDetailsPage({ params }: { params: Promise<{ i
   const pickupMismatch=payment.fulfillment==='DELIVERY'&&/\bpick[ -]?up\b|retrait/i.test(address.addressLine1||'');
   const date = (value: Date) => new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Africa/Casablanca' }).format(value);
   return <div className={styles.dashboard}>
-    <header className={styles.pageHeader}><div><Link href="/admin/orders" className={detail.back}><ArrowLeft size={14}/>Orders</Link><h1 className={styles.pageTitle}>Order {shortReference}</h1><div className={detail.headerMeta}><span>{date(current.createdAt)}</span><span>· {current.source.toLowerCase().replaceAll('_',' ')}</span>{address.archivedAt&&<span>Archived</span>}</div>{shortReference!==current.orderNumber&&<p className={detail.reference}>{current.orderNumber}</p>}</div>
+    <header className={styles.pageHeader}><div><ReturnLink href="/admin/orders" className={detail.back}><ArrowLeft size={14}/>Back</ReturnLink><h1 className={styles.pageTitle}>Order {shortReference}</h1><div className={detail.headerMeta}><span>{date(current.createdAt)}</span><span>· {current.source.toLowerCase().replaceAll('_',' ')}</span>{address.archivedAt&&<span>Archived</span>}</div>{shortReference!==current.orderNumber&&<p className={detail.reference}>{current.orderNumber}</p>}</div>
       {!address.archivedAt&&<div style={{display:'flex',flexWrap:'wrap',gap:12}}><OrderActions orderId={id} currentStatus={current.status} sentToInfinidis={current.sentToInfinidis} pickup={payment.fulfillment==='PICKUP'}/><DeleteOrderButton orderId={id}/></div>}
     </header>
     <div className={styles.orderDetailGrid}><div className={detail.sections}>

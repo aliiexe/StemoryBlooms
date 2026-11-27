@@ -1,3 +1,4 @@
+import ReturnLink from '@/components/navigation/ReturnLink';
 import { assertAdmin } from '@/lib/user-sync';
 import React from 'react';
 import { db } from '@stemory/database';
@@ -34,6 +35,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
 
   return (
     <div className={styles.dashboard}>
+      <ReturnLink href="/admin/products">← Products</ReturnLink>
       <header style={{ marginBottom: '2rem' }}>
         <h1 className={styles.shopTitle} style={{ fontSize: '1.75rem', margin: 0 }}>Edit Product</h1>
       </header>

@@ -10,3 +10,5 @@ export * from './store/useCartStore';
 
 export {default as StoreModal} from './components/StoreModal';
 export {lockModalScroll} from './lib/modal-scroll';
+
+export { default as ContextLink } from './components/ContextLink';

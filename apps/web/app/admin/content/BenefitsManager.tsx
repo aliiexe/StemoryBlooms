@@ -1,4 +1,5 @@
 'use client';
+import { useRememberedState } from '@/components/navigation/useRememberedState';
 import {useState} from 'react';
 import {useRouter} from 'next/navigation';
 import {Plus,ArrowUpRight,Ticket,Gift,Search} from 'lucide-react';
@@ -9,7 +10,7 @@ import AdminDialog from '../components/AdminDialog';
 import {formatPaymentMoney} from '@/lib/commerce/payment-state';
 import styles from '../workspace.module.css';
 export default function BenefitsManager({promos,cards}:{promos:(typeof promoCode.$inferSelect)[];cards:(typeof giftCard.$inferSelect)[]}){
- const router=useRouter();const [view,setView]=useState<'promo'|'gift'>('promo');const [search,setSearch]=useState('');const [busy,setBusy]=useState(false);const [editing,setEditing]=useState<{kind:'promo'|'gift';id?:string}|null>(null);
+ const router=useRouter();const [view,setView]=useRememberedState<'promo'|'gift'>('view', 'promo');const [search,setSearch]=useRememberedState("search", '');const [busy,setBusy]=useState(false);const [editing,setEditing]=useState<{kind:'promo'|'gift';id?:string}|null>(null);
  const close=()=>{setEditing(null);router.refresh();};const codeMatches=(code:string)=>code.toLowerCase().includes(search.trim().toLowerCase());const codes=promos.filter(row=>codeMatches(row.code));const gifts=cards.filter(row=>codeMatches(row.code));
  return <><div className={styles.filterToolbar}><div className={styles.actions}><button type="button" className={styles.filterToggle} aria-pressed={view==='promo'} onClick={()=>setView('promo')}><Ticket size={16}/>Promo codes</button><button type="button" className={styles.filterToggle} aria-pressed={view==='gift'} onClick={()=>setView('gift')}><Gift size={16}/>Gift cards</button></div><label className={`${styles.filterField} ${styles.filterSearch}`}><span><Search size={14}/>Search codes</span><input type="search" value={search} maxLength={64} onChange={event=>setSearch(event.target.value)} placeholder="Enter a code…"/></label></div>
  <section className={styles.tableSurface}><div className={styles.tableToolbar}><div><strong>{view==='promo'?'Promo codes':'Gift cards'}</strong><p className={styles.sectionHint}>{view==='promo'?'Discounts applied at checkout':'Treat codes as private payment information'}</p></div><button className={styles.primary} type="button" onClick={()=>setEditing({kind:view})}><Plus size={15}/>{view==='promo'?'Create promo':'Issue gift card'}</button></div><div className={styles.tableWrap} role="region" aria-label={view==='promo'?'Promo codes':'Gift cards'} tabIndex={0}>

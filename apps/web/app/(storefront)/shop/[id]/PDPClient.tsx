@@ -1,5 +1,6 @@
 'use client';
 
+import ReturnLink from '@/components/navigation/ReturnLink';
 import type { product as ProductTable, review as ReviewTable } from '@stemory/database';
 import type { CatalogCard } from '@/lib/commerce/catalog';
 import {useReducedMotion} from 'framer-motion';
@@ -66,7 +67,7 @@ export default function PDPClient({ product, recommendations, trackInventory = t
         <div style={{ marginBottom: '2rem', fontSize: '0.9rem', color: '#7A7571' }}>
           <Link href="/" style={{ color: 'inherit', textDecoration: 'none' }}>Home</Link>
           <span style={{ margin: '0 0.5rem' }}>/</span>
-          <Link href="/shop" style={{ color: 'inherit', textDecoration: 'none' }}>Shop</Link>
+          <ReturnLink href="/shop" style={{ color: 'inherit', textDecoration: 'none' }}>Shop</ReturnLink>
           <span style={{ margin: '0 0.5rem' }}>/</span>
           <span style={{ color: 'var(--brand-primary)', fontWeight: 500 }}>{product.name}</span>
         </div>
