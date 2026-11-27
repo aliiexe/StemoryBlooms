@@ -694,7 +694,7 @@ test('a failed gift refund ledger write rolls back the restored card balance',as
 
 test('reports measure gift tender as payment and group business days in Casablanca time',()=>{
   assert.equal(bookedMerchandise({subtotal:100,discount:70,deliveryAddress:{redemptions:{giftAmount:50}}}),80);
-  assert.equal(businessDay(new Date('2026-10-20T23:30:00Z')),'2026-10-21');
+  assert.equal(businessDay(new Date('2025-10-20T23:30:00Z')),'2025-10-21');
 });
 
 test('production does not silently repair a historical negative output balance',async()=>{
@@ -896,7 +896,7 @@ test('manual online availability keeps custom recipe limits and allows untracked
 
 
 test('report periods are calendar-based in Casablanca and reject invalid or unbounded custom dates',()=>{
- const now=new Date('2026-11-24T23:30:00Z');
+ const now=new Date('2026-11-25T12:00:00Z');
  assert.deepEqual(reportPeriod({period:'30'},now),{period:'30',from:'2026-10-27',to:'2026-11-25',label:'Last 30 days'});
  assert.equal(reportPeriod({period:'MONTH'},now).from,'2026-11-01');
  assert.equal(reportPeriod({period:'CUSTOM',from:'2026-02-31',to:'2026-03-01'},now).error,'Choose a valid date range of up to one year.');
@@ -905,7 +905,7 @@ test('report periods are calendar-based in Casablanca and reject invalid or unbo
 });
 
 test('daily reports include zero-order days and never interpolate sparse sales or count cancellations as booked value',()=>{
- const series=dailyOrderSeries([{createdAt:new Date('2026-11-14T23:30:00Z'),status:'DELIVERED',subtotal:100,discount:0,deliveryAddress:{}},{createdAt:new Date('2026-11-24T10:00:00Z'),status:'CONFIRMED',subtotal:149,discount:0,deliveryAddress:{}},{createdAt:new Date('2026-11-24T12:00:00Z'),status:'CANCELLED',subtotal:300,discount:0,deliveryAddress:{}}],'2026-11-01','2026-11-30');
+ const series=dailyOrderSeries([{createdAt:new Date('2026-11-15T12:00:00Z'),status:'DELIVERED',subtotal:100,discount:0,deliveryAddress:{}},{createdAt:new Date('2026-11-24T10:00:00Z'),status:'CONFIRMED',subtotal:149,discount:0,deliveryAddress:{}},{createdAt:new Date('2026-11-24T12:00:00Z'),status:'CANCELLED',subtotal:300,discount:0,deliveryAddress:{}}],'2026-11-01','2026-11-30');
  assert.equal(series.length,30);assert.equal(series[0].date,'2026-11-01');assert.equal(series.at(-1)?.date,'2026-11-30');
  assert.equal(series[14].revenue,100);assert.equal(series[23].orders,2);assert.equal(series[23].revenue,149);assert.equal(series[20].revenue,0);assert.equal(series.reduce((sum,row)=>sum+row.revenue,0),249);
 });
