@@ -36,7 +36,7 @@ test('new catalog images must be uploaded references while legacy embedded image
 
 
 test('announcement schedules round trip Casablanca times and reject invalid calendar dates',()=>{
- const date=casablancaInstant('2026-10-21T09:30');assert.equal(date?.toISOString(),'2026-10-21T08:30:00.000Z');assert.equal(casablancaLocal(date),'2026-10-21T09:30');
+ const date=casablancaInstant('2025-10-21T09:30');assert.equal(date?.toISOString(),'2025-10-21T08:30:00.000Z');assert.equal(casablancaLocal(date),'2025-10-21T09:30');
  assert.throws(()=>casablancaInstant('2026-02-30T10:00'),/calendar/);assert.equal(casablancaInstant(''),null);
 });
 test('announcement page targeting honors exclusions and explicit custom paths',()=>{
